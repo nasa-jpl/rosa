@@ -1,0 +1,4 @@
+.idea
+src/jpl_rosa.egg-info
+build/
+dist/
