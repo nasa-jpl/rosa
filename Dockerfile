@@ -38,6 +38,9 @@ RUN echo "export ROSLAUNCH_SSH_UNKNOWN=1" >> /root/.bashrc
 COPY . /app/
 WORKDIR /app/
 
+# Uncomment this line to test with local ROSA package
+# RUN python3.9 -m pip install --user -e .
+
 # Run roscore in the background, then run `rosrun turtlesim turtlesim_node` in a new terminal, finally run main.py in a new terminal
 CMD /bin/bash -c 'source /opt/ros/noetic/setup.bash &&  \
     roscore &  \

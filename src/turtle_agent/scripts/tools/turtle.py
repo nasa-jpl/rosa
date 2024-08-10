@@ -35,6 +35,10 @@ def remove_cmd_vel_pub(name: str):
     cmd_vel_pubs.pop(name, None)
 
 
+# Add the default turtle1 publisher on startup
+add_cmd_vel_pub("turtle1", rospy.Publisher(f'/turtle1/cmd_vel', Twist, queue_size=10))
+
+
 def within_bounds(x: float, y: float) -> tuple:
     """
     Check if the given x, y coordinates are within the bounds of the turtlesim environment.

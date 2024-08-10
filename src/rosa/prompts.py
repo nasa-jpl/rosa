@@ -16,11 +16,18 @@ from typing import Optional
 
 
 class RobotSystemPrompts:
-    def __init__(self, embodiment_and_persona: Optional[str], about_your_operators: Optional[str],
-                 critical_instructions: Optional[str], constraints_and_guardrails: Optional[str],
-                 about_your_environment: Optional[str], about_your_capabilities: Optional[str],
-                 nuance_and_assumptions: Optional[str], mission_and_objectives: Optional[str],
-                 environment_variables: Optional[dict] = None):
+    def __init__(
+            self,
+            embodiment_and_persona: Optional[str] = None,
+            about_your_operators: Optional[str] = None,
+            critical_instructions: Optional[str] = None,
+            constraints_and_guardrails: Optional[str] = None,
+            about_your_environment: Optional[str] = None,
+            about_your_capabilities: Optional[str] = None,
+            nuance_and_assumptions: Optional[str] = None,
+            mission_and_objectives: Optional[str] = None,
+            environment_variables: Optional[dict] = None
+    ):
         self.embodiment = embodiment_and_persona
         self.about_your_operators = about_your_operators
         self.critical_instructions = critical_instructions
@@ -30,7 +37,6 @@ class RobotSystemPrompts:
         self.nuance_and_assumptions = nuance_and_assumptions
         self.mission_and_objectives = mission_and_objectives
         self.environment_variables = environment_variables
-
 
     def as_message(self) -> tuple:
         """Return the robot prompts as a tuple of strings for use with OpenAI tools."""

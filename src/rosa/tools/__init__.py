@@ -54,6 +54,7 @@ class ROSATools:
     def __init__(self, ros_version: Literal[1, 2], blacklist: Optional[List[str]] = None):
         self.__tools: list = []
         self.__ros_version = ros_version
+        self.__blacklist = blacklist
 
         # Add the default tools
         from . import calculation, log, ros1, ros2, system
@@ -79,6 +80,13 @@ class ROSATools:
     def get_tools(self) -> List[Tool]:
         return self.__tools
 
+    def __add_tool(self, tool):
+        if hasattr(tool, 'name') and hasattr(tool, 'func'):
+            if self.__blacklist and 'blacklist' in tool.func.__code__.co_varnames:
+                # Inject the blacklist into the tool function
+                tool.func = inject_blacklist(self.__blacklist)(tool.func)
+            self.__tools.append(tool)
+
     def __iterative_add(self, package, blacklist: Optional[List[str]] = None):
         """
         Iterate through a package and add each @tool to the tools list.
@@ -89,17 +97,22 @@ class ROSATools:
         for tool_name in dir(package):
             if not tool_name.startswith("_"):
                 t = getattr(package, tool_name)
-                if hasattr(t, 'name') and hasattr(t, 'func'):
-                    if blacklist and 'blacklist' in t.func.__code__.co_varnames:
-                        # Inject the blacklist into the tool function
-                        t.func = inject_blacklist(blacklist)(t.func)
-                    self.__tools.append(t)
+                self.__add_tool(t)
 
-    def add(self, tool_packages: List, blacklist: Optional[List[str]] = None):
+    def add_packages(self, tool_packages: List, blacklist: Optional[List[str]] = None):
         """
-        Add a list of tools to the Tools object.
+        Add a list of tools to the Tools object by iterating through each package.
 
         :param tool_packages: A list of tool packages to add to the Tools object.
         """
         for pkg in tool_packages:
             self.__iterative_add(pkg, blacklist=blacklist)
+
+    def add_tools(self, tools: list):
+        """
+        Add a single tool to the Tools object.
+
+        :param tools: A list of tools to add
+        """
+        for tool in tools:
+            self.__add_tool(tool)
