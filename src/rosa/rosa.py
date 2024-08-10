@@ -41,7 +41,7 @@ class ROSA:
         llm: The language model to use for generating responses. This can be either an instance of AzureChatOpenAI or ChatOpenAI.
         tools: A list of LangChain tool functions to use with the agent.
         tool_packages: A list of Python packages that contain LangChain tool functions to use with the agent.
-        robot_prompts: A list of prompts to use with the agent. This can be a list of prompts from the RobotSystemPrompts class.
+        prompts: A list of prompts to use with the agent. This can be a list of prompts from the RobotSystemPrompts class.
         verbose: A boolean flag that indicates whether to print verbose output.
         blacklist: A list of ROS tools to exclude from the agent. This can be a list of ROS tools from the ROSATools class.
         accumulate_chat_history: A boolean flag that indicates whether to accumulate chat history.
