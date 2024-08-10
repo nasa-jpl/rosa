@@ -12,6 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import os
 from langchain.agents import AgentExecutor
 from langchain.agents.format_scratchpad.openai_tools import format_to_openai_tool_messages
 from langchain.agents.output_parsers.openai_tools import OpenAIToolsAgentOutputParser
@@ -21,9 +22,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
 from langchain_community.callbacks import get_openai_callback
 from rich import print
-from rich.console import Console
 from typing import Literal, Union, Optional
-from rich.markdown import Markdown
 
 try:
     from .prompts import system_prompts, RobotSystemPrompts
@@ -39,11 +38,10 @@ class ROSA:
 
     Args:
         ros_version: The version of ROS that the agent will interact with. This can be either 1 or 2.
-        llm: The language model to use for generating responses. This can be either an instance of AzureChatOpenAI
-            or ChatOpenAI.
-        robot_tools: A list of ROS tools to use with the agent. This can be a list of ROS tools from the ROSATools class.
-        robot_prompts: A list of prompts to use with the agent. This can be a list of prompts from the RobotSystemPrompts
-            class.
+        llm: The language model to use for generating responses. This can be either an instance of AzureChatOpenAI or ChatOpenAI.
+        tools: A list of LangChain tool functions to use with the agent.
+        tool_packages: A list of Python packages that contain LangChain tool functions to use with the agent.
+        robot_prompts: A list of prompts to use with the agent. This can be a list of prompts from the RobotSystemPrompts class.
         verbose: A boolean flag that indicates whether to print verbose output.
         blacklist: A list of ROS tools to exclude from the agent. This can be a list of ROS tools from the ROSATools class.
         accumulate_chat_history: A boolean flag that indicates whether to accumulate chat history.
@@ -54,8 +52,9 @@ class ROSA:
             self,
             ros_version: Literal[1, 2],
             llm: Union[AzureChatOpenAI, ChatOpenAI],
-            robot_tools: Optional[list] = None,
-            robot_prompts: Optional[RobotSystemPrompts] = None,
+            tools: Optional[list] = None,
+            tool_packages: Optional[list] = None,
+            prompts: Optional[RobotSystemPrompts] = None,
             verbose: bool = False,
             blacklist: Optional[list] = None,
             accumulate_chat_history: bool = True,
@@ -69,17 +68,16 @@ class ROSA:
         self.__show_token_usage = show_token_usage
         self.__blacklist = blacklist if blacklist else []
         self.__accumulate_chat_history = accumulate_chat_history
-        self.__tools = self.__get_tools(ros_version, robot_tools, self.__blacklist)
-        self.__prompts = self.__get_prompts(robot_prompts)
+        self.__tools = self.__get_tools(ros_version, packages=tool_packages, tools=tools, blacklist=self.__blacklist)
+        self.__prompts = self.__get_prompts(prompts)
         self.__llm_with_tools = llm.bind_tools(self.__tools.get_tools())
         self.__agent = self.__get_agent()
         self.__executor = self.__get_executor(verbose=verbose)
 
-    def clear_chat_history(self):
-        pass
-
-    def clear_screen(self):
-        pass
+    def clear_chat(self):
+        """Clear the chat history."""
+        self.__chat_history = []
+        os.system("clear")
 
     def invoke(self, query: str) -> str:
         """Invoke the agent with a user query."""
@@ -119,17 +117,19 @@ class ROSA:
 
     def __get_agent(self):
         agent = ({
-                    "input": lambda x: x["input"],
-                    "agent_scratchpad": lambda x: format_to_openai_tool_messages(x["intermediate_steps"]),
-                    "chat_history": lambda x: x["chat_history"],
-                } | self.__prompts | self.__llm_with_tools | OpenAIToolsAgentOutputParser())
+                     "input": lambda x: x["input"],
+                     "agent_scratchpad": lambda x: format_to_openai_tool_messages(x["intermediate_steps"]),
+                     "chat_history": lambda x: x["chat_history"],
+                 } | self.__prompts | self.__llm_with_tools | OpenAIToolsAgentOutputParser())
         return agent
 
-    def __get_tools(self, ros_version: Literal[1, 2], robot_tools: Optional[list], blacklist: Optional[list]):
-        tools = ROSATools(ros_version, blacklist=blacklist)
-        if robot_tools:
-            tools.add(robot_tools, blacklist=blacklist)
-        return tools
+    def __get_tools(self, ros_version: Literal[1, 2], packages: Optional[list], tools: Optional[list], blacklist: Optional[list]):
+        rosa_tools = ROSATools(ros_version, blacklist=blacklist)
+        if tools:
+            rosa_tools.add_tools(tools)
+        if packages:
+            rosa_tools.add_packages(packages, blacklist=blacklist)
+        return rosa_tools
 
     def __get_prompts(self, robot_prompts: Optional[RobotSystemPrompts] = None):
         prompts = system_prompts
