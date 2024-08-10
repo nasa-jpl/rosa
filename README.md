@@ -17,7 +17,14 @@ for ROS2 variants.
 
 
 # TurtleSim Demo
-We have included a demo that uses ROSA to control the TurtleSim simulator. You can run the demo using the following command:
+We have included a demo that uses ROSA to control the TurtleSim simulator. 
+
+## Configure your LLM
+You will need to configure your LLM by setting the environment variables found in `.env`. You will also need
+to ensure the correct LLM is configured in the `src/turtle_agent/turtle_agent.py` file, specifically in the
+`get_llm()` function.
+
+After that is configured properly, you can run the demo using the following command:
 
 ```bash
 ./demo.sh

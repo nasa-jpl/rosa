@@ -26,9 +26,9 @@ RUN apt-get update && apt-get install -y \
 
 # RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 RUN apt-get update && apt-get install -y python3.9
-RUN apt-get update && apt-get install -y python3-pip default-jre feh
-RUN python3 -m pip install -U python-dotenv catkin_tools && \
-    python3.9 -m pip install -U langchain langchain-openai python-dotenv numpy
+RUN apt-get update && apt-get install -y python3-pip
+RUN python3 -m pip install -U python-dotenv catkin_tools
+RUN python3.9 -m pip install -U jpl-rosa
 
 # Configure ROS
 RUN rosdep update
@@ -37,7 +37,6 @@ RUN echo "export ROSLAUNCH_SSH_UNKNOWN=1" >> /root/.bashrc
 
 COPY . /app/
 WORKDIR /app/
-RUN python3.9 -m pip install --user -e .
 
 # Run roscore in the background, then run `rosrun turtlesim turtlesim_node` in a new terminal, finally run main.py in a new terminal
 CMD /bin/bash -c 'source /opt/ros/noetic/setup.bash &&  \
