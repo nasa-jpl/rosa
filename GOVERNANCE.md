@@ -35,7 +35,7 @@ Subset of contributors who have demonstrated a strong familiarity with the proje
 
 Subset of contributors who have been given write access to one or more project repositories. Both contributors and collaborators can propose changes to the project via pull requests, but only collaborators can formally review and approve (merge) these requests. Any contributor who has made a non-trivial contribution should be on-boarded as a collaborator in a timely manner. 
 
-If you are planning on making a substantial contribution to the project or feel as though you should be given write access to a repository, please send a request to [@RobRoyce](https://github.com/RobRoyce) ([email](01-laptop-voiced@icloud.com))
+If you are planning on making a substantial contribution to the project or feel as though you should be given write access to a repository, please send a request to [@RobRoyce](https://github.com/RobRoyce) ([email](mailto:01-laptop-voiced@icloud.com))
 
 ### Technical Steering Committee Member
 
@@ -48,7 +48,7 @@ A subset of the collaborators forms the Technical Steering Committee (TSC). The 
 - Maintaining the list of collaborators
 
 #### TSC Committee Members
-- [@RobRoyce](https://github.com/RobRoyce) ([email](01-laptop-voiced@icloud.com)), NASA Jet Propulsion Laboratory
+- [@RobRoyce](https://github.com/RobRoyce) ([email](mailto:01-laptop-voiced@icloud.com)), NASA Jet Propulsion Laboratory
 
 
 
@@ -90,7 +90,7 @@ The Project Management Committee (PMC) is made up of sponsor organization repres
 - Addressing any legal considerations
 
 #### PMC Committee Members
-- [@RobRoyce](https://github.com/RobRoyce) ([email](01-laptop-voiced@icloud.com)), NASA Jet Propulsion Laboratory
+- [@RobRoyce](https://github.com/RobRoyce) ([email](mailto:01-laptop-voiced@icloud.com)), NASA Jet Propulsion Laboratory
 
 <details>
 

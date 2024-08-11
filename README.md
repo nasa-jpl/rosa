@@ -172,4 +172,4 @@ See our: [LICENSE](LICENSE.md)
 ## Support
 
 Key points of contact are: 
-- [@RobRoyce](https://github.com/RobRoyce) ([email](01-laptop-voiced@icloud.com))
+- [@RobRoyce](https://github.com/RobRoyce) ([email](mailto:01-laptop-voiced@icloud.com))
