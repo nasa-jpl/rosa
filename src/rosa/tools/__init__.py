@@ -14,9 +14,10 @@
 
 
 import inspect
-from typing import Literal, List, Optional
-from langchain.agents import Tool
 from functools import wraps
+from typing import Literal, List, Optional
+
+from langchain.agents import Tool
 
 
 def inject_blacklist(blacklist):
@@ -28,36 +29,41 @@ def inject_blacklist(blacklist):
     Ensures the function signature and parameter list are maintained, such that LangChain can properly execute the
     function. Without this, LangChain would throw an error. Tried to use partial functions, but it did not work.
     """
+
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            if 'blacklist' in kwargs:
-                kwargs['blacklist'] = blacklist
+            if "blacklist" in kwargs:
+                kwargs["blacklist"] = blacklist
             else:
                 params = inspect.signature(func).parameters
-                if 'blacklist' in params:
-                    kwargs['blacklist'] = blacklist
+                if "blacklist" in params:
+                    kwargs["blacklist"] = blacklist
             return func(*args, **kwargs)
 
         # Rebuild the signature to include 'blacklist'
         sig = inspect.signature(func)
         new_params = [
-            param.replace(default=blacklist) if param.name == 'blacklist' else param
+            param.replace(default=blacklist) if param.name == "blacklist" else param
             for param in sig.parameters.values()
         ]
         wrapper.__signature__ = sig.replace(parameters=new_params)
         return wrapper
+
     return decorator
 
 
 class ROSATools:
-    def __init__(self, ros_version: Literal[1, 2], blacklist: Optional[List[str]] = None):
+    def __init__(
+        self, ros_version: Literal[1, 2], blacklist: Optional[List[str]] = None
+    ):
         self.__tools: list = []
         self.__ros_version = ros_version
         self.__blacklist = blacklist
 
         # Add the default tools
         from . import calculation, log, ros1, ros2, system
+
         self.__iterative_add(calculation)
         self.__iterative_add(log)
         self.__iterative_add(system)
@@ -65,12 +71,14 @@ class ROSATools:
         if self.__ros_version == 1:
             try:
                 from . import ros1
+
                 self.__iterative_add(ros1, blacklist=blacklist)
             except Exception as e:
                 print(e)
         elif self.__ros_version == 2:
             try:
                 from . import ros2
+
                 self.__iterative_add(ros2, blacklist=blacklist)
             except Exception as e:
                 print(e)
@@ -81,8 +89,8 @@ class ROSATools:
         return self.__tools
 
     def __add_tool(self, tool):
-        if hasattr(tool, 'name') and hasattr(tool, 'func'):
-            if self.__blacklist and 'blacklist' in tool.func.__code__.co_varnames:
+        if hasattr(tool, "name") and hasattr(tool, "func"):
+            if self.__blacklist and "blacklist" in tool.func.__code__.co_varnames:
                 # Inject the blacklist into the tool function
                 tool.func = inject_blacklist(self.__blacklist)(tool.func)
             self.__tools.append(tool)

@@ -13,19 +13,21 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import dotenv
 import os
+
+import dotenv
 import pyinputplus as pyip
 import rospy
-from llm import get_llm
 from langchain.agents import tool
-from prompts import get_prompts
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.prompt import Prompt
 from rich.text import Text
 from rosa import ROSA
+
 import tools.turtle as turtle_tools
+from llm import get_llm
+from prompts import get_prompts
 
 
 @tool
@@ -49,14 +51,18 @@ class TurtleAgent(ROSA):
             prompts=self.__prompts,
             verbose=verbose,
             accumulate_chat_history=True,
-            show_token_usage=True
+            show_token_usage=True,
         )
 
     def run(self):
         console = Console()
-        greeting = Text("\nHi! I'm the ROSA-TurtleBot agent 🐢🤖. How can I help you today?\n")
+        greeting = Text(
+            "\nHi! I'm the ROSA-TurtleBot agent 🐢🤖. How can I help you today?\n"
+        )
         greeting.stylize("frame bold blue")
-        greeting.append("Try 'help', 'examples', 'clear', or 'exit'.\n", style="underline")
+        greeting.append(
+            "Try 'help', 'examples', 'clear', or 'exit'.\n", style="underline"
+        )
 
         while True:
             console.print(greeting)
@@ -67,7 +73,11 @@ class TurtleAgent(ROSA):
                 output = self.invoke(self.__get_help())
             elif user_input == "examples":
                 examples = self.__examples()
-                example = pyip.inputMenu(choices=examples, numbered=True, prompt="Select an example and press enter: \n")
+                example = pyip.inputMenu(
+                    choices=examples,
+                    numbered=True,
+                    prompt="Select an example and press enter: \n",
+                )
                 output = self.invoke(example)
             elif user_input == "clear":
                 self.clear_chat()
@@ -130,5 +140,5 @@ def main():
 
 
 if __name__ == "__main__":
-    rospy.init_node('rosa', log_level=rospy.INFO)
+    rospy.init_node("rosa", log_level=rospy.INFO)
     main()

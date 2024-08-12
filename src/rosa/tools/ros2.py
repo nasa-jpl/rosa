@@ -14,8 +14,9 @@
 
 import os
 import subprocess
-from langchain.agents import tool
 from typing import List, Optional
+
+from langchain.agents import tool
 
 
 def execute_ros_command(command: str, regex_pattern: str = None) -> str:
@@ -27,12 +28,12 @@ def execute_ros_command(command: str, regex_pattern: str = None) -> str:
     """
 
     # Validate the command is a proper ROS2 command
-    cmd = command.split(' ')
-    valid_ros2_commands = ['node', 'topic', 'service', 'param', 'doctor']
+    cmd = command.split(" ")
+    valid_ros2_commands = ["node", "topic", "service", "param", "doctor"]
 
     if len(cmd) < 2:
         raise ValueError(f"'{command}' is not a valid ROS2 command.")
-    if cmd[0] != 'ros2':
+    if cmd[0] != "ros2":
         raise ValueError(f"'{command}' is not a valid ROS2 command.")
     if cmd[1] not in valid_ros2_commands:
         raise ValueError(f"'ros2 {cmd[1]}' is not a valid ros2 subcommand.")
@@ -43,13 +44,17 @@ def execute_ros_command(command: str, regex_pattern: str = None) -> str:
         return f"Error executing command '{command}': {e}"
 
     if regex_pattern:
-        output = subprocess.check_output(f"echo '{output}' | grep -E '{regex_pattern}'", shell=True).decode()
+        output = subprocess.check_output(
+            f"echo '{output}' | grep -E '{regex_pattern}'", shell=True
+        ).decode()
 
     return output
 
 
 @tool
-def ros2_node_list(regex_pattern: str = None, blacklist: Optional[List[str]] = None) -> List[str]:
+def ros2_node_list(
+    regex_pattern: str = None, blacklist: Optional[List[str]] = None
+) -> List[str]:
     """
     Get a list of ROS2 nodes running on the system.
 
@@ -154,24 +159,19 @@ def ros2_node_info(nodes: List[str]) -> dict:
 
 
 def parse_ros2_topic_info(output):
-    topic_info = {
-        "name": "",
-        "type": "",
-        "publishers": [],
-        "subscribers": []
-    }
+    topic_info = {"name": "", "type": "", "publishers": [], "subscribers": []}
 
-    lines = output.split('\n')
+    lines = output.split("\n")
 
     # Extract the topic name
     for line in lines:
-        if line.startswith('ros2 topic info'):
-            topic_info["name"] = line.split(' ')[3]
+        if line.startswith("ros2 topic info"):
+            topic_info["name"] = line.split(" ")[3]
 
     # Extract the Type
     for line in lines:
-        if line.startswith('Type:'):
-            topic_info["type"] = line.split(': ')[1]
+        if line.startswith("Type:"):
+            topic_info["type"] = line.split(": ")[1]
 
     # Extract publisher and subscriber sections
     publisher_section = ""
@@ -180,30 +180,30 @@ def parse_ros2_topic_info(output):
     collecting_subscribers = False
 
     for line in lines:
-        if line.startswith('Publisher count:'):
+        if line.startswith("Publisher count:"):
             collecting_publishers = True
             collecting_subscribers = False
-        elif line.startswith('Subscription count:'):
+        elif line.startswith("Subscription count:"):
             collecting_publishers = False
             collecting_subscribers = True
 
         if collecting_publishers:
-            publisher_section += line + '\n'
+            publisher_section += line + "\n"
         if collecting_subscribers:
-            subscriber_section += line + '\n'
+            subscriber_section += line + "\n"
 
     # Extract node names for publishers
-    publisher_lines = publisher_section.split('\n')
+    publisher_lines = publisher_section.split("\n")
     for line in publisher_lines:
-        if line.startswith('Node name:'):
-            node_name = line.split(': ')[1]
+        if line.startswith("Node name:"):
+            node_name = line.split(": ")[1]
             topic_info["publishers"].append(node_name)
 
     # Extract node names for subscribers
-    subscriber_lines = subscriber_section.split('\n')
+    subscriber_lines = subscriber_section.split("\n")
     for line in subscriber_lines:
-        if line.startswith('Node name:'):
-            node_name = line.split(': ')[1]
+        if line.startswith("Node name:"):
+            node_name = line.split(": ")[1]
             topic_info["subscribers"].append(node_name)
 
     return topic_info
@@ -309,6 +309,7 @@ def ros2_service_info(services: List[str]) -> dict:
 
     return data
 
+
 @tool
 def ros2_service_info(services: List[str]) -> dict:
     """
@@ -327,6 +328,7 @@ def ros2_service_info(services: List[str]) -> dict:
             data[service_name] = dict(error=str(e))
 
     return data
+
 
 @tool
 def ros2_service_call(service_name: str, srv_type: str, request: str) -> str:
@@ -354,6 +356,7 @@ def ros2_doctor() -> str:
     output = execute_ros_command(cmd)
     return output
 
+
 def get_ros2_log_root() -> str:
     """
     Get the root directory for ROS2 log files.
@@ -368,6 +371,7 @@ def get_ros2_log_root() -> str:
 
     return ros2_log_dir
 
+
 @tool
 def ros2_log_list(ros_log_dir: Optional[str]) -> dict:
     """Returns a list of ROS2 log files.
@@ -380,9 +384,7 @@ def ros2_log_list(ros_log_dir: Optional[str]) -> dict:
     ros_log_dir = ros_log_dir or get_ros2_log_root()
 
     if not os.path.exists(ros_log_dir):
-        return dict(
-            error=f"ROS log directory '{ros_log_dir}' does not exist."
-        )
+        return dict(error=f"ROS log directory '{ros_log_dir}' does not exist.")
 
     log_files = [f for f in os.listdir(ros_log_dir) if f.endswith(".log")]
 
@@ -411,20 +413,20 @@ def ros2_log_list(ros_log_dir: Optional[str]) -> dict:
                 debug += 1
 
         log_file_lines = len(log_lines)
-        log_files_with_metadata.append(dict(
-            name=log_file,
-            bytes=log_file_size,
-            lines=log_file_lines,
-            debug=debug,
-            info=info,
-            warnings=warnings,
-            errors=errors
-        ))
+        log_files_with_metadata.append(
+            dict(
+                name=log_file,
+                bytes=log_file_size,
+                lines=log_file_lines,
+                debug=debug,
+                info=info,
+                warnings=warnings,
+                errors=errors,
+            )
+        )
 
-    return dict(
-        log_file_directory=ros_log_dir,
-        log_files=log_files_with_metadata
-    )
+    return dict(log_file_directory=ros_log_dir, log_files=log_files_with_metadata)
+
 
 @tool
 def ros2_read_log(log_file_name: str, level: Optional[str]) -> dict:
@@ -437,19 +439,13 @@ def ros2_read_log(log_file_name: str, level: Optional[str]) -> dict:
     log_file_path = os.path.join(ros_log_dir, log_file_name)
 
     if not os.path.exists(log_file_path):
-        return dict(
-            error=f"Log file '{log_file_name}' does not exist."
-        )
+        return dict(error=f"Log file '{log_file_name}' does not exist.")
 
     log_lines = []
     with open(log_file_path, "r") as f:
         log_lines = f.readlines()
 
-    res = dict(
-        log_file=log_file_name,
-        log_dir=ros_log_dir,
-        lines=[]
-    )
+    res = dict(log_file=log_file_name, log_dir=ros_log_dir, lines=[])
 
     for line in log_lines:
         if level and not line.startswith(f"[{level.upper()}]"):

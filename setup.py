@@ -12,9 +12,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from distutils.core import setup
-from setuptools import find_packages
 import pathlib
+from distutils.core import setup
+
+from setuptools import find_packages
 
 here = pathlib.Path(__file__).parent.resolve()
 long_description = (here / "README.md").read_text(encoding="utf-8")
@@ -39,7 +40,7 @@ setup(
         "Operating System :: Unix",
         "Programming Language :: Python :: 3",
         "Topic :: Scientific/Engineering",
-        "Topic :: Scientific/Engineering :: Artificial Intelligence"
+        "Topic :: Scientific/Engineering :: Artificial Intelligence",
     ],
     keywords="Robotics, Data Science, Machine Learning, Data Engineering, Data Infrastructure, Data Analysis",
     package_dir={"": "src"},

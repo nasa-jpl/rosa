@@ -12,8 +12,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import dotenv
 import os
+
+import dotenv
 from azure.identity import ClientSecretCredential, get_bearer_token_provider
 from langchain_openai import AzureChatOpenAI
 
@@ -46,7 +47,7 @@ def get_llm():
         openai_api_type="azure_ad",
         api_version=os.getenv("API_VERSION"),
         azure_endpoint=os.getenv("API_ENDPOINT"),
-        default_headers=default_headers
+        default_headers=default_headers,
     )
 
     return llm

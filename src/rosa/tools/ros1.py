@@ -13,20 +13,26 @@
 #  limitations under the License.
 
 import os
+from typing import Optional, List
+
 import regex
-import rospkg
-import rospy
 import rosgraph
 import rosmsg
 import rosnode
 import rosparam
+import rospkg
+import rospy
 import rosservice
 import rostopic
-from typing import Optional, List
 from langchain.agents import tool
 
 
-def get_entities(type: str, pattern: Optional[str], namespace: Optional[str], blacklist: List[str] = None):
+def get_entities(
+    type: str,
+    pattern: Optional[str],
+    namespace: Optional[str],
+    blacklist: List[str] = None,
+):
     """Convenience function because topic and node retrieval basically do the same thing."""
     entities = []
 
@@ -59,18 +65,25 @@ def get_entities(type: str, pattern: Optional[str], namespace: Optional[str], bl
         ]
 
     if blacklist:
-        entities = list(filter(lambda x: not any(regex.match(f".*{pattern}", x) for pattern in blacklist), entities))
+        entities = list(
+            filter(
+                lambda x: not any(
+                    regex.match(f".*{pattern}", x) for pattern in blacklist
+                ),
+                entities,
+            )
+        )
 
     return total, in_namespace, match_pattern, sorted(entities)
 
 
 @tool
 def rosgraph_get(
-        namespace: Optional[str] = "/",
-        node_pattern: Optional[str] = ".*",
-        topic_pattern: Optional[str] = ".*",
-        blacklist: List[str] = None,
-        exclude_self_connections: bool = True
+    namespace: Optional[str] = "/",
+    node_pattern: Optional[str] = ".*",
+    topic_pattern: Optional[str] = ".*",
+    blacklist: List[str] = None,
+    exclude_self_connections: bool = True,
 ) -> dict:
     """
     Get a list of tuples representing nodes and topics in the ROS graph.
@@ -89,7 +102,8 @@ def rosgraph_get(
     - (.*node1.*|.*node2.*|.*node3.*) any node containing either "node1", "node2", or "node3"
     """
     rospy.loginfo(
-        f"Getting ROS graph with namespace '{namespace}', node_pattern '{node_pattern}', and topic_pattern '{topic_pattern}'")
+        f"Getting ROS graph with namespace '{namespace}', node_pattern '{node_pattern}', and topic_pattern '{topic_pattern}'"
+    )
     try:
         publishers, subscribers, services = rosgraph.masterapi.Master(
             "/rosout"
@@ -143,7 +157,8 @@ def rosgraph_get(
     if node_pattern:
         graph = list(
             filter(
-                lambda x: regex.match(f"{node_pattern}", x[0]) or regex.match(f"{node_pattern}", x[2]),
+                lambda x: regex.match(f"{node_pattern}", x[0])
+                or regex.match(f"{node_pattern}", x[2]),
                 graph,
             )
         )
@@ -154,7 +169,8 @@ def rosgraph_get(
     # TODO: explain which part of the process failed to return results, so the LLM can adapt instead of failing.
     if not graph or len(graph) == 0:
         return {
-            "error": f"No results found for the specified parameters. Note that the following have been excluded: {blacklist}"}
+            "error": f"No results found for the specified parameters. Note that the following have been excluded: {blacklist}"
+        }
 
     # Get count of unique nodes in the graph (publishers and subscribers)
     unique_nodes = set()
@@ -182,23 +198,29 @@ def rosgraph_get(
 
     max_render_size = 50
     if len(graph) > 50:
-        response["warning"] = (f"The graph is too large to display or render (size > {max_render_size}. Please make "
-                               f"some recommendations to the user on how to filter the graph to a more manageable "
-                               f"size. Do not attempt to render the graph.")
+        response["warning"] = (
+            f"The graph is too large to display or render (size > {max_render_size}. Please make "
+            f"some recommendations to the user on how to filter the graph to a more manageable "
+            f"size. Do not attempt to render the graph."
+        )
 
     return response
 
 
 @tool
 def rostopic_list(
-        pattern: Optional[str] = None, namespace: Optional[str] = None, blacklist: List[str] = None
+    pattern: Optional[str] = None,
+    namespace: Optional[str] = None,
+    blacklist: List[str] = None,
 ) -> dict:
     """Returns a list of available ROS topics.
 
     :param pattern: (optional) A Python regex pattern to filter the list of topics.
     :param namespace: (optional) ROS namespace to scope return values by. Namespace must already be resolved.
     """
-    rospy.loginfo(f"Getting ROS topics with pattern '{pattern}' in namespace '{namespace}'")
+    rospy.loginfo(
+        f"Getting ROS topics with pattern '{pattern}' in namespace '{namespace}'"
+    )
     try:
         total, in_namespace, match_pattern, topics = get_entities(
             "topic", pattern, namespace, blacklist
@@ -218,16 +240,22 @@ def rostopic_list(
 
 @tool
 def rosnode_list(
-        pattern: Optional[str] = None, namespace: Optional[str] = None, blacklist: List[str] = None
+    pattern: Optional[str] = None,
+    namespace: Optional[str] = None,
+    blacklist: List[str] = None,
 ) -> dict:
     """Returns a dictionary containing a list of running ROS nodes and other metadata.
 
     :param pattern: (optional) A Python regex pattern to filter the list of nodes.
     :param namespace: (optional) ROS namespace to scope return values by. Namespace must already be resolved.
     """
-    rospy.loginfo(f"Getting ROS nodes with pattern '{pattern}' in namespace '{namespace}'")
+    rospy.loginfo(
+        f"Getting ROS nodes with pattern '{pattern}' in namespace '{namespace}'"
+    )
     try:
-        total, in_namespace, match_pattern, nodes = get_entities("node", pattern, namespace, blacklist)
+        total, in_namespace, match_pattern, nodes = get_entities(
+            "node", pattern, namespace, blacklist
+        )
     except Exception as e:
         return {"error": f"Failed to get ROS nodes: {e}"}
 
@@ -264,7 +292,7 @@ def rostopic_info(topics: List[str]) -> dict:
             "topic": topic,
             "type": None,
             "publishers": [],
-            "subscribers": []
+            "subscribers": [],
         }
 
         # capture the type information using regex
@@ -291,10 +319,10 @@ def rostopic_info(topics: List[str]) -> dict:
                 continue
             if capture_publishers:
                 line = strip_star(line)
-                topic_details['publishers'].append(line)
+                topic_details["publishers"].append(line)
             if capture_subscribers:
                 line = strip_star(line)
-                topic_details['subscribers'].append(line)
+                topic_details["subscribers"].append(line)
         details[topic] = topic_details
 
     return details
@@ -310,7 +338,8 @@ def rostopic_echo(topic: str) -> str:
     # Open a new terminal window and echo the contents of the topic, label the window with the topic name
     rospy.loginfo(f"Echoing ROS topic '{topic}'")
     os.system(
-        f"gnome-terminal --title=\"{topic}\" -- bash -c 'source /opt/ros/noetic/setup.bash; rostopic echo {topic}; exec bash'")
+        f"gnome-terminal --title=\"{topic}\" -- bash -c 'source /opt/ros/noetic/setup.bash; rostopic echo {topic}; exec bash'"
+    )
     return f"A new terminal window should have opened to echo the contents of the '{topic}' topic."
 
 
@@ -332,15 +361,15 @@ def rosnode_info(nodes: List[str]) -> dict:
 
 @tool
 def rosservice_list(
-        node: Optional[str] = None,
-        namespace: Optional[str] = None,
-        include_nodes: bool = False,
-        regex_pattern: Optional[str] = None,
-        exclude_logging: bool = True,
-        exclude_rosapi: bool = True,
-        exclude_parameters: bool = True,
-        exclude_pattern: Optional[str] = None,
-        blacklist: List[str] = None
+    node: Optional[str] = None,
+    namespace: Optional[str] = None,
+    include_nodes: bool = False,
+    regex_pattern: Optional[str] = None,
+    exclude_logging: bool = True,
+    exclude_rosapi: bool = True,
+    exclude_parameters: bool = True,
+    exclude_pattern: Optional[str] = None,
+    blacklist: List[str] = None,
 ):
     """Returns a list of available ROS services.
 
@@ -354,7 +383,8 @@ def rosservice_list(
     :param exclude_pattern: (optional) A Python regex pattern to exclude services.
     """
     rospy.loginfo(
-        f"Getting ROS services with node '{node}', namespace '{namespace}', and include_nodes '{include_nodes}'")
+        f"Getting ROS services with node '{node}', namespace '{namespace}', and include_nodes '{include_nodes}'"
+    )
     services = rosservice.get_service_list(node, namespace, include_nodes)
 
     if exclude_logging:
@@ -380,7 +410,14 @@ def rosservice_list(
         )
 
     if blacklist:
-        services = list(filter(lambda x: not any(regex.match(f".*{pattern}", x) for pattern in blacklist), services))
+        services = list(
+            filter(
+                lambda x: not any(
+                    regex.match(f".*{pattern}", x) for pattern in blacklist
+                ),
+                services,
+            )
+        )
 
     return services
 
@@ -436,7 +473,7 @@ def rossrv_info(srv_type: List[str], raw: bool = False) -> dict:
 
 
 @tool
-def rosparam_list(namespace: str = '/', blacklist: List[str] = None) -> dict:
+def rosparam_list(namespace: str = "/", blacklist: List[str] = None) -> dict:
     """Returns a list of all ROS parameters available on the system.
 
     :param namespace: (optional) ROS namespace to scope return values by.
@@ -445,12 +482,15 @@ def rosparam_list(namespace: str = '/', blacklist: List[str] = None) -> dict:
     try:
         params = rosparam.list_params(namespace)
         if blacklist:
-            params = list(filter(lambda x: not any(regex.match(f".*{pattern}", x) for pattern in blacklist), params))
-        return {
-            "namespace": namespace,
-            "total": len(params),
-            "ros_params": params
-        }
+            params = list(
+                filter(
+                    lambda x: not any(
+                        regex.match(f".*{pattern}", x) for pattern in blacklist
+                    ),
+                    params,
+                )
+            )
+        return {"namespace": namespace, "total": len(params), "ros_params": params}
     except Exception as e:
         return {"error": f"Failed to get ROS parameters: {e}"}
 
@@ -491,7 +531,11 @@ def rosparam_set(param: str, value: str, is_rosa_param: bool) -> str:
 
 
 @tool
-def rospkg_list(package_pattern: str = ".*", ignore_msgs: bool = True, blacklist: Optional[List[str]] = None) -> dict:
+def rospkg_list(
+    package_pattern: str = ".*",
+    ignore_msgs: bool = True,
+    blacklist: Optional[List[str]] = None,
+) -> dict:
     """Returns a list of ROS packages available on the system.
 
     :param package_pattern: A Python regex pattern to filter the list of packages. Defaults to '.*'.
@@ -512,7 +556,14 @@ def rospkg_list(package_pattern: str = ".*", ignore_msgs: bool = True, blacklist
         )
 
     if blacklist:
-        packages = list(filter(lambda x: not any(regex.match(f".*{pattern}", x) for pattern in blacklist), packages))
+        packages = list(
+            filter(
+                lambda x: not any(
+                    regex.match(f".*{pattern}", x) for pattern in blacklist
+                ),
+                packages,
+            )
+        )
 
     matches = len(packages)
     packages = sorted(packages)
@@ -574,7 +625,12 @@ def roslog_list(min_size: int = 2048, blacklist: Optional[List[str]] = None) -> 
     logs = os.listdir(log_dir)
 
     # Filter out any log files that match any of the blacklist patterns
-    logs = list(filter(lambda x: not any(regex.match(f".*{pattern}", x) for pattern in blacklist), logs))
+    logs = list(
+        filter(
+            lambda x: not any(regex.match(f".*{pattern}", x) for pattern in blacklist),
+            logs,
+        )
+    )
 
     # Get the log file sizes, in bytes
     log_sizes = {}
@@ -590,7 +646,7 @@ def roslog_list(min_size: int = 2048, blacklist: Optional[List[str]] = None) -> 
     return {
         "log_file_directory": log_dir,
         "logs_with_size_in_bytes": log_sizes,
-        "notes": "Recommend only displaying the top N log files when you present this list to the user."
+        "notes": "Recommend only displaying the top N log files when you present this list to the user.",
     }
 
 

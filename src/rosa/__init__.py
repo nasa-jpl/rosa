@@ -12,7 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from .rosa import ROSA
 from .prompts import RobotSystemPrompts
+from .rosa import ROSA
 
 __all__ = ["ROSA", "RobotSystemPrompts"]

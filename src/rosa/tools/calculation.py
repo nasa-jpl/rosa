@@ -15,6 +15,7 @@
 import math
 import statistics
 from typing import List
+
 from langchain.agents import tool
 
 
@@ -129,7 +130,7 @@ def exponentiate(xy_pairs: List[tuple]) -> List[dict]:
     results = []
     for x, y in xy_pairs:
         result = {
-            f"{x}^{y}": x ** y,
+            f"{x}^{y}": x**y,
         }
         results.append(result)
     return results
