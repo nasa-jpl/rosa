@@ -36,7 +36,7 @@ except ImportError:
 
 
 class ROSA:
-    """ROSA (Robot OpenAI System Agent) is a class that encapsulates the logic for interacting with ROS systems
+    """ROSA (Robot Operating System Agent) is a class that encapsulates the logic for interacting with ROS systems
     using natural language.
 
     Args:
