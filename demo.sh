@@ -22,11 +22,6 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-# Check if the user has docker-compose installed
-if ! command -v docker-compose &> /dev/null; then
-    echo "Docker-compose is not installed. Please install docker-compose and try again."
-    exit 1
-fi
 
 # Get the platform
 platform='unknown'
