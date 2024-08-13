@@ -184,7 +184,7 @@ governance model at: [GOVERNANCE.md](GOVERNANCE.md)
 
 ## License
 
-See our: [LICENSE](LICENSE)
+See our: [LICENSE.md](LICENSE.md)
 
 ## Support
 
