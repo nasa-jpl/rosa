@@ -13,6 +13,7 @@
 #  limitations under the License.
 
 import os
+import time
 from typing import Optional, List
 
 import regex
@@ -329,18 +330,55 @@ def rostopic_info(topics: List[str]) -> dict:
 
 
 @tool
-def rostopic_echo(topic: str) -> str:
+def rostopic_echo(
+    topic: str,
+    count: int,
+    return_echoes: bool = False,
+    delay: float = 0.0,
+    timeout: float = 1.0,
+) -> dict:
     """
     Opens a new terminal window and echoes the contents of a specific ROS topic.
 
     :param topic: The name of the ROS topic to echo.
+    :param count: The number of messages to echo. Valid range is 1-100.
+    :param return_echoes: If True, return the messages as a list with the response.
+    :param delay: Time to wait between each message in seconds.
+    :param timeout: Max time to wait for a message before timing out.
+
+    :note: Do not set return_echoes to True if the number of messages is large.
+           This will cause the response to be too large and may cause the tool to fail.
     """
-    # Open a new terminal window and echo the contents of the topic, label the window with the topic name
-    rospy.loginfo(f"Echoing ROS topic '{topic}'")
-    os.system(
-        f"gnome-terminal --title=\"{topic}\" -- bash -c 'source /opt/ros/noetic/setup.bash; rostopic echo {topic}; exec bash'"
-    )
-    return f"A new terminal window should have opened to echo the contents of the '{topic}' topic."
+    # Get the message class so we can retrieve messages from the topic
+    msg_class = rostopic.get_topic_class(topic)[0]
+    if not msg_class:
+        return {"error": f"Failed to get message class for topic '{topic}'"}
+
+    # Retrieve the messages from the topic
+    msgs = []
+
+    for i in range(count):
+        try:
+            msg = rospy.wait_for_message(topic, msg_class, timeout)
+            print(msg)
+
+            if return_echoes:
+                msgs.append(msg)
+
+            if delay > 0:
+                time.sleep(delay)
+
+        except (rospy.ROSException, rospy.ROSInterruptException) as e:
+            print(f"Failed to get message from topic '{topic}': {e}")
+            break
+
+    response = dict(topic=topic, requested_count=count, actual_count=len(msgs))
+
+    if return_echoes:
+        response["echoes"] = msgs[:10]
+        response["truncated"] = len(msgs) > 10
+
+    return response
 
 
 @tool
