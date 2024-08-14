@@ -11,29 +11,45 @@
 <!-- Header block for project -->
 
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/nasa-jpl/rosa/publish.yml)
-![PyPI - Python Version](https://img.shields.io/pypi/pyversions/jpl-rosa)
-![Static Badge](https://img.shields.io/badge/ROS_Versions-1_%26_2-blue)
+![Static Badge](https://img.shields.io/badge/Python->=3.9-blue)
+![Static Badge](https://img.shields.io/badge/ROS_1-Supported-blue)
+![Static Badge](https://img.shields.io/badge/ROS_2-Supported-blue)
 ![PyPI - License](https://img.shields.io/pypi/l/jpl-rosa)
 ![PyPI - Version](https://img.shields.io/pypi/v/jpl-rosa)
 ![PyPI - Downloads](https://img.shields.io/pypi/dw/jpl-rosa)
 [![SLIM](https://img.shields.io/badge/Best%20Practices%20from-SLIM-blue)](https://nasa-ammos.github.io/slim/)
 
-ROSA is an AI agent that can be used to interact with [ROS](https://www.ros.org/)
-(Robot Operating System) and perform various tasks. It is built using
-the [Langchain](https://python.langchain.com/v0.2/docs/introduction/) framework. ROSA can be adapted to work with
-different robots and environments, making it a versatile tool for robotics research and development.
+ROSA is an AI agent that can be used to interact with ROS1 _and_ ROS2 systems in order to carry out various tasks.
+It is built using the open-source [Langchain](https://python.langchain.com/v0.2/docs/introduction/) framework, and can
+be adapted to work with different robots and environments, making it a versatile tool for robotics research and
+development.
 
-## Features
+## Features and Roadmap
 
-* Generate system reports using fuzzy templates
-* Read, parse, and summarize ROS log files
-* Easily adapted to new robots with unique capabilities
-* Use natural language to run various ROS commands and tools, for example:
+- [x] Support for both ROS1 and ROS2
+- [x] Generate system reports using fuzzy templates
+- [x] Read, parse, and summarize ROS log files
+- [x] Use natural language to run various ROS commands and tools, for example:
     * "Give me a list of nodes, categorize them into `navigation`, `perception`, `control`, and `other`"
     * "Show me a list of topics that have publishers but no subscribers"
     * "Set the `/velocity` parameter to `10`"
     * "Echo the `/robot/status` topic"
     * "What is the message type of the `/robot/status` topic?"
+- [x] Control the TurtleSim robot in simulation using ROSA
+- [x] Easily adapt ROSA for your robot by adding new tools and prompts
+- [ ] Use multi-modal models for vision, scene understanding, and more (in-progress)
+- [ ] Web-based user interface with support for voice commands (in-progress)
+- [ ] Text and speech modalities for human-robot interaction (in-progress)
+
+### Support for Popular Robots
+
+ROSA already supports any robot built with ROS1 or ROS2, but we are also working on custom agents for some popular
+robots. These custom agents go beyond the basic ROSA functionality to provide more advanced capabilities and features.
+
+- [x] Custom Agent for the [TurtleSim robot](http://wiki.ros.org/turtlesim) (see [turtle_agent](src/turtle_agent))
+- [ ] Custom Agent for [NASA JPL's Open Source Rover](https://github.com/nasa-jpl/open-source-rover)
+- [ ] Custom Agent for the [TurtleBot](https://www.turtlebot.com/)
+- [ ] Custom Agent for the [Spot Robot](https://bostondynamics.com/products/spot/)
 
 ## Contents
 
@@ -92,7 +108,7 @@ catkin build && source devel/setup.bash && roslaunch turtle_agent agent
 
 # Adapting ROSA for Your Robot
 
-ROSA is designed to be easily adaptable to different robots and environments. To adapt ROSA for your robot, you will
+ROSA is designed to be easily adaptable to different robots and environments. To adapt ROSA for your robot, you
 can either (1) create a new class that inherits from the `ROSA` class, or (2) create a new instance of the `ROSA` class
 and pass in the necessary parameters. The first option is recommended if you need to make significant changes to the
 agent's behavior, while the second option is recommended if you want to use the agent with minimal changes.
