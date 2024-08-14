@@ -38,7 +38,7 @@ def cool_turtle_tool():
 
 class TurtleAgent(ROSA):
     def __init__(self, verbose: bool = True):
-        self.__blacklist = ["master"]
+        self.__blacklist = ["master", "docker"]
         self.__prompts = get_prompts()
         self.__llm = get_llm()
 
