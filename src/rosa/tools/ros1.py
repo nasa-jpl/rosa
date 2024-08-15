@@ -334,7 +334,7 @@ def rostopic_echo(
     topic: str,
     count: int,
     return_echoes: bool = False,
-    delay: float = 0.0,
+    delay: float = 1.0,
     timeout: float = 1.0,
 ) -> dict:
     """
@@ -475,6 +475,21 @@ def rosservice_info(services: List[str]) -> dict:
         details[service] = info_text
 
     return details
+
+
+@tool
+def rosservice_call(service: str, args: List[str]) -> dict:
+    """Calls a specific ROS service with the provided arguments.
+
+    :param service: The name of the ROS service to call.
+    :param args: A list of arguments to pass to the service.
+    """
+    print(f"Calling ROS service '{service}' with arguments: {args}")
+    try:
+        response = rosservice.call_service(service, args)
+        return response
+    except Exception as e:
+        return {"error": f"Failed to call service '{service}': {e}"}
 
 
 @tool
@@ -690,7 +705,7 @@ def roslog_list(min_size: int = 2048, blacklist: Optional[List[str]] = None) -> 
         # Get the size of each log file in KB or MB if it's larger than 1 MB
         log_files = [
             {
-                f: (
+                f.replace(log_dir, ""): (
                     f"{round(os.path.getsize(f) / 1024, 2)} KB"
                     if os.path.getsize(f) < 1024 * 1024
                     else f"{round(os.path.getsize(f) / (1024 * 1024), 2)} MB"
@@ -698,11 +713,6 @@ def roslog_list(min_size: int = 2048, blacklist: Optional[List[str]] = None) -> 
             }
             for f in log_files
         ]
-
-        # Remove the directory from the log file path
-        log_files = list(
-            map(lambda x: list(x.keys())[0].replace(log_dir, ""), log_files)
-        )
 
         if len(log_files) > 0:
             logs.append(
