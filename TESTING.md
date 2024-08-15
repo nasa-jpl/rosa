@@ -9,11 +9,11 @@ This document provides an overview of the testing architecture for the ROSA proj
 
 The following test categories are included in our testing setup:
 
-- [x ] **Static Code Analysis:** Checks code for syntax, style, vulnerabilities, and bugs.
-- [x ] **Unit Tests:** Tests functions or components to verify that they perform as intended.
-- [x ] **Security Tests:** Identifies potential security vulnerabilities.
-- [x ] **Build Tests:** Ensures the code builds into binaries or packages successfully.
-- [x ] **System Tests:** Validates the complete system's behavior in a production-like environment.
+- [ ] **Static Code Analysis:** Checks code for syntax, style, vulnerabilities, and bugs.
+- [ ] **Unit Tests:** Tests functions or components to verify that they perform as intended.
+- [ ] **Security Tests:** Identifies potential security vulnerabilities.
+- [ ] **Build Tests:** Ensures the code builds into binaries or packages successfully.
+- [ ] **System Tests:** Validates the complete system's behavior in a production-like environment.
 
 ### Static Code Analysis Tests
 - **Location:** `./static_analysis/`
