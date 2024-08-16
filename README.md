@@ -1,7 +1,7 @@
 <!-- Header block for project --> <hr>
 <div align="center">
 
-[//]: # (  [INSERT YOUR LOGO IMAGE HERE &#40;IF APPLICABLE&#41;])
+[//]: # (  [Test INSERT YOUR LOGO IMAGE HERE &#40;IF APPLICABLE&#41;])
   <!-- ☝️ Replace with your logo (if applicable) via ![](https://uri-to-your-logo-image) ☝️ -->
   <!-- ☝️ If you see logo rendering errors, make sure you're not using indentation, or try an HTML IMG tag -->
   <h1 align="center">ROSA - Robot Operating System Agent</h1>
