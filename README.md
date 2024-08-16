@@ -19,7 +19,7 @@
 ![PyPI - Downloads](https://img.shields.io/pypi/dw/jpl-rosa)
 [![SLIM](https://img.shields.io/badge/Best%20Practices%20from-SLIM-blue)](https://nasa-ammos.github.io/slim/)
 
-Test ROSA is an AI agent that can be used to interact with ROS1 _and_ ROS2 systems in order to carry out various tasks.
+Test 2Test ROSA is an AI agent that can be used to interact with ROS1 _and_ ROS2 systems in order to carry out various tasks.
 It is built using the open-source [Langchain](https://python.langchain.com/v0.2/docs/introduction/) framework, and can
 be adapted to work with different robots and environments, making it a versatile tool for robotics research and
 development.
