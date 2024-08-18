@@ -90,8 +90,11 @@ rosa.invoke("Show me a list of topics that have publishers but no subscribers")
 
 ## TurtleSim Demo
 
-We have included a demo that uses ROSA to control the TurtleSim robot in simulation. To run the demo, you will need
-to have Docker installed on your machine.
+We have included a demo that uses ROSA to control the TurtleSim robot in simulation. To run the demo, you will need to have Docker installed on your machine. 
+
+The following video shows ROSA reasoning about how to draw a 5-point star, then executing the necessary commands to do so.
+
+https://github.com/user-attachments/assets/77b97014-6d2e-4123-8d0b-ea0916d93a4e
 
 ### Setup and run
 
