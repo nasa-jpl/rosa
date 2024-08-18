@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3]  - 2024-08-17
+
+### Added
+
+* `rosservice_call` tool for ROS1
+
+### Changed
+
+* Changed ROSA class methods from private to protected to allow easier overrides.
+* Updated ros1 `roslog` tools to handle multiple logging directories.
+* Upgrade dependencies:
+    * `langchain` to 0.2.13
+    * `langchain-community` to 0.2.12
+    * `langchain_core` to 0.2.32
+    * `langchain-openai` to 0.1.21
+
 ## [1.0.2] - 2024-08-14
 
 ### Changed

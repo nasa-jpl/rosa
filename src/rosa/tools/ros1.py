@@ -334,7 +334,7 @@ def rostopic_echo(
     topic: str,
     count: int,
     return_echoes: bool = False,
-    delay: float = 0.0,
+    delay: float = 1.0,
     timeout: float = 1.0,
 ) -> dict:
     """
@@ -475,6 +475,21 @@ def rosservice_info(services: List[str]) -> dict:
         details[service] = info_text
 
     return details
+
+
+@tool
+def rosservice_call(service: str, args: List[str]) -> dict:
+    """Calls a specific ROS service with the provided arguments.
+
+    :param service: The name of the ROS service to call.
+    :param args: A list of arguments to pass to the service.
+    """
+    print(f"Calling ROS service '{service}' with arguments: {args}")
+    try:
+        response = rosservice.call_service(service, args)
+        return response
+    except Exception as e:
+        return {"error": f"Failed to call service '{service}': {e}"}
 
 
 @tool
@@ -658,38 +673,71 @@ def roslog_list(min_size: int = 2048, blacklist: Optional[List[str]] = None) -> 
 
     :param min_size: The minimum size of the log file in bytes to include in the list.
     """
-    rospy.loginfo("Getting ROS log files")
-    log_dir = f"{rospkg.get_log_dir()}/"
-    logs = os.listdir(log_dir)
 
-    # Filter out any log files that match any of the blacklist patterns
-    logs = list(
-        filter(
-            lambda x: not any(regex.match(f".*{pattern}", x) for pattern in blacklist),
-            logs,
-        )
+    logs = []
+    log_dirs = get_roslog_directories.invoke({})
+
+    for _, log_dir in log_dirs.items():
+        if not log_dir:
+            continue
+
+        # Get all .log files in the directory
+        log_files = [
+            os.path.join(log_dir, f)
+            for f in os.listdir(log_dir)
+            if os.path.isfile(os.path.join(log_dir, f)) and f.endswith(".log")
+        ]
+
+        # Filter out blacklisted files
+        if blacklist:
+            log_files = list(
+                filter(
+                    lambda x: not any(
+                        regex.match(f".*{pattern}.*", x) for pattern in blacklist
+                    ),
+                    log_files,
+                )
+            )
+
+        # Filter out files that are too small
+        log_files = list(filter(lambda x: os.path.getsize(x) > min_size, log_files))
+
+        # Get the size of each log file in KB or MB if it's larger than 1 MB
+        log_files = [
+            {
+                f.replace(log_dir, ""): (
+                    f"{round(os.path.getsize(f) / 1024, 2)} KB"
+                    if os.path.getsize(f) < 1024 * 1024
+                    else f"{round(os.path.getsize(f) / (1024 * 1024), 2)} MB"
+                ),
+            }
+            for f in log_files
+        ]
+
+        if len(log_files) > 0:
+            logs.append(
+                {
+                    "directory": log_dir,
+                    "total": len(log_files),
+                    "files": log_files,
+                }
+            )
+
+    return dict(
+        total=len(logs),
+        logs=logs,
     )
-
-    # Get the log file sizes, in bytes
-    log_sizes = {}
-    for log in logs:
-        log_path = os.path.join(log_dir, log)
-        size = os.path.getsize(log_path)
-        if size >= min_size:
-            log_sizes[log] = size
-
-    # Sort the list by size (largest first)
-    log_sizes = dict(sorted(log_sizes.items(), key=lambda item: item[1], reverse=True))
-
-    return {
-        "log_file_directory": log_dir,
-        "logs_with_size_in_bytes": log_sizes,
-        "notes": "Recommend only displaying the top N log files when you present this list to the user.",
-    }
 
 
 @tool
-def roslog_get_log_directory() -> str:
-    """Returns the path to the ROS log directory."""
-    rospy.loginfo("Getting ROS log directory")
-    return f"{rospkg.get_log_dir()}/"
+def get_roslog_directories() -> dict:
+    """Returns any available ROS log directories."""
+    default_directory = rospkg.get_log_dir()
+    latest_directory = os.path.join(default_directory, "latest")
+    from_env = os.getenv("ROS_LOG_DIR")
+
+    return dict(
+        default=default_directory,
+        latest=latest_directory,
+        from_env=from_env,
+    )

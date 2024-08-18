@@ -210,3 +210,10 @@ See our: [LICENSE](LICENSE)
 Key points of contact are:
 
 - [@RobRoyce](https://github.com/RobRoyce) ([email](mailto:01-laptop-voiced@icloud.com))
+
+---
+
+<center>
+  ROSA: Robot Operating System Agent <br>
+  Copyright (c) 2024. Jet Propulsion Laboratory. All rights reserved.
+</center>

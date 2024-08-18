@@ -38,7 +38,7 @@ def cool_turtle_tool():
 
 class TurtleAgent(ROSA):
     def __init__(self, verbose: bool = True):
-        self.__blacklist = ["master"]
+        self.__blacklist = ["master", "docker"]
         self.__prompts = get_prompts()
         self.__llm = get_llm()
 
@@ -70,9 +70,9 @@ class TurtleAgent(ROSA):
             if user_input == "exit":
                 break
             elif user_input == "help":
-                output = self.invoke(self.__get_help())
+                output = self.invoke(self.get_help())
             elif user_input == "examples":
-                examples = self.__examples()
+                examples = self.examples()
                 example = pyip.inputMenu(
                     choices=examples,
                     numbered=True,
@@ -87,8 +87,8 @@ class TurtleAgent(ROSA):
                 output = self.invoke(user_input)
             console.print(Markdown(output))
 
-    def __get_help(self) -> str:
-        examples = self.__examples()
+    def get_help(self) -> str:
+        examples = self.examples()
 
         help_text = f"""
         The user has typed --help. Please provide a CLI-style help message. Use the following
@@ -122,7 +122,7 @@ class TurtleAgent(ROSA):
         """
         return help_text
 
-    def __examples(self):
+    def examples(self):
         return [
             "Give me a ROS tutorial using the turtlesim.",
             "Show me how to move the turtle forward.",

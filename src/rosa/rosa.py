@@ -12,7 +12,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import os
 from typing import Literal, Union, Optional
 
 from langchain.agents import AgentExecutor
@@ -61,7 +60,7 @@ class ROSA:
         verbose: bool = False,
         blacklist: Optional[list] = None,
         accumulate_chat_history: bool = True,
-        show_token_usage: bool = False,
+        show_token_usage: bool = True,
     ):
         self.__chat_history = []
         self.__ros_version = ros_version
@@ -71,18 +70,26 @@ class ROSA:
         self.__show_token_usage = show_token_usage
         self.__blacklist = blacklist if blacklist else []
         self.__accumulate_chat_history = accumulate_chat_history
-        self.__tools = self.__get_tools(
+        self.__tools = self._get_tools(
             ros_version, packages=tool_packages, tools=tools, blacklist=self.__blacklist
         )
-        self.__prompts = self.__get_prompts(prompts)
+        self.__prompts = self._get_prompts(prompts)
         self.__llm_with_tools = llm.bind_tools(self.__tools.get_tools())
-        self.__agent = self.__get_agent()
-        self.__executor = self.__get_executor(verbose=verbose)
+        self.__agent = self._get_agent()
+        self.__executor = self._get_executor(verbose=verbose)
+        self.__usage = None
+
+    @property
+    def chat_history(self):
+        return self.__chat_history
+
+    @property
+    def usage(self):
+        return self.__usage
 
     def clear_chat(self):
         """Clear the chat history."""
         self.__chat_history = []
-        os.system("clear")
 
     def invoke(self, query: str) -> str:
         """Invoke the agent with a user query."""
@@ -91,33 +98,22 @@ class ROSA:
                 result = self.__executor.invoke(
                     {"input": query, "chat_history": self.__chat_history}
                 )
+                self.__usage = cb
                 if self.__show_token_usage:
-                    print(f"[bold]Prompt Tokens:[/bold] {cb.prompt_tokens}")
-                    print(f"[bold]Completion Tokens:[/bold] {cb.completion_tokens}")
-                    print(f"[bold]Total Cost (USD):[/bold] ${cb.total_cost}")
+                    self._print_usage()
         except Exception as e:
-            if f"{e}".strip() == "":
-                self.__record_chat_history(
-                    query,
-                    "An error with no description occurred. This is known to happen when multiple tools are used "
-                    "concurrently. Please try again.",
-                )
-                try:
-                    result = self.__executor.invoke(
-                        {
-                            "input": "Please try again.",
-                            "chat_history": self.__chat_history,
-                        }
-                    )
-                except Exception as e:
-                    return "An error with no description occurred. This is known to happen when multiple tools are used concurrently. Please try again."
-            else:
-                return f"An error occurred: {e}"
+            return f"An error occurred: {e}"
 
-        self.__record_chat_history(query, result["output"])
+        self._record_chat_history(query, result["output"])
         return result["output"]
 
-    def __get_executor(self, verbose: bool):
+    def _print_usage(self):
+        cb = self.__usage
+        print(f"[bold]Prompt Tokens:[/bold] {cb.prompt_tokens}")
+        print(f"[bold]Completion Tokens:[/bold] {cb.completion_tokens}")
+        print(f"[bold]Total Cost (USD):[/bold] ${cb.total_cost}")
+
+    def _get_executor(self, verbose: bool):
         executor = AgentExecutor(
             agent=self.__agent,
             tools=self.__tools.get_tools(),
@@ -126,7 +122,7 @@ class ROSA:
         )
         return executor
 
-    def __get_agent(self):
+    def _get_agent(self):
         agent = (
             {
                 "input": lambda x: x["input"],
@@ -141,7 +137,7 @@ class ROSA:
         )
         return agent
 
-    def __get_tools(
+    def _get_tools(
         self,
         ros_version: Literal[1, 2],
         packages: Optional[list],
@@ -155,7 +151,7 @@ class ROSA:
             rosa_tools.add_packages(packages, blacklist=blacklist)
         return rosa_tools
 
-    def __get_prompts(self, robot_prompts: Optional[RobotSystemPrompts] = None):
+    def _get_prompts(self, robot_prompts: Optional[RobotSystemPrompts] = None):
         prompts = system_prompts
         if robot_prompts:
             prompts.append(robot_prompts.as_message())
@@ -169,7 +165,7 @@ class ROSA:
         )
         return template
 
-    def __record_chat_history(self, query: str, response: str):
+    def _record_chat_history(self, query: str, response: str):
         if self.__accumulate_chat_history:
             self.__chat_history.extend(
                 [HumanMessage(content=query), AIMessage(content=response)]
