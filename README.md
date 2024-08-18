@@ -213,7 +213,8 @@ Key points of contact are:
 
 ---
 
-<center>
+<div align="center">
   ROSA: Robot Operating System Agent <br>
   Copyright (c) 2024. Jet Propulsion Laboratory. All rights reserved.
-</center>
+</div>
+
