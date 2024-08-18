@@ -75,11 +75,17 @@ class ROSA:
         )
         self.__prompts = self._get_prompts(prompts)
         self.__llm_with_tools = llm.bind_tools(self.__tools.get_tools())
-        self.__agent = self.__get_agent()
-        self.__executor = self.__get_executor(verbose=verbose)
         self.__agent = self._get_agent()
         self.__executor = self._get_executor(verbose=verbose)
         self.__usage = None
+
+    @property
+    def chat_history(self):
+        return self.__chat_history
+
+    @property
+    def usage(self):
+        return self.__usage
 
     def clear_chat(self):
         """Clear the chat history."""
