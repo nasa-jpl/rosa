@@ -338,7 +338,7 @@ def rostopic_echo(
     timeout: float = 1.0,
 ) -> dict:
     """
-    Opens a new terminal window and echoes the contents of a specific ROS topic.
+    Echoes the contents of a specific ROS topic.
 
     :param topic: The name of the ROS topic to echo.
     :param count: The number of messages to echo. Valid range is 1-100.
@@ -675,7 +675,7 @@ def roslog_list(min_size: int = 2048, blacklist: Optional[List[str]] = None) -> 
     """
 
     logs = []
-    log_dirs = get_roslog_directories.invoke({})
+    log_dirs = get_roslog_directories()
 
     for _, log_dir in log_dirs.items():
         if not log_dir:
@@ -729,7 +729,6 @@ def roslog_list(min_size: int = 2048, blacklist: Optional[List[str]] = None) -> 
     )
 
 
-@tool
 def get_roslog_directories() -> dict:
     """Returns any available ROS log directories."""
     default_directory = rospkg.get_log_dir()

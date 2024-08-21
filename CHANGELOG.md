@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.4]  - 2024-08-21
+
+### Added
+
+* Implemented ros2 topic echo tool.
+
+### Changed
+
+* Refactored ROS2 tools for better error handling and response parsing.
+* Added blacklist parameters to relevant ROS2 tools.
+
+### Fixed
+
+* Fixed a bug where getting a list of ROS2 log files failed.
+
 ## [1.0.3]  - 2024-08-17
 
 ### Added

@@ -23,7 +23,7 @@ rosa_packages = find_packages(where="src")
 
 setup(
     name="jpl-rosa",
-    version="1.0.3",
+    version="1.0.4",
     license="Apache 2.0",
     description="ROSA: the Robot Operating System Agent",
     long_description=long_description,
