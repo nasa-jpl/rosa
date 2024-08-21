@@ -15,6 +15,7 @@
 import os
 import re
 import subprocess
+import time
 from typing import List, Optional, Tuple
 
 from langchain.agents import tool
@@ -108,6 +109,49 @@ def ros2_topic_list(pattern: str = None, blacklist: Optional[List[str]] = None) 
     topics = get_entities(cmd, pattern=pattern, blacklist=blacklist)
     return {"topics": topics}
 
+
+@tool
+def ros2_topic_echo(
+    topic: str,
+    count: int = 1,
+    return_echoes: bool = False,
+    delay: float = 1.0,
+    timeout: float = 1.0,
+) -> dict:
+    """
+    Echoes the contents of a specific ROS2 topic.
+
+    :param topic: The name of the ROS topic to echo.
+    :param count: The number of messages to echo. Valid range is 1-10.
+    :param return_echoes: If True, return the messages as a list with the response.
+    :param delay: Time to wait between each message in seconds.
+    :param timeout: Max time to wait for a message before timing out.
+
+    :note: Do not set return_echoes to True if the number of messages is large.
+           This will cause the response to be too large and may cause the tool to fail.
+    """
+    cmd = f"ros2 topic echo {topic} --once --spin-time {timeout}"
+
+    if count < 1 or count > 10:
+        return {"error": "Count must be between 1 and 10."}
+
+    echoes = []
+    for i in range(count):
+        success, output = execute_ros_command(cmd)
+
+        if not success:
+            return {"error": output}
+
+        print(output)
+        if return_echoes:
+            echoes.append(output)
+
+        time.sleep(delay)
+
+    if return_echoes:
+        return {"echoes": echoes}
+
+    return {"success": True}
 
 
 @tool
