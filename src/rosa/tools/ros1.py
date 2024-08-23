@@ -369,7 +369,6 @@ def rostopic_echo(
                 time.sleep(delay)
 
         except (rospy.ROSException, rospy.ROSInterruptException) as e:
-            print(f"Failed to get message from topic '{topic}': {e}")
             break
 
     response = dict(topic=topic, requested_count=count, actual_count=len(msgs))
@@ -484,7 +483,6 @@ def rosservice_call(service: str, args: List[str]) -> dict:
     :param service: The name of the ROS service to call.
     :param args: A list of arguments to pass to the service.
     """
-    print(f"Calling ROS service '{service}' with arguments: {args}")
     try:
         response = rosservice.call_service(service, args)
         return response
@@ -519,7 +517,6 @@ def rossrv_info(srv_type: List[str], raw: bool = False) -> dict:
 
     for srv in srv_type:
         # Get the Python class corresponding to the srv file
-        print(f"Getting details for {srv}")
         srv_path = rosmsg.get_srv_text(srv, raw=raw)
         details[srv] = srv_path
     return details
