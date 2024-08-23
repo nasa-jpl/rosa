@@ -32,13 +32,22 @@ class TestROSATools(unittest.TestCase):
         self.ros_version = int(os.getenv("ROS_VERSION", 1))
 
     def test_initializes_with_ros_version_1(self):
-        tools = ROSATools(ros_version=1)
-        self.assertEqual(tools._ROSATools__ros_version, 1)
+        if self.ros_version == 1:
+            tools = ROSATools(ros_version=1)
+            self.assertEqual(tools._ROSATools__ros_version, 1)
+        else:
+            with self.assertRaises(ModuleNotFoundError):
+                tools = ROSATools(ros_version=1)
+                self.assertEqual(tools._ROSATools__ros_version, 1)
 
     def test_initializes_with_ros_version_2(self):
-        with self.assertRaises(ModuleNotFoundError):
+        if self.ros_version == 2:
             tools = ROSATools(ros_version=2)
             self.assertEqual(tools._ROSATools__ros_version, 2)
+        else:
+            with self.assertRaises(ModuleNotFoundError):
+                tools = ROSATools(ros_version=2)
+                self.assertEqual(tools._ROSATools__ros_version, 2)
 
     def test_raises_value_error_for_invalid_ros_version(self):
         if self.ros_version == 1:
@@ -52,31 +61,13 @@ class TestROSATools(unittest.TestCase):
     @patch("src.rosa.tools.log")
     @patch("src.rosa.tools.system")
     def test_adds_default_tools(self, mock_system, mock_log, mock_calculation):
-        tools = ROSATools(ros_version=1)
+        if self.ros_version == 1:
+            tools = ROSATools(ros_version=1)
+        else:
+            tools = ROSATools(ros_version=2)
         self.assertIn(mock_calculation.return_value, tools.get_tools())
         self.assertIn(mock_log.return_value, tools.get_tools())
         self.assertIn(mock_system.return_value, tools.get_tools())
-
-    @patch("src.rosa.tools.ros1")
-    def test_adds_ros1_tools(self, mock_ros1):
-        tools = ROSATools(ros_version=1)
-        if self.ros_version == 1:
-            self.assertIn(mock_ros1.return_value, tools.get_tools())
-        else:
-            self.assertNotIn(mock_ros1.return_value, tools.get_tools())
-
-    def test_adds_ros2_tools(self):
-        if self.ros_version == 2:
-            try:
-                from src.rosa.tools import ros2
-
-                with patch("src.rosa.tools.ros2") as mock_ros2:
-                    tools = ROSATools(ros_version=2)
-                    self.assertIn(mock_ros2, tools.get_tools())
-            except ImportError:
-                self.fail("ros2 module should be available for ROS version 2")
-        else:
-            self.skipTest("Skipping ROS2 tools test for ROS version 1")
 
     def test_injects_blacklist_into_tool_function(self):
         def sample_tool(blacklist=None):
@@ -91,6 +82,28 @@ class TestROSATools(unittest.TestCase):
             decorated_tool({"blacklist": ["item3"]}),
             ["item1", "item2", "item3"],
         )
+
+
+@unittest.skipIf(os.environ.get("ROS_VERSION") == "2", "Skipping ROS 1 tests")
+class TestROSA1Tools(unittest.TestCase):
+    @patch("src.rosa.tools.ros1")
+    def test_ros1_tools(self, mock_ros1):
+        tools = ROSATools(ros_version=1)
+        self.assertIn(mock_ros1.return_value, tools.get_tools())
+        with self.assertRaises(ModuleNotFoundError):
+            tools = ROSATools(ros_version=2)
+            self.assertIn(mock_ros1.return_value, tools.get_tools())
+
+
+@unittest.skipIf(os.environ.get("ROS_VERSION") == "1", "Skipping ROS 2 tests")
+class TestROSA2Tools(unittest.TestCase):
+    @patch("src.rosa.tools.ros2")
+    def test_ros2_tools(self, mock_ros2):
+        tools = ROSATools(ros_version=2)
+        self.assertIn(mock_ros2.return_value, tools.get_tools())
+        with self.assertRaises(ModuleNotFoundError):
+            tools = ROSATools(ros_version=1)
+            self.assertIn(mock_ros2.return_value, tools.get_tools())
 
 
 if __name__ == "__main__":

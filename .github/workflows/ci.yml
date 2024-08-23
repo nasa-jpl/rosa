@@ -7,7 +7,7 @@ on:
 #on: [push, pull_request]
 
 jobs:
-  test-ros1:
+  test-noetic:
     runs-on: ubuntu-latest
     container:
       image: osrf/ros:noetic-desktop
@@ -32,29 +32,35 @@ jobs:
       - name: Run tests
         run: |
           . /opt/ros/noetic/setup.bash
-          python3.9 -m unittest discover -s tests
+          python3.9 -m unittest discover -s tests --verbose
+        shell: bash
+        env:
+          ROS_VERSION: 1
+
+  test-humble:
+    runs-on: ubuntu-latest
+    container:
+      image: osrf/ros:humble-desktop
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-pip
+          python3 -m pip install --user -e .
         shell: bash
 
-#  test-ros2:
-#    runs-on: ubuntu-latest
-#    container:
-#      image: ros:foxy-ros-core
-#    steps:
-#      - name: Checkout code
-#        uses: actions/checkout@v2
-#
-#      - name: Set up Python
-#        uses: actions/setup-python@v2
-#        with:
-#          python-version: '3.x'
-#
-#      - name: Install dependencies
-#        run: |
-#          sudo apt-get update
-#          sudo apt-get install -y python3-pip
-#          pip3 install -r requirements.txt
-#
-#      - name: Run tests
-#        run: |
-#          source /opt/ros/foxy/setup.bash
-#          pytest
+      - name: Run tests
+        run: |
+          . /opt/ros/humble/setup.bash
+          python3 -m unittest discover -s tests --verbose
+        shell: bash
+        env:
+          ROS_VERSION: 2

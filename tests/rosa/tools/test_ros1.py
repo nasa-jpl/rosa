@@ -12,31 +12,39 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import os
 import unittest
 from unittest.mock import patch, MagicMock
 
-from src.rosa.tools.ros1 import (
-    get_entities,
-    rosgraph_get,
-    rostopic_list,
-    rostopic_info,
-    rostopic_echo,
-    rosnode_list,
-    rosnode_info,
-    rosservice_list,
-    rosservice_info,
-    rosservice_call,
-    rosmsg_info,
-    rossrv_info,
-    rosparam_list,
-    rosparam_get,
-    rosparam_set,
-    rospkg_list,
-    rospkg_roots,
-    roslog_list,
+try:
+    from src.rosa.tools.ros1 import (
+        get_entities,
+        rosgraph_get,
+        rostopic_list,
+        rostopic_info,
+        rostopic_echo,
+        rosnode_list,
+        rosnode_info,
+        rosservice_list,
+        rosservice_info,
+        rosservice_call,
+        rosmsg_info,
+        rossrv_info,
+        rosparam_list,
+        rosparam_get,
+        rosparam_set,
+        rospkg_list,
+        rospkg_roots,
+        roslog_list,
+    )
+except ModuleNotFoundError:
+    pass
+
+
+@unittest.skipIf(
+    os.environ.get("ROS_VERSION") == "2",
+    "Skipping ROS1 tests because ROS_VERSION is set to 2",
 )
-
-
 class TestROS1Tools(unittest.TestCase):
 
     @patch("src.rosa.tools.ros1.rostopic.get_topic_list")
