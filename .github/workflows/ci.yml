@@ -1,0 +1,56 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - ci-test
+#on: [push, pull_request]
+
+jobs:
+  test-ros1:
+    runs-on: ubuntu-latest
+    container:
+      image: ros:noetic-ros-core
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-pip
+          pip3 install --user -e .
+
+      - name: Run tests
+        run: |
+          source /opt/ros/noetic/setup.bash
+          python3.9 -m unittest discover -s tests
+
+#  test-ros2:
+#    runs-on: ubuntu-latest
+#    container:
+#      image: ros:foxy-ros-core
+#    steps:
+#      - name: Checkout code
+#        uses: actions/checkout@v2
+#
+#      - name: Set up Python
+#        uses: actions/setup-python@v2
+#        with:
+#          python-version: '3.x'
+#
+#      - name: Install dependencies
+#        run: |
+#          sudo apt-get update
+#          sudo apt-get install -y python3-pip
+#          pip3 install -r requirements.txt
+#
+#      - name: Run tests
+#        run: |
+#          source /opt/ros/foxy/setup.bash
+#          pytest
