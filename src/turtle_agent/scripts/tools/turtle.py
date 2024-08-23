@@ -48,7 +48,7 @@ def within_bounds(x: float, y: float) -> tuple:
     """
     if 0 <= x <= 11 and 0 <= y <= 11:
         return True, "Coordinates are within bounds."
-    elif x < 0 or x > 11 or y < 0 or y > 11:
+    else:
         return False, f"({x}, {y}) will be out of bounds. Range is [0, 11] for each."
 
 
