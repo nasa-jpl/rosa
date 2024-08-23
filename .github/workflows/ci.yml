@@ -30,7 +30,7 @@ jobs:
 
       - name: Run tests
         run: |
-          source /opt/ros/noetic/setup.bash
+          . /opt/ros/noetic/setup.bash
           python3.9 -m unittest discover -s tests
 
 #  test-ros2:
