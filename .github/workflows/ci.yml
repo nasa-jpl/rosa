@@ -27,11 +27,13 @@ jobs:
           sudo apt-get install -y python3.9
           sudo apt-get install -y python3-pip
           python3.9 -m pip install --user -e .
+        shell: bash
 
       - name: Run tests
         run: |
           . /opt/ros/noetic/setup.bash
           python3.9 -m unittest discover -s tests
+        shell: bash
 
 #  test-ros2:
 #    runs-on: ubuntu-latest
