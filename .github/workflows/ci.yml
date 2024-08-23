@@ -10,7 +10,7 @@ jobs:
   test-ros1:
     runs-on: ubuntu-latest
     container:
-      image: ros:noetic-ros-core
+      image: osrf/ros:noetic-desktop
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -18,7 +18,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.9'
+          python-version: '3.x'
 
       - name: Install dependencies
         run: |
