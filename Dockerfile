@@ -28,7 +28,7 @@ RUN apt-get update && apt-get install -y \
 RUN apt-get update && apt-get install -y python3.9
 RUN apt-get update && apt-get install -y python3-pip
 RUN python3 -m pip install -U python-dotenv catkin_tools
-RUN python3.9 -m pip install -U jpl-rosa>=1.0.4
+RUN python3.9 -m pip install -U jpl-rosa>=1.0.5
 
 # Configure ROS
 RUN rosdep update
