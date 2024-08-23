@@ -8,18 +8,23 @@
   <!-- ☝️ Replace with your repo name ☝️ -->
 </div>
 <pre align="center">ROSA is an AI Agent designed to interact with ROS-based robotics systems using natural language queries.</pre>
-<!-- Header block for project -->
+
+<div align="center">
 
 ![Static Badge](https://img.shields.io/badge/ROS_1-Noetic-blue)
 ![Static Badge](https://img.shields.io/badge/ROS_2-Humble|Iron|Jazzy-blue)
-[![SLIM](https://img.shields.io/badge/Best%20Practices%20from-SLIM-blue)](https://nasa-ammos.github.io/slim/)
 ![PyPI - License](https://img.shields.io/pypi/l/jpl-rosa)
+[![SLIM](https://img.shields.io/badge/Best%20Practices%20from-SLIM-blue)](https://nasa-ammos.github.io/slim/)
 
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/nasa-jpl/rosa/ci.yml?branch=main&label=main)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/nasa-jpl/rosa/ci.yml?branch=dev&label=dev)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/nasa-jpl/rosa/publish.yml?label=publish)
 ![PyPI - Version](https://img.shields.io/pypi/v/jpl-rosa)
 ![PyPI - Downloads](https://img.shields.io/pypi/dw/jpl-rosa)
+
+</div>
+<!-- Header block for project -->
+
 
 ROSA is an AI agent that can be used to interact with ROS1 _and_ ROS2 systems in order to carry out various tasks.
 It is built using the open-source [Langchain](https://python.langchain.com/v0.2/docs/introduction/) framework, and can
