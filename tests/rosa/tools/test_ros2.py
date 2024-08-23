@@ -12,6 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import os
 import subprocess
 import unittest
 from unittest.mock import patch
@@ -32,6 +33,10 @@ except ModuleNotFoundError:
     pass
 
 
+@unittest.skipIf(
+    os.environ.get("ROS_VERSION") == "1",
+    "Skipping ROS2 tests because ROS_VERSION is set to 1",
+)
 class TestROS2Tools(unittest.TestCase):
 
     @patch("src.rosa.tools.ros2.subprocess.check_output")

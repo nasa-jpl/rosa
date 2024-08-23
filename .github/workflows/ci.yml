@@ -48,19 +48,19 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.x'
+          python-version: '3.10'
 
       - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y python3-pip
-          python3 -m pip install --user -e .
+          python3.10 -m pip install --user -e .
         shell: bash
 
       - name: Run tests
         run: |
           . /opt/ros/humble/setup.bash
-          python3 -m unittest discover -s tests --verbose
+          python3.10 -m unittest discover -s tests --verbose
         shell: bash
         env:
           ROS_VERSION: 2
