@@ -23,6 +23,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
+          sudo apt-get install -y libc6 libc6-dev
           sudo apt-get install -y python3.9
           sudo apt-get install -y python3-pip
           python3.9 -m pip install --user -e .
