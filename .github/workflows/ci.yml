@@ -23,8 +23,9 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
+          sudo apt-get install -y python3.9
           sudo apt-get install -y python3-pip
-          pip3 install --user -e .
+          python3.9 -m pip install --user -e .
 
       - name: Run tests
         run: |
