@@ -7,7 +7,9 @@
   <h1 align="center">ROSA - Robot Operating System Agent</h1>
   <!-- ☝️ Replace with your repo name ☝️ -->
 </div>
-<pre align="center">ROSA is an AI Agent designed to interact with ROS-based robotics systems using natural language queries.</pre>
+<pre align="center">
+  ROSA is an AI Agent designed to interact with ROS-based robotics systems<br>using natural language queries.
+</pre>
 
 <div align="center">
 
