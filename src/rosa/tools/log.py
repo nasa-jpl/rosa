@@ -13,7 +13,7 @@
 #  limitations under the License.
 
 import os
-from typing import Optional
+from typing import Optional, Literal
 
 from langchain.agents import tool
 
@@ -22,20 +22,28 @@ from langchain.agents import tool
 def read_log(
     log_file_directory: str,
     log_filename: str,
-    level_filter: Optional[str],
-    line_range: tuple = (-200, -1),
+    level_filter: Optional[
+        Literal[
+            "ERROR", "INFO", "DEBUG", "WARNING", "CRITICAL", "FATAL", "TRACE", "DEBUG"
+        ]
+    ] = None,
+    num_lines: Optional[int] = None,
 ) -> dict:
     """
     Read a log file and return the log lines that match the level filter and line range.
 
-    :arg log_file_directory: The directory containing the log file to read (use your tools to get it)
-    :arg log_filename: The path to the log file to read
-    :arg level_filter: Only show log lines that contain this level (e.g. "ERROR", "INFO", "DEBUG", etc.)
-    :arg line_range: A tuple of two integers representing the start and end line numbers to return
+    :param log_file_directory: The directory containing the log file to read (use your tools to get it)
+    :param log_filename: The path to the log file to read
+    :param level_filter: Only show log lines that contain this level (e.g. "ERROR", "INFO", "DEBUG", etc.)
+    :param num_lines: The number of most recent lines to return from the log file
     """
+    if num_lines is not None and num_lines < 1:
+        return {"error": "Invalid `num_lines` argument. It must be a positive integer."}
+
     if not os.path.exists(log_file_directory):
         return {
-            "error": f"The log directory '{log_file_directory}' does not exist. You should first use your tools to get the correct log directory."
+            "error": f"The log directory '{log_file_directory}' does not exist. You should first use your tools to "
+            f"get the correct log directory."
         }
 
     full_log_path = os.path.join(log_file_directory, log_filename)
@@ -56,13 +64,15 @@ def read_log(
     for i in range(len(log_lines)):
         log_lines[i] = f"line {i+1}: " + log_lines[i].strip()
 
-    print(f"Reading log file '{log_filename}' lines {line_range[0]} to {line_range[1]}")
-    log_lines = log_lines[line_range[0] : line_range[1]]
+    if num_lines is not None:
+        # Get the most recent num_lines from the log file
+        log_lines = log_lines[-num_lines:]
 
     # If there are more than 200 lines, return a message to use the line_range argument
     if len(log_lines) > 200:
         return {
-            "error": f"The log file '{log_filename}' has more than 200 lines. Please use the `line_range` argument to read a subset of the log file at a time."
+            "error": f"The log file '{log_filename}' has more than 200 lines. Please use the `num_lines` argument to "
+            f"read a subset of the log file at a time."
         }
 
     if level_filter is not None:
@@ -72,7 +82,7 @@ def read_log(
         "log_filename": log_filename,
         "log_file_directory": log_file_directory,
         "level_filter": level_filter,
-        "line_range": line_range,
+        "requested_num_lines": num_lines,
         "total_lines": total_lines,
         "lines_returned": len(log_lines),
         "lines": log_lines,

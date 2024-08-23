@@ -7,17 +7,26 @@
   <h1 align="center">ROSA - Robot Operating System Agent</h1>
   <!-- ☝️ Replace with your repo name ☝️ -->
 </div>
-<pre align="center">ROSA is an AI Agent designed to interact with ROS-based robotics systems using natural language queries.</pre>
-<!-- Header block for project -->
+<pre align="center">
+  ROSA is an AI Agent designed to interact with ROS-based robotics systems<br>using natural language queries.
+</pre>
 
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/nasa-jpl/rosa/publish.yml)
-![Static Badge](https://img.shields.io/badge/Python->=3.9-blue)
-![Static Badge](https://img.shields.io/badge/ROS_1-Supported-blue)
-![Static Badge](https://img.shields.io/badge/ROS_2-Supported-blue)
+<div align="center">
+
+![Static Badge](https://img.shields.io/badge/ROS_1-Noetic-blue)
+![Static Badge](https://img.shields.io/badge/ROS_2-Humble|Iron|Jazzy-blue)
 ![PyPI - License](https://img.shields.io/pypi/l/jpl-rosa)
+[![SLIM](https://img.shields.io/badge/Best%20Practices%20from-SLIM-blue)](https://nasa-ammos.github.io/slim/)
+
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/nasa-jpl/rosa/ci.yml?branch=main&label=main)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/nasa-jpl/rosa/ci.yml?branch=dev&label=dev)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/nasa-jpl/rosa/publish.yml?label=publish)
 ![PyPI - Version](https://img.shields.io/pypi/v/jpl-rosa)
 ![PyPI - Downloads](https://img.shields.io/pypi/dw/jpl-rosa)
-[![SLIM](https://img.shields.io/badge/Best%20Practices%20from-SLIM-blue)](https://nasa-ammos.github.io/slim/)
+
+</div>
+<!-- Header block for project -->
+
 
 ROSA is an AI agent that can be used to interact with ROS1 _and_ ROS2 systems in order to carry out various tasks.
 It is built using the open-source [Langchain](https://python.langchain.com/v0.2/docs/introduction/) framework, and can
@@ -90,9 +99,11 @@ rosa.invoke("Show me a list of topics that have publishers but no subscribers")
 
 ## TurtleSim Demo
 
-We have included a demo that uses ROSA to control the TurtleSim robot in simulation. To run the demo, you will need to have Docker installed on your machine. 
+We have included a demo that uses ROSA to control the TurtleSim robot in simulation. To run the demo, you will need to
+have Docker installed on your machine.
 
-The following video shows ROSA reasoning about how to draw a 5-point star, then executing the necessary commands to do so.
+The following video shows ROSA reasoning about how to draw a 5-point star, then executing the necessary commands to do
+so.
 
 https://github.com/user-attachments/assets/77b97014-6d2e-4123-8d0b-ea0916d93a4e
 

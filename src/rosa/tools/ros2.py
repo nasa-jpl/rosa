@@ -83,6 +83,8 @@ def get_entities(
     if pattern:
         entities = list(filter(lambda x: re.match(f".*{pattern}.*", x), entities))
 
+    entities = [e for e in entities if e.strip() != ""]
+
     return entities
 
 
@@ -189,57 +191,6 @@ def ros2_node_info(nodes: List[str]) -> dict:
     return data
 
 
-def parse_ros2_topic_info(output):
-    topic_info = {"name": "", "type": "", "publishers": [], "subscribers": []}
-
-    lines = output.split("\n")
-
-    # Extract the topic name
-    for line in lines:
-        if line.startswith("ros2 topic info"):
-            topic_info["name"] = line.split(" ")[3]
-
-    # Extract the Type
-    for line in lines:
-        if line.startswith("Type:"):
-            topic_info["type"] = line.split(": ")[1]
-
-    # Extract publisher and subscriber sections
-    publisher_section = ""
-    subscriber_section = ""
-    collecting_publishers = False
-    collecting_subscribers = False
-
-    for line in lines:
-        if line.startswith("Publisher count:"):
-            collecting_publishers = True
-            collecting_subscribers = False
-        elif line.startswith("Subscription count:"):
-            collecting_publishers = False
-            collecting_subscribers = True
-
-        if collecting_publishers:
-            publisher_section += line + "\n"
-        if collecting_subscribers:
-            subscriber_section += line + "\n"
-
-    # Extract node names for publishers
-    publisher_lines = publisher_section.split("\n")
-    for line in publisher_lines:
-        if line.startswith("Node name:"):
-            node_name = line.split(": ")[1]
-            topic_info["publishers"].append(node_name)
-
-    # Extract node names for subscribers
-    subscriber_lines = subscriber_section.split("\n")
-    for line in subscriber_lines:
-        if line.startswith("Node name:"):
-            node_name = line.split(": ")[1]
-            topic_info["subscribers"].append(node_name)
-
-    return topic_info
-
-
 @tool
 def ros2_topic_info(topics: List[str]) -> dict:
     """
@@ -255,7 +206,7 @@ def ros2_topic_info(topics: List[str]) -> dict:
         if not success:
             topic_info = dict(error=output)
         else:
-            topic_info = parse_ros2_topic_info(output)
+            topic_info = output
 
         data[topic] = topic_info
 
@@ -276,7 +227,17 @@ def ros2_param_list(
     """
     if node_name:
         cmd = f"ros2 param list {node_name}"
-        params = get_entities(cmd, pattern=pattern, blacklist=blacklist)
+        success, output = execute_ros_command(cmd)
+        if not success:
+            return {"error": output}
+
+        params = [o for o in output.split("\n") if o]
+        if pattern:
+            params = [p for p in params if re.match(f".*{pattern}.*", p)]
+        if blacklist:
+            params = [
+                p for p in params if not any(re.match(f".*{b}.*", p) for b in blacklist)
+            ]
         return {node_name: params}
     else:
         cmd = f"ros2 param list"
@@ -296,6 +257,15 @@ def ros2_param_list(
                 data[current_node] = []
             elif line.strip() != "":
                 data[current_node].append(line.strip())
+
+        if pattern:
+            data = {k: v for k, v in data.items() if re.match(f".*{pattern}.*", k)}
+        if blacklist:
+            data = {
+                k: v
+                for k, v in data.items()
+                if not any(re.match(f".*{b}.*", k) for b in blacklist)
+            }
         return data
 
 

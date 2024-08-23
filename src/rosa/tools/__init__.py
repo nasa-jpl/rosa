@@ -19,7 +19,7 @@ from typing import Literal, List, Optional
 from langchain.agents import Tool
 
 
-def inject_blacklist(blacklist):
+def inject_blacklist(default_blacklist: List[str]):
     """
     Inject a blacklist parameter into @tool functions that require it. Required because we do not
     want to rely on the LLM to manually use the blacklist, as it may "forget" to do so.
@@ -32,18 +32,28 @@ def inject_blacklist(blacklist):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            if "blacklist" in kwargs:
-                kwargs["blacklist"] = blacklist
+            if args and isinstance(args[0], dict):
+                if "blacklist" in args[0]:
+                    args[0]["blacklist"] = default_blacklist + args[0]["blacklist"]
+                else:
+                    args[0]["blacklist"] = default_blacklist
             else:
-                params = inspect.signature(func).parameters
-                if "blacklist" in params:
-                    kwargs["blacklist"] = blacklist
+                if "blacklist" in kwargs:
+                    kwargs["blacklist"] = default_blacklist + kwargs["blacklist"]
+                else:
+                    params = inspect.signature(func).parameters
+                    if "blacklist" in params:
+                        kwargs["blacklist"] = default_blacklist
             return func(*args, **kwargs)
 
         # Rebuild the signature to include 'blacklist'
         sig = inspect.signature(func)
         new_params = [
-            param.replace(default=blacklist) if param.name == "blacklist" else param
+            (
+                param.replace(default=default_blacklist)
+                if param.name == "blacklist"
+                else param
+            )
             for param in sig.parameters.values()
         ]
         wrapper.__signature__ = sig.replace(parameters=new_params)
@@ -68,19 +78,13 @@ class ROSATools:
         self.__iterative_add(system)
 
         if self.__ros_version == 1:
-            try:
-                from . import ros1
+            from . import ros1
 
-                self.__iterative_add(ros1, blacklist=blacklist)
-            except Exception as e:
-                print(e)
+            self.__iterative_add(ros1, blacklist=blacklist)
         elif self.__ros_version == 2:
-            try:
-                from . import ros2
+            from . import ros2
 
-                self.__iterative_add(ros2, blacklist=blacklist)
-            except Exception as e:
-                print(e)
+            self.__iterative_add(ros2, blacklist=blacklist)
         else:
             raise ValueError("Invalid ROS version. Must be either 1 or 2.")
 

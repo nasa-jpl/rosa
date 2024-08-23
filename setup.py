@@ -23,7 +23,7 @@ rosa_packages = find_packages(where="src")
 
 setup(
     name="jpl-rosa",
-    version="1.0.4",
+    version="1.0.5",
     license="Apache 2.0",
     description="ROSA: the Robot Operating System Agent",
     long_description=long_description,
@@ -49,10 +49,10 @@ setup(
     install_requires=[
         "PyYAML==6.0.1",
         "python-dotenv>=1.0.1",
-        "langchain==0.2.13",
+        "langchain==0.2.14",
         "langchain-community==0.2.12",
-        "langchain-core==0.2.32",
-        "langchain-openai==0.1.21",
+        "langchain-core==0.2.34",
+        "langchain-openai==0.1.22",
         "pydantic",
         "pyinputplus",
         "azure-identity",
