@@ -6,23 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Install linux packages
 RUN apt-get update && apt-get install -y \
     locales \
-    lsb-release \
-    git \
-    subversion \
-    nano \
-    terminator \
-    xterm \
-    wget \
-    curl \
-    htop \
-    gnome-terminal \
-    libssl-dev \
-    build-essential \
-    dbus-x11 \
-    software-properties-common \
-    build-essential \
-    ssh \
-    ros-$(rosversion -d)-turtlesim
+        ros-$(rosversion -d)-turtlesim
 
 # RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 RUN apt-get update && apt-get install -y python3.9
