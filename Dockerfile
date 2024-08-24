@@ -1,4 +1,4 @@
-FROM osrf/ros:noetic-desktop as rosa-ros1
+FROM osrf/ros:noetic-desktop AS rosa-ros1
 LABEL authors="Rob Royce"
 
 ENV DEBIAN_FRONTEND=noninteractive
