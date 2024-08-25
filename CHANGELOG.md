@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Streaming capability for ROSA responses
+- New `help.py` module with `get_help` function for generating help messages in `turtle_agent` demo
+- Asynchronous support in TurtleAgent class
+- Live updating console output using `rich` library
+- Command handler dictionary for special commands in TurtleAgent
+- New `submit` method to handle both streaming and non-streaming responses in `turtle_agent` class
+
+### Changed
+- Updated TurtleAgent to support both streaming and non-streaming modes
+- Refactored `run` method in TurtleAgent to use asynchronous operations
+- Updated Dockerfile for better layering and reduced image size
+- Changed launch file to accept a `streaming` argument
+
+### Removed
+- Removed redundant logging statements from various tools
+
+### Fixed
+- Improved error handling and display in streaming mode
+
+
 ## [1.0.5]
 
 ### Added
