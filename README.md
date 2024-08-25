@@ -115,7 +115,7 @@ https://github.com/user-attachments/assets/77b97014-6d2e-4123-8d0b-ea0916d93a4e
 4. Build and start the turtle agent:
 
 ```bash
-catkin build && source devel/setup.bash && roslaunch turtle_agent agent
+catkin build && source devel/setup.bash && roslaunch turtle_agent agent.launch
 ```
 
 5. Run example queries: `examples`
