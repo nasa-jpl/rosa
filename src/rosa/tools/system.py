@@ -32,7 +32,7 @@ def set_verbosity(enable_verbose_messages: bool) -> str:
 
 
 @tool
-def set_debuging(enable_debug_messages: bool) -> str:
+def set_debugging(enable_debug_messages: bool) -> str:
     """Sets the debug mode of the agent to enable or disable debug messages.
     Set this to true to provide debug output for the user. Debug output
     includes information about API calls, tool execution, and other.

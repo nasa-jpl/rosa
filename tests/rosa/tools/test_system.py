@@ -17,7 +17,7 @@ import unittest
 
 from langchain.globals import get_debug, get_verbose, set_debug
 
-from src.rosa.tools.system import set_verbosity, set_debuging, wait
+from src.rosa.tools.system import set_verbosity, set_debugging, wait
 
 
 class TestSystemTools(unittest.TestCase):
@@ -31,11 +31,11 @@ class TestSystemTools(unittest.TestCase):
         self.assertFalse(get_verbose())
 
     def test_sets_debug_to_true(self):
-        result = set_debuging.invoke({"enable_debug_messages": True})
+        result = set_debugging.invoke({"enable_debug_messages": True})
         self.assertEqual(result, "Debug messages are now enabled.")
         self.assertTrue(get_debug())
         set_debug(False)
-        result = set_debuging.invoke({"enable_debug_messages": False})
+        result = set_debugging.invoke({"enable_debug_messages": False})
         self.assertEqual(result, "Debug messages are now disabled.")
         self.assertFalse(get_debug())
 
