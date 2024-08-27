@@ -27,6 +27,7 @@
 </div>
 <!-- Header block for project -->
 
+> **Important:** 📚 Be sure to check out our [Wiki](https://github.com/nasa-jpl/rosa/wiki) (work-in-progress) for detailed documentation, guides, and FAQs!
 
 ROSA is an AI agent that can be used to interact with ROS1 _and_ ROS2 systems in order to carry out various tasks.
 It is built using the open-source [Langchain](https://python.langchain.com/v0.2/docs/introduction/) framework, and can
