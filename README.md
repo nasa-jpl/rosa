@@ -69,17 +69,43 @@ ROSA is designed to be easily adaptable to different robots and environments. Yo
 
 For detailed information on creating custom agents, adding tools, and customizing prompts, please refer to our [Custom Agents Wiki page](https://github.com/nasa-jpl/rosa/wiki/Custom-Agents).
 
+
 ## 📘 Learn More
 
 - [🗺️ Roadmap](https://github.com/nasa-jpl/rosa/wiki/Feature-Roadmap)
-- [📜 Changelog](CHANGELOG.md)
 - [🏷️ Releases](https://github.com/nasa-jpl/rosa/releases)
 - [❓ FAQ](https://github.com/nasa-jpl/rosa/wiki/FAQ)
-- [🤝 Contributing](CONTRIBUTING.md)
-- [🤝 Code of Conduct](CODE_OF_CONDUCT.md)
-- [🏛️ Governance](GOVERNANCE.md)
-- [⚖️ License](LICENSE)
-- [💬 Support](mailto:01-laptop-voiced@icloud.com)
+
+
+## Changelog
+
+See our [CHANGELOG.md](CHANGELOG.md) for a history of our changes.  
+See our [releases page](https://github.com/nasa-jpl/rosa/releases) for our key versioned releases.
+
+## Frequently Asked Questions (FAQ)
+
+Questions about ROSA? Please see our [FAQ](https://github.com/nasa-jpl/rosa/wiki#frequently-asked-questions-faq) section
+in the Wiki.
+
+## Contributing
+
+Interested in contributing to our project? Please see our: [CONTRIBUTING.md](CONTRIBUTING.md)
+
+For guidance on how to interact with our team, please see our code of conduct located
+at: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+
+For guidance on our governance approach, including decision-making process and our various roles, please see our
+governance model at: [GOVERNANCE.md](GOVERNANCE.md)
+
+## License
+
+See our: [LICENSE](LICENSE)
+
+## Support
+
+Key points of contact are:
+
+- [@RobRoyce](https://github.com/RobRoyce) ([email](mailto:01-laptop-voiced@icloud.com))
 
 ---
 
