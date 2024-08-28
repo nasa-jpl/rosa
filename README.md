@@ -51,6 +51,14 @@ rosa.invoke("Show me a list of topics that have publishers but no subscribers")
 
 For detailed information on configuring the LLM, please refer to our [Model Configuration Wiki page](https://github.com/nasa-jpl/rosa/wiki/Model-Configuration).
 
+
+## Adapting ROSA for Your Robot 🔧
+
+ROSA is designed to be easily adaptable to different robots and environments. You can create custom agents by either inheriting from the `ROSA` class or creating a new instance with custom parameters.
+
+For detailed information on creating custom agents, adding tools, and customizing prompts, please refer to our [Custom Agents Wiki page](https://github.com/nasa-jpl/rosa/wiki/Custom-Agents).
+
+
 ## TurtleSim Demo 🐢
 
 We have included a demo that uses ROSA to control the TurtleSim robot in simulation. To run the demo, you will need to have Docker installed on your machine. 🐳
@@ -61,13 +69,6 @@ executing the necessary commands to do so.
 https://github.com/user-attachments/assets/77b97014-6d2e-4123-8d0b-ea0916d93a4e
 
 For detailed instructions on setting up and running the TurtleSim demo, please refer to our [TurtleSim Demo Guide](https://github.com/nasa-jpl/rosa/wiki/Guide:-TurtleSim-Demo) in the Wiki.
-
-
-## Adapting ROSA for Your Robot 🔧
-
-ROSA is designed to be easily adaptable to different robots and environments. You can create custom agents by either inheriting from the `ROSA` class or creating a new instance with custom parameters.
-
-For detailed information on creating custom agents, adding tools, and customizing prompts, please refer to our [Custom Agents Wiki page](https://github.com/nasa-jpl/rosa/wiki/Custom-Agents).
 
 
 ## 📘 Learn More
