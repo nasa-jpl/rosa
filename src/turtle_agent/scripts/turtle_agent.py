@@ -20,9 +20,9 @@ from datetime import datetime
 import dotenv
 import pyinputplus as pyip
 import rospy
-from langchain.agents import tool
-from rich.console import Console
+from langchain.agents import tool, Tool
 from rich.console import Group  # Add this import
+from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
 from rich.panel import Panel
@@ -40,7 +40,6 @@ def cool_turtle_tool():
     """A cool turtle tool."""
     return "This is a cool turtle tool! It doesn't do anything, but it's cool."
 
-
 class TurtleAgent(ROSA):
 
     def __init__(self, streaming: bool = False, verbose: bool = True):
@@ -48,12 +47,18 @@ class TurtleAgent(ROSA):
         self.__prompts = get_prompts()
         self.__llm = get_llm(streaming=streaming)
         self.__streaming = streaming
-        self.last_events = None
+
+        # Another method for adding tools
+        blast_off = Tool(
+                name="blast_off",
+                func=self.blast_off,
+                description="Make the turtle blast off!"
+            )
 
         super().__init__(
             ros_version=1,
             llm=self.__llm,
-            tools=[cool_turtle_tool],
+            tools=[cool_turtle_tool, blast_off],
             tool_packages=[turtle_tools],
             blacklist=self.__blacklist,
             prompts=self.__prompts,
@@ -76,6 +81,15 @@ class TurtleAgent(ROSA):
             "examples": lambda: self.submit(self.choose_example()),
             "clear": lambda: self.clear(),
         }
+
+    def blast_off(self, input: str):
+        return f"""
+        Ok, we're blasting off at the speed of light!
+
+        <ROSA_INSTRUCTIONS>
+            You should now use your tools to make the turtle move around the screen at high speeds.
+        </ROSA_INSTRUCTIONS>
+        """
 
     @property
     def greeting(self):

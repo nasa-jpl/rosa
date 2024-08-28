@@ -4,11 +4,11 @@
 [//]: # (  [INSERT YOUR LOGO IMAGE HERE &#40;IF APPLICABLE&#41;])
   <!-- ☝️ Replace with your logo (if applicable) via ![](https://uri-to-your-logo-image) ☝️ -->
   <!-- ☝️ If you see logo rendering errors, make sure you're not using indentation, or try an HTML IMG tag -->
-  <h1 align="center">ROSA - Robot Operating System Agent</h1>
+  <h1 align="center">ROSA - Robot Operating System Agent 🤖</h1>
   <!-- ☝️ Replace with your repo name ☝️ -->
 </div>
 <pre align="center">
-  ROSA is an AI Agent designed to interact with ROS-based robotics systems<br>using natural language queries.
+  ROSA is an AI Agent designed to interact with ROS-based robotics systems<br>using natural language queries. 🗣️🤖
 </pre>
 
 <div align="center">
@@ -32,26 +32,26 @@
 ROSA is an AI agent that can be used to interact with ROS1 _and_ ROS2 systems in order to carry out various tasks.
 It is built using the open-source [Langchain](https://python.langchain.com/v0.2/docs/introduction/) framework, and can
 be adapted to work with different robots and environments, making it a versatile tool for robotics research and
-development.
+development. 🛠️
 
-## Features and Roadmap
+## Features and Roadmap 📋
 
 - [x] Support for both ROS1 and ROS2
-- [x] Generate system reports using fuzzy templates
-- [x] Read, parse, and summarize ROS log files
+- [x] Generate system reports using fuzzy templates 📊
+- [x] Read, parse, and summarize ROS log files 📜
 - [x] Use natural language to run various ROS commands and tools, for example:
     * "Give me a list of nodes, categorize them into `navigation`, `perception`, `control`, and `other`"
     * "Show me a list of topics that have publishers but no subscribers"
     * "Set the `/velocity` parameter to `10`"
     * "Echo the `/robot/status` topic"
     * "What is the message type of the `/robot/status` topic?"
-- [x] Control the TurtleSim robot in simulation using ROSA
-- [x] Easily adapt ROSA for your robot by adding new tools and prompts
-- [ ] Use multi-modal models for vision, scene understanding, and more (in-progress)
-- [ ] Web-based user interface with support for voice commands (in-progress)
-- [ ] Text and speech modalities for human-robot interaction (in-progress)
+- [x] Control the TurtleSim robot in simulation using ROSA 🐢
+- [x] Easily adapt ROSA for your robot by adding new tools and prompts 🔧
+- [ ] Use multi-modal models for vision, scene understanding, and more (in-progress) 👁️
+- [ ] Web-based user interface with support for voice commands (in-progress) 🎙️
+- [ ] Text and speech modalities for human-robot interaction (in-progress) 🗣️
 
-### Support for Popular Robots
+### Support for Popular Robots 🦾
 
 ROSA already supports any robot built with ROS1 or ROS2, but we are also working on custom agents for some popular
 robots. These custom agents go beyond the basic ROSA functionality to provide more advanced capabilities and features.
@@ -76,7 +76,7 @@ This guide provides a quick way to get started with ROSA.
 
 ### Requirements
 
-1. Python 3.9 or higher
+1. Python 3.9 or higher 🐍
 2. ROS Noetic (or higher)
 
 **Note:** ROS Noetic uses Python3.8, but LangChain requires Python3.9 or higher. To use ROSA with ROS Noetic,
@@ -98,10 +98,9 @@ rosa = ROSA(ros_version=1, llm=llm)
 rosa.invoke("Show me a list of topics that have publishers but no subscribers")
 ```
 
-## TurtleSim Demo
+## TurtleSim Demo 🐢
 
-We have included a demo that uses ROSA to control the TurtleSim robot in simulation. To run the demo, you will need to
-have Docker installed on your machine.
+We have included a demo that uses ROSA to control the TurtleSim robot in simulation. To run the demo, you will need to have Docker installed on your machine. 🐳
 
 The following video shows ROSA reasoning about how to draw a 5-point star, then executing the necessary commands to do
 so.
@@ -113,15 +112,10 @@ https://github.com/user-attachments/assets/77b97014-6d2e-4123-8d0b-ea0916d93a4e
 1. Clone this repository
 2. Configure the LLM in `src/turtle_agent/scripts/llm.py`
 3. Run the demo script: `./demo.sh`
-4. Build and start the turtle agent:
+4. Build and start the turtle agent by simply typing `start`.
+5. Run example queries: `examples` or type your own! 🚀
 
-```bash
-catkin build && source devel/setup.bash && roslaunch turtle_agent agent.launch
-```
-
-5. Run example queries: `examples`
-
-# Adapting ROSA for Your Robot
+# Adapting ROSA for Your Robot 🔧
 
 ROSA is designed to be easily adaptable to different robots and environments. To adapt ROSA for your robot, you
 can either (1) create a new class that inherits from the `ROSA` class, or (2) create a new instance of the `ROSA` class
@@ -193,17 +187,17 @@ rosa = ROSA(ros_version=1, llm=llm, tools=[move_forward], prompts=prompts)
 rosa.invoke("Move forward by 2 units.")
 ```
 
-## Changelog
+## Changelog 📜
 
 See our [CHANGELOG.md](CHANGELOG.md) for a history of our changes.  
 See our [releases page](https://github.com/nasa-jpl/rosa/releases) for our key versioned releases.
 
-## Frequently Asked Questions (FAQ)
+## Frequently Asked Questions (FAQ) ❓
 
 Questions about ROSA? Please see our [FAQ](https://github.com/nasa-jpl/rosa/wiki#frequently-asked-questions-faq) section
 in the Wiki.
 
-## Contributing
+## Contributing 🤝
 
 Interested in contributing to our project? Please see our: [CONTRIBUTING.md](CONTRIBUTING.md)
 
@@ -213,11 +207,11 @@ at: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 For guidance on our governance approach, including decision-making process and our various roles, please see our
 governance model at: [GOVERNANCE.md](GOVERNANCE.md)
 
-## License
+## License ⚖️
 
 See our: [LICENSE](LICENSE)
 
-## Support
+## Support 💬
 
 Key points of contact are:
 
@@ -226,7 +220,7 @@ Key points of contact are:
 ---
 
 <div align="center">
-  ROSA: Robot Operating System Agent <br>
+  ROSA: Robot Operating System Agent 🤖<br>
   Copyright (c) 2024. Jet Propulsion Laboratory. All rights reserved.
 </div>
 

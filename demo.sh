@@ -66,6 +66,7 @@ docker run -it --rm --name $CONTAINER_NAME \
     -e DEVELOPMENT=$DEVELOPMENT \
     -v /tmp/.X11-unix:/tmp/.X11-unix \
     -v "$PWD/src":/app/src \
+    -v "$PWD/tests":/app/tests \
     --network host \
     $CONTAINER_NAME
 

@@ -17,6 +17,7 @@ RUN apt-get update && apt-get install -y \
 RUN python3 -m pip install -U python-dotenv catkin_tools
 RUN rosdep update && \
     echo "source /opt/ros/noetic/setup.bash" >> /root/.bashrc && \
+    echo "alias start='catkin build && source devel/setup.bash && roslaunch turtle_agent agent.launch'" >> /root/.bashrc && \
     echo "export ROSLAUNCH_SSH_UNKNOWN=1" >> /root/.bashrc
 
 COPY . /app/
@@ -38,5 +39,5 @@ CMD ["/bin/bash", "-c", "source /opt/ros/noetic/setup.bash && \
         xvfb-run -a -s \"-screen 0 1920x1080x24\" rosrun turtlesim turtlesim_node > /dev/null 2>&1 & \
     fi && \
     echo \"\" && \
-    echo \"Run \\`catkin build && source devel/setup.bash && roslaunch turtle_agent agent.launch\\` to launch the ROSA-TurtleSim demo.\" && \
+    echo \"Run \\`start\\` to build and launch the ROSA-TurtleSim demo.\" && \
     /bin/bash"]
