@@ -15,24 +15,24 @@
 
 import asyncio
 import os
+from datetime import datetime
 
 import dotenv
 import pyinputplus as pyip
 import rospy
-import tools.turtle as turtle_tools
-from help import get_help
 from langchain.agents import tool
-from llm import get_llm
-from prompts import get_prompts
-from rich.console import Group  # Add this import
 from rich.console import Console
+from rich.console import Group  # Add this import
 from rich.live import Live
 from rich.markdown import Markdown
 from rich.panel import Panel
-from rich.prompt import Prompt
 from rich.text import Text
-
 from rosa import ROSA
+
+import tools.turtle as turtle_tools
+from help import get_help
+from llm import get_llm
+from prompts import get_prompts
 
 
 @tool
@@ -48,6 +48,7 @@ class TurtleAgent(ROSA):
         self.__prompts = get_prompts()
         self.__llm = get_llm(streaming=streaming)
         self.__streaming = streaming
+        self.last_events = None
 
         super().__init__(
             ros_version=1,
@@ -66,14 +67,14 @@ class TurtleAgent(ROSA):
             "Show me how to move the turtle forward.",
             "Draw a 5-point star using the turtle.",
             "Teleport to (3, 3) and draw a small hexagon.",
-            "Give me a list of ROS nodes and their topics.",
+            "Give me a list of nodes, topics, services, params, and log files.",
             "Change the background color to light blue and the pen color to red.",
         ]
 
         self.command_handler = {
             "help": lambda: self.submit(get_help(self.examples)),
             "examples": lambda: self.submit(self.choose_example()),
-            "clear": lambda: self.clear()
+            "clear": lambda: self.clear(),
         }
 
     @property
@@ -176,7 +177,7 @@ class TurtleAgent(ROSA):
         Stream the agent's response with rich formatting.
 
         This method processes the agent's response in real-time, updating the console
-        with formatted output for tokens, tool executions, and errors.
+        with formatted output for tokens and keeping track of events.
 
         Args:
             query (str): The input query to process.
@@ -189,97 +190,89 @@ class TurtleAgent(ROSA):
         """
         console = Console()
         content = ""
-        tool_panel = None
-        content_panel = None
+        self.last_events = []
+
+        panel = Panel("", title="Streaming Response", border_style="green")
 
         with Live(
-            console=console, auto_refresh=False, vertical_overflow="visible"
+            panel, console=console, auto_refresh=False, vertical_overflow="visible"
         ) as live:
             async for event in self.astream(query):
-                # Accumulate and display token content
+                event["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[
+                    :-3
+                ]
                 if event["type"] == "token":
                     content += event["content"]
-                    content_panel = Panel(
-                        Markdown(content), title="Response", border_style="blue"
-                    )
-                    live.update(
-                        (
-                            Group(tool_panel, content_panel)
-                            if tool_panel
-                            else content_panel
-                        ),
-                        refresh=True,
-                    )
-
-                # Display panel for tool execution start
-                elif event["type"] == "tool_start":
-                    tool_input = event.get("input", "N/A")
-                    tool_panel = Panel(
-                        f"Using tool: {event['name']}\nInput: {tool_input}",
-                        title="Tool Execution",
-                        border_style="yellow",
-                    )
-                    live.update(
-                        (
-                            Group(tool_panel, content_panel)
-                            if content_panel
-                            else tool_panel
-                        ),
-                        refresh=True,
-                    )
-
-                # Update panel for tool execution completion
-                elif event["type"] == "tool_end":
-                    if tool_panel:
-                        tool_panel.border_style = "green"
-                        tool_panel.title = "Tool Execution Complete"
-                        tool_input = event.get("input", "N/A")
-                        tool_output = event.get("output", "N/A")
-                        tool_panel.renderable = Text.from_markup(
-                            f"Tool: [bold]{event['name']}[/bold]\n"
-                            f"Input: {tool_input}\n"
-                            f"Output: {tool_output}"
-                        )
-                        live.update(
-                            (
-                                Group(tool_panel, content_panel)
-                                if content_panel
-                                else tool_panel
-                            ),
-                            refresh=True,
-                        )
-
-                # Display final response
+                    panel.renderable = Markdown(content)
+                    live.refresh()
+                elif event["type"] in ["tool_start", "tool_end", "error"]:
+                    self.last_events.append(event)
                 elif event["type"] == "final":
-                    content_panel = Panel(
-                        Markdown(event["content"]),
-                        title="Final Response",
+                    content = event["content"]
+                    if self.last_events:
+                        panel.renderable = Markdown(
+                            content
+                            + "\n\nType 'info' for details on how I got my answer."
+                        )
+                    else:
+                        panel.renderable = Markdown(content)
+                    panel.title = "Final Response"
+                    live.refresh()
+
+        if self.last_events:
+            self.command_handler["info"] = self.show_event_details
+        else:
+            self.command_handler.pop("info", None)
+
+    async def show_event_details(self):
+        """
+        Display detailed information about the events that occurred during the last query.
+        """
+        console = Console()
+
+        if not self.last_events:
+            console.print("[yellow]No events to display.[/yellow]")
+            return
+
+        for event in self.last_events:
+            timestamp = event["timestamp"]
+            if event["type"] == "tool_start":
+                console.print(
+                    Panel(
+                        Group(
+                            Text(f"Timestamp: {timestamp}", style="dim"),
+                            Text(f"Tool Started: {event['name']}", style="bold blue"),
+                            Text(f"Input: {event.get('input', 'N/A')}"),
+                        ),
+                        border_style="blue",
+                    )
+                )
+            elif event["type"] == "tool_end":
+                console.print(
+                    Panel(
+                        Group(
+                            Text(f"Timestamp: {timestamp}", style="dim"),
+                            Text(
+                                f"Tool Completed: {event['name']}", style="bold green"
+                            ),
+                            Text(f"Output: {event.get('output', 'N/A')}"),
+                        ),
                         border_style="green",
                     )
-                    live.update(
-                        (
-                            Group(tool_panel, content_panel)
-                            if tool_panel
-                            else content_panel
+                )
+            elif event["type"] == "error":
+                console.print(
+                    Panel(
+                        Group(
+                            Text(f"Timestamp: {timestamp}", style="dim"),
+                            Text(f"Error: {event['content']}", style="bold red"),
                         ),
-                        refresh=True,
-                    )
-
-                # Display any errors encountered
-                elif event["type"] == "error":
-                    error_panel = Panel(
-                        f"[bold red]Error:[/bold red] {event['content']}",
-                        title="Error",
                         border_style="red",
                     )
-                    live.update(
-                        (
-                            Group(tool_panel, content_panel, error_panel)
-                            if content_panel and tool_panel
-                            else error_panel
-                        ),
-                        refresh=True,
-                    )
+                )
+            console.print()
+
+        console.print("[bold]End of events[/bold]")
 
 
 def main():

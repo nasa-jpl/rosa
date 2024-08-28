@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y \
 
 # RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 RUN python3 -m pip install -U python-dotenv catkin_tools
-RUN rosdep update && \ 
+RUN rosdep update && \
     echo "source /opt/ros/noetic/setup.bash" >> /root/.bashrc && \
     echo "export ROSLAUNCH_SSH_UNKNOWN=1" >> /root/.bashrc
 
@@ -29,14 +29,13 @@ RUN /bin/bash -c 'if [ "$DEVELOPMENT" = "true" ]; then \
     python3.9 -m pip install -U jpl-rosa>=1.0.5; \
     fi'
 
-# Use JSON format for CMD
 CMD ["/bin/bash", "-c", "source /opt/ros/noetic/setup.bash && \
     roscore > /dev/null 2>&1 & \
     sleep 5 && \
     if [ \"$HEADLESS\" = \"false\" ]; then \
-        rosrun turtlesim turtlesim_node & \
+        rosrun turtlesim turtlesim_node > /dev/null 2>&1 & \
     else \
-        xvfb-run -a -s \"-screen 0 1920x1080x24\" rosrun turtlesim turtlesim_node & \
+        xvfb-run -a -s \"-screen 0 1920x1080x24\" rosrun turtlesim turtlesim_node > /dev/null 2>&1 & \
     fi && \
     echo \"\" && \
     echo \"Run \\`catkin build && source devel/setup.bash && roslaunch turtle_agent agent.launch\\` to launch the ROSA-TurtleSim demo.\" && \

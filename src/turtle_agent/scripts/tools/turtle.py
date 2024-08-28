@@ -12,7 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from math import cos, sin
+from math import cos, sin, sqrt
 from typing import List
 
 import rospy
@@ -52,7 +52,9 @@ def within_bounds(x: float, y: float) -> tuple:
         return False, f"({x}, {y}) will be out of bounds. Range is [0, 11] for each."
 
 
-def will_be_within_bounds(name: str, linear_velocity: tuple, angular: float) -> tuple:
+def will_be_within_bounds(
+    name: str, velocity: float, lateral: float, angle: float, duration: float = 1.0
+) -> tuple:
     """Check if the turtle will be within bounds after publishing a twist command."""
     # Get the current pose of the turtle
     pose = get_turtle_pose.invoke({"names": [name]})
@@ -60,23 +62,45 @@ def will_be_within_bounds(name: str, linear_velocity: tuple, angular: float) -> 
     current_y = pose[name].y
     current_theta = pose[name].theta
 
-    # Use trigonometry to calculate the new x, y coordinates
-    x_displacement = linear_velocity[0] * cos(current_theta)
-    y_displacement = linear_velocity[0] * sin(current_theta)
+    # Calculate the new position and orientation
+    if abs(angle) < 1e-6:  # Straight line motion
+        new_x = (
+            current_x
+            + (velocity * cos(current_theta) - lateral * sin(current_theta)) * duration
+        )
+        new_y = (
+            current_y
+            + (velocity * sin(current_theta) + lateral * cos(current_theta)) * duration
+        )
+    else:  # Circular motion
+        radius = sqrt(velocity**2 + lateral**2) / abs(angle)
+        center_x = current_x - radius * sin(current_theta)
+        center_y = current_y + radius * cos(current_theta)
+        angle_traveled = angle * duration
+        new_x = center_x + radius * sin(current_theta + angle_traveled)
+        new_y = center_y - radius * cos(current_theta + angle_traveled)
 
-    # Calculate the new x, y coordinates. If the
-    new_x = current_x + x_displacement
-    new_y = current_y + y_displacement
+        # Check if any point on the circle is out of bounds
+        for t in range(int(duration) + 1):
+            angle_t = current_theta + angle * t
+            x_t = center_x + radius * sin(angle_t)
+            y_t = center_y - radius * cos(angle_t)
+            in_bounds, _ = within_bounds(x_t, y_t)
+            if not in_bounds:
+                return (
+                    False,
+                    f"The circular path will go out of bounds at ({x_t:.2f}, {y_t:.2f}).",
+                )
 
-    # Check if the new x, y coordinates are within bounds
-    in_bounds, _ = within_bounds(new_x, new_y)
+    # Check if the final x, y coordinates are within bounds
+    in_bounds, message = within_bounds(new_x, new_y)
     if not in_bounds:
         return (
             False,
-            f"This command will move the turtle out of bounds to ({new_x}, {new_y}).",
+            f"This command will move the turtle out of bounds to ({new_x:.2f}, {new_y:.2f}).",
         )
 
-    return within_bounds(new_x, new_y)
+    return True, f"The turtle will remain within bounds at ({new_x:.2f}, {new_y:.2f})."
 
 
 @tool
@@ -89,8 +113,8 @@ def spawn_turtle(name: str, x: float, y: float, theta: float) -> str:
     :param y: y-coordinate.
     :param theta: angle.
     """
-    in_bound, message = within_bounds(x, y)
-    if not in_bound:
+    in_bounds, message = within_bounds(x, y)
+    if not in_bounds:
         return message
 
     # Remove any forward slashes from the name
@@ -257,7 +281,7 @@ def teleport_relative(name: str, linear: float, angular: float):
     :param linear: linear distance
     :param angular: angular distance
     """
-    in_bounds, message = will_be_within_bounds(name, (linear, 0.0, 0.0), angular)
+    in_bounds, message = will_be_within_bounds(name, linear, 0.0, angular)
     if not in_bounds:
         return message
 
@@ -292,11 +316,16 @@ def publish_twist_to_cmd_vel(
     :param angle: angular velocity, where positive is counterclockwise and negative is clockwise
     :param steps: Number of times to publish the twist message
     """
-
-    # Test the effects of publishing a twist with linear=(1.0, -1.0) and angular_z=1.0
-
     # Remove any forward slashes from the name
     name = name.replace("/", "")
+
+    # Check if the movement will keep the turtle within bounds
+    in_bounds, message = will_be_within_bounds(
+        name, velocity, lateral, angle, duration=steps
+    )
+    if not in_bounds:
+        return message
+
     vel = Twist()
     vel.linear.x, vel.linear.y, vel.linear.z = velocity, lateral, 0.0
     vel.angular.x, vel.angular.y, vel.angular.z = 0.0, 0.0, angle
