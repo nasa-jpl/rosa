@@ -34,9 +34,9 @@ CMD ["/bin/bash", "-c", "source /opt/ros/noetic/setup.bash && \
     roscore > /dev/null 2>&1 & \
     sleep 5 && \
     if [ \"$HEADLESS\" = \"false\" ]; then \
-        rosrun turtlesim turtlesim_node > /dev/null 2>&1 & \
+    rosrun turtlesim turtlesim_node & \
     else \
-        xvfb-run -a -s \"-screen 0 1920x1080x24\" rosrun turtlesim turtlesim_node > /dev/null 2>&1 & \
+    xvfb-run -a -s \"-screen 0 1920x1080x24\" rosrun turtlesim turtlesim_node & \
     fi && \
     echo \"\" && \
     echo \"Run \\`start\\` to build and launch the ROSA-TurtleSim demo.\" && \

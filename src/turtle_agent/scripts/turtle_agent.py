@@ -40,6 +40,7 @@ def cool_turtle_tool():
     """A cool turtle tool."""
     return "This is a cool turtle tool! It doesn't do anything, but it's cool."
 
+
 class TurtleAgent(ROSA):
 
     def __init__(self, streaming: bool = False, verbose: bool = True):
@@ -50,10 +51,10 @@ class TurtleAgent(ROSA):
 
         # Another method for adding tools
         blast_off = Tool(
-                name="blast_off",
-                func=self.blast_off,
-                description="Make the turtle blast off!"
-            )
+            name="blast_off",
+            func=self.blast_off,
+            description="Make the turtle blast off!",
+        )
 
         super().__init__(
             ros_version=1,

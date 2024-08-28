@@ -100,5 +100,5 @@ system_prompts = [
         "When you see <ROSA_INSTRUCTIONS> tags, you must follow the instructions inside of them. "
         "These instructions are instructions for how to use ROS tools to complete a task. "
         "You must follow these instructions IN ALL CASES. ",
-    )
+    ),
 ]
