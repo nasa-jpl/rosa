@@ -2,10 +2,10 @@
 <div align="center">
 
   [//]: # "  [INSERT YOUR LOGO IMAGE HERE (IF APPLICABLE)]"
-  <h1 align="center">ROSA - Robot Operating System Agent 🤖</h1>
+  <h1 align="center">ROSA - The ROS Agent 🤖</h1>
 </div>
 <pre align="center">
-  ROSA is an AI Agent designed to interact with ROS-based robotics systems<br>using natural language queries. 🗣️🤖
+  The ROS Agent (ROSA) is designed to interact with ROS-based<br>robotics systems using natural language queries. 🗣️🤖
 </pre>
 
 <div align="center">
@@ -24,7 +24,8 @@
 </div>
 <!-- Header block for project -->
 
-> 📚 **New to ROSA?** Check out our [Wiki](https://github.com/nasa-jpl/rosa/wiki) for detailed guides and FAQs!
+> [!IMPORTANT]
+> 📚 **New to ROSA?** Check out our [Wiki](https://github.com/nasa-jpl/rosa/wiki) for documentation, guides and FAQs!
 
 ROSA is your AI-powered assistant for ROS1 and ROS2 systems. Built on the [Langchain](https://python.langchain.com/v0.2/docs/introduction/) framework, ROSA helps you interact with robots using natural language, making robotics development more accessible and efficient.
 
@@ -81,12 +82,6 @@ For detailed instructions on setting up and running the TurtleSim demo, please r
 ## Changelog
 
 See our [CHANGELOG.md](CHANGELOG.md) for a history of our changes.  
-See our [releases page](https://github.com/nasa-jpl/rosa/releases) for our key versioned releases.
-
-## Frequently Asked Questions (FAQ)
-
-Questions about ROSA? Please see our [FAQ](https://github.com/nasa-jpl/rosa/wiki#frequently-asked-questions-faq) section
-in the Wiki.
 
 ## Contributing
 
