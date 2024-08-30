@@ -8,25 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Streaming capability for ROSA responses
-- New `help.py` module with `get_help` function for generating help messages in `turtle_agent` demo
-- Asynchronous support in TurtleAgent class
-- Live updating console output using `rich` library
-- Command handler dictionary for special commands in TurtleAgent
-- New `submit` method to handle both streaming and non-streaming responses in `turtle_agent` class
+
+* Implemented streaming capability for ROSA responses
+* Added `pyproject.toml` for modern Python packaging
+* Implemented asynchronous operations in TurtleAgent for better responsiveness
 
 ### Changed
-- Updated TurtleAgent to support both streaming and non-streaming modes
-- Refactored `run` method in TurtleAgent to use asynchronous operations
-- Updated Dockerfile for better layering and reduced image size
-- Changed launch file to accept a `streaming` argument
 
-### Removed
-- Removed redundant logging statements from various tools
+* Updated Dockerfile for improved build process and development mode support
+* Refactored TurtleAgent class for better modularity and streaming support
+* Improved bounds checking for turtle movements
+* Updated demo script for better cross-platform support and X11 forwarding
+* Renamed `set_debuging` to `set_debugging` in system tools
 
 ### Fixed
-- Improved error handling and display in streaming mode
 
+* Corrected typos and improved documentation in various files
+* Fixed potential issues with turtle movement calculations
+
+### Removed
+
+* Removed unnecessary logging statements from turtle tools
 
 ## [1.0.5]
 

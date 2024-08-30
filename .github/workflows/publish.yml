@@ -16,10 +16,10 @@ jobs:
         python-version: '>=3.9 <4.0'
 
     - name: Install dependencies
-      run: pip install setuptools wheel twine
+      run: pip install build twine
 
     - name: Build package
-      run: python setup.py sdist bdist_wheel
+      run: python -m build
 
     - name: Publish package
       env:
