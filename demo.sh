@@ -12,57 +12,63 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
 
-# This script is used to launch the ROSA demo in Docker
+# This script launches the ROSA demo in Docker
 
-# Check if the user has docker installed
+# Check if Docker is installed
 if ! command -v docker &> /dev/null; then
-    echo "Docker is not installed. Please install docker and try again."
+    echo "Error: Docker is not installed. Please install Docker and try again."
     exit 1
 fi
 
+# Set default headless mode
+HEADLESS=${HEADLESS:-false}
+DEVELOPMENT=${DEVELOPMENT:-false}
 
-# Get the platform
-platform='unknown'
-unamestr=$(uname)
-if [ "$unamestr" == "Linux" ]; then
-    platform='linux'
-elif [ "$unamestr" == "Darwin" ]; then
-    platform='mac'
-elif [ "$unamestr" == "Windows" ]; then
-    platform='win'
+# Enable X11 forwarding based on OS
+case "$(uname)" in
+    Linux)
+        echo "Enabling X11 forwarding for Linux..."
+        export DISPLAY=:0
+        xhost +local:docker
+        ;;
+    Darwin)
+        echo "Enabling X11 forwarding for macOS..."
+        ip=$(ifconfig en0 | awk '$1=="inet" {print $2}')
+        export DISPLAY=$ip:0
+        xhost + $ip
+        ;;
+    MINGW*|CYGWIN*|MSYS*)
+        echo "Enabling X11 forwarding for Windows..."
+        export DISPLAY=host.docker.internal:0
+        ;;
+    *)
+        echo "Error: Unsupported operating system."
+        exit 1
+        ;;
+esac
+
+# Check if X11 forwarding is working
+if ! xset q &>/dev/null; then
+    echo "Error: X11 forwarding is not working. Please check your X11 server and try again."
+    exit 1
 fi
 
-# Enable X11 forwarding for mac and linux
-if [ "$platform" == "mac" ] || [ "$platform" == "linux" ]; then
-    echo "Enabling X11 forwarding..."
-    export DISPLAY=host.docker.internal:0
-    xhost +
-elif [ "$platform" == "win" ]; then
-    # Windows support is experimental
-    echo "The ROSA-TurtleSim demo has not been tested on Windows. It may not work as expected."
-    read -p "Do you want to continue? (y/n): " confirm
-    if [ "$confirm" != "y" ]; then
-        echo "Please check back later for Windows support."
-        exit 0
-    fi
-    export DISPLAY=host.docker.internal:0
-fi
+# Build and run the Docker container
+CONTAINER_NAME="rosa-turtlesim-demo"
+echo "Building the $CONTAINER_NAME Docker image..."
+docker build --build-arg DEVELOPMENT=$DEVELOPMENT -t $CONTAINER_NAME -f Dockerfile . || { echo "Error: Docker build failed"; exit 1; }
 
-# Build the docker image
-echo "Building the docker image..."
-docker build -t rosa -f Dockerfile .
-
-# Run the docker container
-echo "Running the docker container..."
-docker run -it --rm --name rosa \
-       -e DISPLAY=$DISPLAY \
-       -v /tmp/.X11-unix:/tmp/.X11-unix \
-       -v ./src:/app/src \
-       -v ./data:/root/data \
-       --network host \
-       rosa
+echo "Running the Docker container..."
+docker run -it --rm --name $CONTAINER_NAME \
+    -e DISPLAY=$DISPLAY \
+    -e HEADLESS=$HEADLESS \
+    -e DEVELOPMENT=$DEVELOPMENT \
+    -v /tmp/.X11-unix:/tmp/.X11-unix \
+    -v "$PWD/src":/app/src \
+    -v "$PWD/tests":/app/tests \
+    --network host \
+    $CONTAINER_NAME
 
 # Disable X11 forwarding
 xhost -

@@ -12,7 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from typing import Literal, Union, Optional
+from typing import Any, AsyncIterable, Dict, Literal, Optional, Union
 
 from langchain.agents import AgentExecutor
 from langchain.agents.format_scratchpad.openai_tools import (
@@ -21,17 +21,12 @@ from langchain.agents.format_scratchpad.openai_tools import (
 from langchain.agents.output_parsers.openai_tools import OpenAIToolsAgentOutputParser
 from langchain.prompts import MessagesPlaceholder
 from langchain_community.callbacks import get_openai_callback
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
-from rich import print
 
-try:
-    from .prompts import system_prompts, RobotSystemPrompts
-    from .tools import ROSATools
-except ImportError:
-    from prompts import system_prompts, RobotSystemPrompts
-    from tools import ROSATools
+from .prompts import RobotSystemPrompts, system_prompts
+from .tools import ROSATools
 
 
 class ROSA:
@@ -39,15 +34,30 @@ class ROSA:
     using natural language.
 
     Args:
-        ros_version: The version of ROS that the agent will interact with. This can be either 1 or 2.
-        llm: The language model to use for generating responses. This can be either an instance of AzureChatOpenAI or ChatOpenAI.
-        tools: A list of LangChain tool functions to use with the agent.
-        tool_packages: A list of Python packages that contain LangChain tool functions to use with the agent.
-        prompts: A list of prompts to use with the agent. This can be a list of prompts from the RobotSystemPrompts class.
-        verbose: A boolean flag that indicates whether to print verbose output.
-        blacklist: A list of ROS tools to exclude from the agent. This can be a list of ROS tools from the ROSATools class.
-        accumulate_chat_history: A boolean flag that indicates whether to accumulate chat history.
-        show_token_usage: A boolean flag that indicates whether to show token usage after each invocation.
+        ros_version (Literal[1, 2]): The version of ROS that the agent will interact with.
+        llm (Union[AzureChatOpenAI, ChatOpenAI]): The language model to use for generating responses.
+        tools (Optional[list]): A list of additional LangChain tool functions to use with the agent.
+        tool_packages (Optional[list]): A list of Python packages containing LangChain tool functions to use.
+        prompts (Optional[RobotSystemPrompts]): Custom prompts to use with the agent.
+        verbose (bool): Whether to print verbose output. Defaults to False.
+        blacklist (Optional[list]): A list of ROS tools to exclude from the agent.
+        accumulate_chat_history (bool): Whether to accumulate chat history. Defaults to True.
+        show_token_usage (bool): Whether to show token usage. Does not work when streaming is enabled. Defaults to False.
+        streaming (bool): Whether to stream the output of the agent. Defaults to True.
+
+    Attributes:
+        chat_history (list): A list of messages representing the chat history.
+
+    Methods:
+        clear_chat(): Clears the chat history.
+        invoke(query: str) -> str: Processes a user query and returns the agent's response.
+        astream(query: str) -> AsyncIterable[Dict[str, Any]]: Asynchronously streams the agent's response.
+
+    Note:
+        - The `tools` and `tool_packages` arguments allow for extending the agent's capabilities.
+        - Custom `prompts` can be provided to tailor the agent's behavior for specific robots or use cases.
+        - Token usage display is automatically disabled when streaming is enabled.
+        - Use `invoke()` for non-streaming responses and `astream()` for streaming responses.
     """
 
     def __init__(
@@ -60,69 +70,163 @@ class ROSA:
         verbose: bool = False,
         blacklist: Optional[list] = None,
         accumulate_chat_history: bool = True,
-        show_token_usage: bool = True,
+        show_token_usage: bool = False,
+        streaming: bool = True,
     ):
         self.__chat_history = []
         self.__ros_version = ros_version
-        self.__llm = llm
+        self.__llm = llm.with_config({"streaming": streaming})
         self.__memory_key = "chat_history"
         self.__scratchpad = "agent_scratchpad"
-        self.__show_token_usage = show_token_usage
         self.__blacklist = blacklist if blacklist else []
         self.__accumulate_chat_history = accumulate_chat_history
+        self.__streaming = streaming
         self.__tools = self._get_tools(
             ros_version, packages=tool_packages, tools=tools, blacklist=self.__blacklist
         )
         self.__prompts = self._get_prompts(prompts)
-        self.__llm_with_tools = llm.bind_tools(self.__tools.get_tools())
+        self.__llm_with_tools = self.__llm.bind_tools(self.__tools.get_tools())
         self.__agent = self._get_agent()
         self.__executor = self._get_executor(verbose=verbose)
-        self.__usage = None
+        self.__show_token_usage = show_token_usage if not streaming else False
 
     @property
     def chat_history(self):
+        """Get the chat history."""
         return self.__chat_history
-
-    @property
-    def usage(self):
-        return self.__usage
 
     def clear_chat(self):
         """Clear the chat history."""
         self.__chat_history = []
 
     def invoke(self, query: str) -> str:
-        """Invoke the agent with a user query."""
+        """
+        Invoke the agent with a user query and return the response.
+
+        This method processes the user's query through the agent, handles token usage tracking,
+        and updates the chat history.
+
+        Args:
+            query (str): The user's input query to be processed by the agent.
+
+        Returns:
+            str: The agent's response to the query. If an error occurs, it returns an error message.
+
+        Raises:
+            Any exceptions raised during the invocation process are caught and returned as error messages.
+
+        Note:
+            - This method uses OpenAI's callback to track token usage if enabled.
+            - The chat history is updated with the query and response if successful.
+            - Token usage is printed if the show_token_usage flag is set.
+        """
         try:
             with get_openai_callback() as cb:
                 result = self.__executor.invoke(
                     {"input": query, "chat_history": self.__chat_history}
                 )
-                self.__usage = cb
-                if self.__show_token_usage:
-                    self._print_usage()
+                self._print_usage(cb)
         except Exception as e:
-            return f"An error occurred: {e}"
+            return f"An error occurred: {str(e)}"
 
         self._record_chat_history(query, result["output"])
         return result["output"]
 
-    def _print_usage(self):
-        cb = self.__usage
-        print(f"[bold]Prompt Tokens:[/bold] {cb.prompt_tokens}")
-        print(f"[bold]Completion Tokens:[/bold] {cb.completion_tokens}")
-        print(f"[bold]Total Cost (USD):[/bold] ${cb.total_cost}")
+    async def astream(self, query: str) -> AsyncIterable[Dict[str, Any]]:
+        """
+        Asynchronously stream the agent's response to a user query.
 
-    def _get_executor(self, verbose: bool):
+        This method processes the user's query and yields events as they occur,
+        including token generation, tool usage, and final output. It's designed
+        for use when streaming is enabled.
+
+        Args:
+            query (str): The user's input query.
+
+        Returns:
+            AsyncIterable[Dict[str, Any]]: An asynchronous iterable of dictionaries
+            containing event information. Each dictionary has a 'type' key and
+            additional keys depending on the event type:
+            - 'token': Yields generated tokens with 'content'.
+            - 'tool_start': Indicates the start of a tool execution with 'name' and 'input'.
+            - 'tool_end': Indicates the end of a tool execution with 'name' and 'output'.
+            - 'final': Provides the final output of the agent with 'content'.
+            - 'error': Indicates an error occurred with 'content' describing the error.
+
+        Raises:
+            ValueError: If streaming is not enabled for this ROSA instance.
+            Exception: If an error occurs during the streaming process.
+
+        Note:
+            This method updates the chat history with the final output if successful.
+        """
+        if not self.__streaming:
+            raise ValueError(
+                "Streaming is not enabled. Use 'invoke' method instead or initialize ROSA with streaming=True."
+            )
+
+        try:
+            final_output = ""
+            # Stream events from the agent's response
+            async for event in self.__executor.astream_events(
+                input={"input": query, "chat_history": self.__chat_history},
+                config={"run_name": "Agent"},
+                version="v2",
+            ):
+                # Extract the event type
+                kind = event["event"]
+
+                # Handle chat model stream events
+                if kind == "on_chat_model_stream":
+                    # Extract the content from the event and yield it
+                    content = event["data"]["chunk"].content
+                    if content:
+                        final_output += f" {content}"
+                        yield {"type": "token", "content": content}
+
+                # Handle tool start events
+                elif kind == "on_tool_start":
+                    yield {
+                        "type": "tool_start",
+                        "name": event["name"],
+                        "input": event["data"].get("input"),
+                    }
+
+                # Handle tool end events
+                elif kind == "on_tool_end":
+                    yield {
+                        "type": "tool_end",
+                        "name": event["name"],
+                        "output": event["data"].get("output"),
+                    }
+
+                # Handle chain end events
+                elif kind == "on_chain_end":
+                    if event["name"] == "Agent":
+                        chain_output = event["data"].get("output", {}).get("output")
+                        if chain_output:
+                            final_output = (
+                                chain_output  # Override with final output if available
+                            )
+                            yield {"type": "final", "content": chain_output}
+
+            if final_output:
+                self._record_chat_history(query, final_output)
+        except Exception as e:
+            yield {"type": "error", "content": f"An error occurred: {e}"}
+
+    def _get_executor(self, verbose: bool) -> AgentExecutor:
+        """Create and return an executor for processing user inputs and generating responses."""
         executor = AgentExecutor(
             agent=self.__agent,
             tools=self.__tools.get_tools(),
-            stream_runnable=False,
+            stream_runnable=self.__streaming,
             verbose=verbose,
         )
         return executor
 
     def _get_agent(self):
+        """Create and return an agent for processing user inputs and generating responses."""
         agent = (
             {
                 "input": lambda x: x["input"],
@@ -143,7 +247,8 @@ class ROSA:
         packages: Optional[list],
         tools: Optional[list],
         blacklist: Optional[list],
-    ):
+    ) -> ROSATools:
+        """Create a ROSA tools object with the specified ROS version, tools, packages, and blacklist."""
         rosa_tools = ROSATools(ros_version, blacklist=blacklist)
         if tools:
             rosa_tools.add_tools(tools)
@@ -151,10 +256,17 @@ class ROSA:
             rosa_tools.add_packages(packages, blacklist=blacklist)
         return rosa_tools
 
-    def _get_prompts(self, robot_prompts: Optional[RobotSystemPrompts] = None):
+    def _get_prompts(
+        self, robot_prompts: Optional[RobotSystemPrompts] = None
+    ) -> ChatPromptTemplate:
+        """Create a chat prompt template from the system prompts and robot-specific prompts."""
+        # Start with default system prompts
         prompts = system_prompts
+
+        # Add robot-specific prompts if provided
         if robot_prompts:
             prompts.append(robot_prompts.as_message())
+
         template = ChatPromptTemplate.from_messages(
             prompts
             + [
@@ -165,7 +277,15 @@ class ROSA:
         )
         return template
 
+    def _print_usage(self, cb):
+        """Print the token usage if show_token_usage is enabled."""
+        if cb and self.__show_token_usage:
+            print(f"[bold]Prompt Tokens:[/bold] {cb.prompt_tokens}")
+            print(f"[bold]Completion Tokens:[/bold] {cb.completion_tokens}")
+            print(f"[bold]Total Cost (USD):[/bold] ${cb.total_cost}")
+
     def _record_chat_history(self, query: str, response: str):
+        """Record the chat history if accumulation is enabled."""
         if self.__accumulate_chat_history:
             self.__chat_history.extend(
                 [HumanMessage(content=query), AIMessage(content=response)]

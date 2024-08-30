@@ -31,8 +31,11 @@ def get_prompts():
         "Directional commands are relative to the simulated environment. For instance, right is 0 degrees, up is 90 degrees, left is 180 degrees, and down is 270 degrees. "
         "When changing directions, angles must always be relative to the current direction of the turtle. "
         "When running the reset tool, you must NOT attempt to start or restart commands afterwards. "
-        "If the operator asks you about Ninja Turtles, you must spawn a 'turtle' named shredder and make it run around in circles. You can do this before or after satisfying the operator's request. ",
-        constraints_and_guardrails=None,
+        "All shapes drawn by the turtle should have sizes of length 1 (default), unless otherwise specified by the user."
+        "You must execute all movement commands and tool calls sequentially, not in parallel. "
+        "Wait for each command to complete before issuing the next one.",
+        constraints_and_guardrails="Teleport commands and angle adjustments must come before movement commands and publishing twists. "
+        "They must be executed sequentially, not simultaneously. ",
         about_your_environment="Your environment is a simulated 2D space with a fixed size and shape. "
         "The default turtle (turtle1) spawns in the middle at coordinates (5.544, 5.544). "
         "(0, 0) is at the bottom left corner of the space. "

@@ -12,7 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from math import cos, sin
+from math import cos, sin, sqrt
 from typing import List
 
 import rospy
@@ -52,35 +52,55 @@ def within_bounds(x: float, y: float) -> tuple:
         return False, f"({x}, {y}) will be out of bounds. Range is [0, 11] for each."
 
 
-def will_be_within_bounds(name: str, linear_velocity: tuple, angular: float) -> tuple:
+def will_be_within_bounds(
+    name: str, velocity: float, lateral: float, angle: float, duration: float = 1.0
+) -> tuple:
     """Check if the turtle will be within bounds after publishing a twist command."""
     # Get the current pose of the turtle
-    rospy.loginfo(
-        f"Checking if {name} will be within bounds after publishing a twist command."
-    )
-
     pose = get_turtle_pose.invoke({"names": [name]})
     current_x = pose[name].x
     current_y = pose[name].y
     current_theta = pose[name].theta
 
-    # Use trigonometry to calculate the new x, y coordinates
-    x_displacement = linear_velocity[0] * cos(current_theta)
-    y_displacement = linear_velocity[0] * sin(current_theta)
+    # Calculate the new position and orientation
+    if abs(angle) < 1e-6:  # Straight line motion
+        new_x = (
+            current_x
+            + (velocity * cos(current_theta) - lateral * sin(current_theta)) * duration
+        )
+        new_y = (
+            current_y
+            + (velocity * sin(current_theta) + lateral * cos(current_theta)) * duration
+        )
+    else:  # Circular motion
+        radius = sqrt(velocity**2 + lateral**2) / abs(angle)
+        center_x = current_x - radius * sin(current_theta)
+        center_y = current_y + radius * cos(current_theta)
+        angle_traveled = angle * duration
+        new_x = center_x + radius * sin(current_theta + angle_traveled)
+        new_y = center_y - radius * cos(current_theta + angle_traveled)
 
-    # Calculate the new x, y coordinates. If the
-    new_x = current_x + x_displacement
-    new_y = current_y + y_displacement
+        # Check if any point on the circle is out of bounds
+        for t in range(int(duration) + 1):
+            angle_t = current_theta + angle * t
+            x_t = center_x + radius * sin(angle_t)
+            y_t = center_y - radius * cos(angle_t)
+            in_bounds, _ = within_bounds(x_t, y_t)
+            if not in_bounds:
+                return (
+                    False,
+                    f"The circular path will go out of bounds at ({x_t:.2f}, {y_t:.2f}).",
+                )
 
-    # Check if the new x, y coordinates are within bounds
-    in_bounds, _ = within_bounds(new_x, new_y)
+    # Check if the final x, y coordinates are within bounds
+    in_bounds, message = within_bounds(new_x, new_y)
     if not in_bounds:
         return (
             False,
-            f"This command will move the turtle out of bounds to ({new_x}, {new_y}).",
+            f"This command will move the turtle out of bounds to ({new_x:.2f}, {new_y:.2f}).",
         )
 
-    return within_bounds(new_x, new_y)
+    return True, f"The turtle will remain within bounds at ({new_x:.2f}, {new_y:.2f})."
 
 
 @tool
@@ -93,8 +113,8 @@ def spawn_turtle(name: str, x: float, y: float, theta: float) -> str:
     :param y: y-coordinate.
     :param theta: angle.
     """
-    in_bound, message = within_bounds(x, y)
-    if not in_bound:
+    in_bounds, message = within_bounds(x, y)
+    if not in_bounds:
         return message
 
     # Remove any forward slashes from the name
@@ -108,14 +128,12 @@ def spawn_turtle(name: str, x: float, y: float, theta: float) -> str:
     try:
         spawn = rospy.ServiceProxy("/spawn", Spawn)
         spawn(x=x, y=y, theta=theta, name=name)
-        rospy.loginfo(f"Turtle ({name}) spawned at x: {x}, y: {y}, theta: {theta}.")
 
         global cmd_vel_pubs
         cmd_vel_pubs[name] = rospy.Publisher(f"/{name}/cmd_vel", Twist, queue_size=10)
 
         return f"{name} spawned at x: {x}, y: {y}, theta: {theta}."
     except Exception as e:
-        rospy.logerr(f"Failed to spawn {name}: {e}")
         return f"Failed to spawn {name}: {e}"
 
 
@@ -141,7 +159,6 @@ def kill_turtle(names: List[str]):
         try:
             kill = rospy.ServiceProxy(f"/{name}/kill", Kill)
             kill()
-            rospy.loginfo(f"Successfully killed turtle ({name}).")
 
             cmd_vel_pubs.pop(name, None)
 
@@ -162,7 +179,6 @@ def clear_turtlesim():
     try:
         clear = rospy.ServiceProxy("/clear", Empty)
         clear()
-        rospy.loginfo("Successfully cleared the turtlesim background.")
         return "Successfully cleared the turtlesim background."
     except rospy.ServiceException as e:
         return f"Failed to clear the turtlesim background: {e}"
@@ -190,32 +206,6 @@ def get_turtle_pose(names: List[str]) -> dict:
                 "Error": f"Failed to get pose for {name}: /{name}/pose not available."
             }
     return poses
-
-
-@tool
-def degrees_to_radians(degrees: List[float]):
-    """
-    Convert degrees to radians.
-
-    :param degrees: A list of one or more degrees to convert to radians.
-    """
-    rads = {}
-    for degree in degrees:
-        rads[degree] = f"{degree * (3.14159 / 180)} radians."
-    return rads
-
-
-@tool
-def radians_to_degrees(radians: List[float]):
-    """
-    Convert radians to degrees.
-
-    :param radians: A list of one or more radians to convert to degrees.
-    """
-    degs = {}
-    for radian in radians:
-        degs[radian] = f"{radian * (180 / 3.14159)} degrees."
-    return degs
 
 
 @tool
@@ -251,7 +241,6 @@ def teleport_absolute(
             )
         current_pose = get_turtle_pose.invoke({"names": [name]})
 
-        rospy.loginfo(f"Teleported {name} to ({x}, {y}) at {theta} radians.")
         return f"{name} new pose: ({current_pose[name].x}, {current_pose[name].y}) at {current_pose[name].theta} radians."
     except rospy.ServiceException as e:
         return f"Failed to teleport the turtle: {e}"
@@ -266,7 +255,7 @@ def teleport_relative(name: str, linear: float, angular: float):
     :param linear: linear distance
     :param angular: angular distance
     """
-    in_bounds, message = will_be_within_bounds(name, (linear, 0.0, 0.0), angular)
+    in_bounds, message = will_be_within_bounds(name, linear, 0.0, angular)
     if not in_bounds:
         return message
 
@@ -278,7 +267,6 @@ def teleport_relative(name: str, linear: float, angular: float):
         teleport = rospy.ServiceProxy(f"/{name}/teleport_relative", TeleportRelative)
         teleport(linear=linear, angular=angular)
         current_pose = get_turtle_pose.invoke({"names": [name]})
-        rospy.loginfo(f"Teleported {name} by (linear={linear}, angular={angular}).")
         return f"{name} new pose: ({current_pose[name].x}, {current_pose[name].y}) at {current_pose[name].theta} radians."
     except rospy.ServiceException as e:
         return f"Failed to teleport the turtle: {e}"
@@ -302,11 +290,16 @@ def publish_twist_to_cmd_vel(
     :param angle: angular velocity, where positive is counterclockwise and negative is clockwise
     :param steps: Number of times to publish the twist message
     """
-
-    # Test the effects of publishing a twist with linear=(1.0, -1.0) and angular_z=1.0
-
     # Remove any forward slashes from the name
     name = name.replace("/", "")
+
+    # Check if the movement will keep the turtle within bounds
+    in_bounds, message = will_be_within_bounds(
+        name, velocity, lateral, angle, duration=steps
+    )
+    if not in_bounds:
+        return message
+
     vel = Twist()
     vel.linear.x, vel.linear.y, vel.linear.z = velocity, lateral, 0.0
     vel.angular.x, vel.angular.y, vel.angular.z = 0.0, 0.0, angle
@@ -318,9 +311,6 @@ def publish_twist_to_cmd_vel(
         for _ in range(steps):
             pub.publish(vel)
             rospy.sleep(1)
-        rospy.loginfo(
-            f"Published Twist (/{name}/cmd_vel): linear=({velocity}, {lateral}), angular={angle}."
-        )
     except Exception as e:
         return f"Failed to publish {vel} to /{name}/cmd_vel: {e}"
     finally:
@@ -363,7 +353,6 @@ def reset_turtlesim():
     try:
         reset = rospy.ServiceProxy("/reset", Empty)
         reset()
-        rospy.loginfo("Successfully reset the turtlesim environment.")
 
         # Clear the cmd_vel publishers
         global cmd_vel_pubs
@@ -374,7 +363,6 @@ def reset_turtlesim():
 
         return "Successfully reset the turtlesim environment. Ignore all previous commands, failures, and goals."
     except rospy.ServiceException as e:
-        rospy.logerr(f"Failed to reset the turtlesim environment: {e}")
         return f"Failed to reset the turtlesim environment: {e}"
 
 

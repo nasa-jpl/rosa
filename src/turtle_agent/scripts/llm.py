@@ -19,7 +19,7 @@ from azure.identity import ClientSecretCredential, get_bearer_token_provider
 from langchain_openai import AzureChatOpenAI
 
 
-def get_llm():
+def get_llm(streaming: bool = False):
     """A helper function to get the LLM instance."""
     dotenv.load_dotenv(dotenv.find_dotenv())
 
@@ -48,12 +48,13 @@ def get_llm():
         api_version=get_env_variable("API_VERSION"),
         azure_endpoint=get_env_variable("API_ENDPOINT"),
         default_headers=default_headers,
+        streaming=streaming,
     )
 
     return llm
 
 
-def get_env_variable(var_name):
+def get_env_variable(var_name: str) -> str:
     """
     Retrieves the value of the specified environment variable.
 
