@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.6]
+
+### Added
+
+* Implemented streaming capability for ROSA responses
+* Added `pyproject.toml` for modern Python packaging
+* Implemented asynchronous operations in TurtleAgent for better responsiveness
+
+### Changed
+
+* Updated Dockerfile for improved build process and development mode support
+* Refactored TurtleAgent class for better modularity and streaming support
+* Improved bounds checking for turtle movements
+* Updated demo script for better cross-platform support and X11 forwarding
+* Renamed `set_debuging` to `set_debugging` in system tools
+
+### Fixed
+
+* Corrected typos and improved documentation in various files
+* Fixed potential issues with turtle movement calculations
+
+### Removed
+
+* Removed unnecessary logging statements from turtle tools
+
 ## [1.0.5]
 
 ### Added

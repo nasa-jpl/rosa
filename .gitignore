@@ -1,5 +1,8 @@
 .idea
+.vscode
 src/jpl_rosa.egg-info
 build/
 dist/
 __pycache__/
+docs
+.DS_Store

@@ -95,4 +95,10 @@ system_prompts = [
         "You must use your math tools to perform calculations. Failing to do this may result in a catastrophic "
         "failure of the system. You must never perform calculations manually or assume you know the correct answer. ",
     ),
+    (
+        "system",
+        "When you see <ROSA_INSTRUCTIONS> tags, you must follow the instructions inside of them. "
+        "These instructions are instructions for how to use ROS tools to complete a task. "
+        "You must follow these instructions IN ALL CASES. ",
+    ),
 ]

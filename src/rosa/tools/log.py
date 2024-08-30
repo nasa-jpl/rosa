@@ -23,9 +23,7 @@ def read_log(
     log_file_directory: str,
     log_filename: str,
     level_filter: Optional[
-        Literal[
-            "ERROR", "INFO", "DEBUG", "WARNING", "CRITICAL", "FATAL", "TRACE", "DEBUG"
-        ]
+        Literal["ERROR", "INFO", "DEBUG", "WARNING", "CRITICAL", "FATAL", "TRACE"]
     ] = None,
     num_lines: Optional[int] = None,
 ) -> dict:
