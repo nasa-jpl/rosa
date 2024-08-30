@@ -209,32 +209,6 @@ def get_turtle_pose(names: List[str]) -> dict:
 
 
 @tool
-def degrees_to_radians(degrees: List[float]):
-    """
-    Convert degrees to radians.
-
-    :param degrees: A list of one or more degrees to convert to radians.
-    """
-    rads = {}
-    for degree in degrees:
-        rads[degree] = f"{degree * (3.14159 / 180)} radians."
-    return rads
-
-
-@tool
-def radians_to_degrees(radians: List[float]):
-    """
-    Convert radians to degrees.
-
-    :param radians: A list of one or more radians to convert to degrees.
-    """
-    degs = {}
-    for radian in radians:
-        degs[radian] = f"{radian * (180 / 3.14159)} degrees."
-    return degs
-
-
-@tool
 def teleport_absolute(
     name: str, x: float, y: float, theta: float, hide_pen: bool = True
 ):

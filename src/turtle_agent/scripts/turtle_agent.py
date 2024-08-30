@@ -99,12 +99,8 @@ class TurtleAgent(ROSA):
         )
         greeting.stylize("frame bold blue")
         greeting.append(
-            f"Try {', '.join(self.command_handler.keys())} or exit.\n",
-            style="underline",
-        )
-        greeting.append(
-            f"Streaming: {self.__streaming}\n",
-            style="green" if self.__streaming else "red",
+            f"Try {', '.join(self.command_handler.keys())} or exit.",
+            style="italic",
         )
         return greeting
 
@@ -122,6 +118,8 @@ class TurtleAgent(ROSA):
     async def clear(self):
         """Clear the chat history."""
         self.clear_chat()
+        self.last_events = []
+        self.command_handler.pop("info", None)
         os.system("clear")
 
     def get_input(self, prompt: str):
@@ -145,11 +143,12 @@ class TurtleAgent(ROSA):
         Raises:
             Any exceptions that might occur during the execution of user commands or streaming responses.
         """
+        await self.clear()
         console = Console()
 
         while True:
             console.print(self.greeting)
-            input = self.get_input("Turtle Chat: ")
+            input = self.get_input("> ")
 
             # Handle special commands
             if input == "exit":
@@ -209,9 +208,7 @@ class TurtleAgent(ROSA):
 
         panel = Panel("", title="Streaming Response", border_style="green")
 
-        with Live(
-            panel, console=console, auto_refresh=False, vertical_overflow="visible"
-        ) as live:
+        with Live(panel, console=console, auto_refresh=False) as live:
             async for event in self.astream(query):
                 event["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[
                     :-3
@@ -248,6 +245,8 @@ class TurtleAgent(ROSA):
         if not self.last_events:
             console.print("[yellow]No events to display.[/yellow]")
             return
+        else:
+            console.print(Markdown("# Tool Usage and Events"))
 
         for event in self.last_events:
             timestamp = event["timestamp"]
@@ -255,10 +254,10 @@ class TurtleAgent(ROSA):
                 console.print(
                     Panel(
                         Group(
+                            Text(f"Input: {event.get('input', 'None')}"),
                             Text(f"Timestamp: {timestamp}", style="dim"),
-                            Text(f"Tool Started: {event['name']}", style="bold blue"),
-                            Text(f"Input: {event.get('input', 'N/A')}"),
                         ),
+                        title=f"Tool Started: {event['name']}",
                         border_style="blue",
                     )
                 )
@@ -266,12 +265,10 @@ class TurtleAgent(ROSA):
                 console.print(
                     Panel(
                         Group(
-                            Text(f"Timestamp: {timestamp}", style="dim"),
-                            Text(
-                                f"Tool Completed: {event['name']}", style="bold green"
-                            ),
                             Text(f"Output: {event.get('output', 'N/A')}"),
+                            Text(f"Timestamp: {timestamp}", style="dim"),
                         ),
+                        title=f"Tool Completed: {event['name']}",
                         border_style="green",
                     )
                 )
@@ -279,21 +276,21 @@ class TurtleAgent(ROSA):
                 console.print(
                     Panel(
                         Group(
-                            Text(f"Timestamp: {timestamp}", style="dim"),
                             Text(f"Error: {event['content']}", style="bold red"),
+                            Text(f"Timestamp: {timestamp}", style="dim"),
                         ),
                         border_style="red",
                     )
                 )
             console.print()
 
-        console.print("[bold]End of events[/bold]")
+        console.print("[bold]End of events[/bold]\n")
 
 
 def main():
     dotenv.load_dotenv(dotenv.find_dotenv())
 
-    streaming = rospy.get_param("~streaming", True)
+    streaming = rospy.get_param("~streaming", False)
     turtle_agent = TurtleAgent(verbose=False, streaming=streaming)
 
     asyncio.run(turtle_agent.run())

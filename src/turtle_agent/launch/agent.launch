@@ -1,5 +1,5 @@
 <launch>
-    <arg name="streaming" default="true" />
+    <arg name="streaming" default="false" />
     <node name="rosa_turtle_agent"
           pkg="turtle_agent"
           type="turtle_agent.py"

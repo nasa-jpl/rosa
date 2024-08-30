@@ -38,6 +38,6 @@ CMD ["/bin/bash", "-c", "source /opt/ros/noetic/setup.bash && \
     else \
     xvfb-run -a -s \"-screen 0 1920x1080x24\" rosrun turtlesim turtlesim_node & \
     fi && \
-    echo \"\" && \
+    sleep 5 && \
     echo \"Run \\`start\\` to build and launch the ROSA-TurtleSim demo.\" && \
     /bin/bash"]

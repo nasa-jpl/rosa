@@ -45,10 +45,19 @@ class ROSA:
         show_token_usage (bool): Whether to show token usage. Does not work when streaming is enabled. Defaults to False.
         streaming (bool): Whether to stream the output of the agent. Defaults to True.
 
+    Attributes:
+        chat_history (list): A list of messages representing the chat history.
+
+    Methods:
+        clear_chat(): Clears the chat history.
+        invoke(query: str) -> str: Processes a user query and returns the agent's response.
+        astream(query: str) -> AsyncIterable[Dict[str, Any]]: Asynchronously streams the agent's response.
+
     Note:
         - The `tools` and `tool_packages` arguments allow for extending the agent's capabilities.
         - Custom `prompts` can be provided to tailor the agent's behavior for specific robots or use cases.
         - Token usage display is automatically disabled when streaming is enabled.
+        - Use `invoke()` for non-streaming responses and `astream()` for streaming responses.
     """
 
     def __init__(
