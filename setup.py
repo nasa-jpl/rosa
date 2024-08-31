@@ -12,57 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import pathlib
 from distutils.core import setup
 
-from setuptools import find_packages
-
-here = pathlib.Path(__file__).parent.resolve()
-long_description = (here / "README.md").read_text(encoding="utf-8")
-rosa_packages = find_packages(where="src")
-
-setup(
-    name="jpl-rosa",
-    version="1.0.5",
-    license="Apache 2.0",
-    description="ROSA: the Robot Operating System Agent",
-    long_description=long_description,
-    long_description_content_type="text/markdown",
-    url="https://github.com/nasa-jpl/rosa",
-    author="Rob Royce",
-    author_email="Rob.Royce@jpl.nasa.gov",
-    classifiers=[
-        "Development Status :: 4 - Beta",
-        "Environment :: Console",
-        "Intended Audience :: Science/Research",
-        "License :: OSI Approved :: Apache Software License",
-        "Natural Language :: English",
-        "Operating System :: Unix",
-        "Programming Language :: Python :: 3",
-        "Topic :: Scientific/Engineering",
-        "Topic :: Scientific/Engineering :: Artificial Intelligence",
-    ],
-    keywords="Robotics, Data Science, Machine Learning, Data Engineering, Data Infrastructure, Data Analysis",
-    package_dir={"": "src"},
-    packages=rosa_packages,
-    python_requires=">=3.9, <4",
-    install_requires=[
-        "PyYAML==6.0.1",
-        "python-dotenv>=1.0.1",
-        "langchain==0.2.14",
-        "langchain-community==0.2.12",
-        "langchain-core==0.2.34",
-        "langchain-openai==0.1.22",
-        "pydantic",
-        "pyinputplus",
-        "azure-identity",
-        "cffi",
-        "rich",
-        "pillow>=10.4.0",
-        "numpy>=1.21.2",
-    ],
-    project_urls={  # Optional
-        "Bug Reports": "https://github.com/nasa-jpl/rosa/issues",
-        "Source": "https://github.com/nasa-jpl/rosa",
-    },
-)
+if __name__ == "__main__":
+    setup()

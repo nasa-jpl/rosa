@@ -209,9 +209,6 @@ def rostopic_list(
     :param pattern: (optional) A Python regex pattern to filter the list of topics.
     :param namespace: (optional) ROS namespace to scope return values by. Namespace must already be resolved.
     """
-    rospy.loginfo(
-        f"Getting ROS topics with pattern '{pattern}' in namespace '{namespace}'"
-    )
     try:
         total, in_namespace, match_pattern, topics = get_entities(
             "topic", pattern, namespace, blacklist
@@ -248,9 +245,6 @@ def rosnode_list(
     :param pattern: (optional) A Python regex pattern to filter the list of nodes.
     :param namespace: (optional) ROS namespace to scope return values by. Namespace must already be resolved.
     """
-    rospy.loginfo(
-        f"Getting ROS nodes with pattern '{pattern}' in namespace '{namespace}'"
-    )
     try:
         total, in_namespace, match_pattern, nodes = get_entities(
             "node", pattern, namespace, blacklist
@@ -282,7 +276,6 @@ def rostopic_info(topics: List[str]) -> dict:
 
     :param topics: A list of ROS topic names. Smaller lists are better for performance.
     """
-    rospy.loginfo(f"Getting details for ROS topics: {topics}")
     details = {}
 
     for topic in topics:
@@ -391,7 +384,6 @@ def rosnode_info(nodes: List[str]) -> dict:
 
     :param nodes: A list of ROS node names. Smaller lists are better for performance.
     """
-    rospy.loginfo(f"Getting details for ROS nodes: {nodes}")
     details = {}
 
     for node in nodes:
@@ -424,9 +416,6 @@ def rosservice_list(
     :param exclude_parameters: (optional) If True, exclude services related to parameters.
     :param exclude_pattern: (optional) A Python regex pattern to exclude services.
     """
-    rospy.loginfo(
-        f"Getting ROS services with node '{node}', namespace '{namespace}', and include_nodes '{include_nodes}'"
-    )
     services = rosservice.get_service_list(node, namespace, include_nodes)
 
     if exclude_logging:
@@ -470,7 +459,6 @@ def rosservice_info(services: List[str]) -> dict:
 
     :param services: A list of ROS service names. Smaller lists are better for performance.
     """
-    rospy.loginfo(f"Getting details for ROS services: {services}")
     details = {}
 
     for service in services:
@@ -501,7 +489,6 @@ def rosmsg_info(msg_type: List[str]) -> dict:
 
     :param msg_type: A list of ROS message types. Smaller lists are better for performance.
     """
-    rospy.loginfo(f"Getting details for ROS messages: {msg_type}")
     details = {}
 
     for msg in msg_type:
@@ -517,7 +504,6 @@ def rossrv_info(srv_type: List[str], raw: bool = False) -> dict:
     :param srv_type: A list of ROS service types. Smaller lists are better for performance.
     :param raw: (optional) if True, include comments and whitespace (default: False)
     """
-    rospy.loginfo(f"Getting details for ROS srv type: {srv_type}")
     details = {}
 
     for srv in srv_type:
@@ -533,7 +519,6 @@ def rosparam_list(namespace: str = "/", blacklist: List[str] = None) -> dict:
 
     :param namespace: (optional) ROS namespace to scope return values by.
     """
-    rospy.loginfo(f"Getting ROS parameters in namespace '{namespace}'")
     try:
         params = rosparam.list_params(namespace)
         if blacklist:
@@ -556,7 +541,6 @@ def rosparam_get(params: List[str]) -> dict:
 
     :param params: A list of ROS parameter names. Parameter names must be fully resolved. Do not use wildcards.
     """
-    rospy.loginfo(f"Getting values for ROS parameters: {params}")
     values = {}
     for param in params:
         p = rosparam.get_param(param)
@@ -576,8 +560,6 @@ def rosparam_set(param: str, value: str, is_rosa_param: bool) -> str:
     if is_rosa_param and not param.startswith("/rosa"):
         param = f"/rosa/{param}".replace("//", "/")
 
-    rospy.loginfo(f"Setting ROS parameter '{param}' to '{value}'")
-
     try:
         rosparam.set_param(param, value)
         return f"Set parameter '{param}' to '{value}'."
@@ -596,7 +578,6 @@ def rospkg_list(
     :param package_pattern: A Python regex pattern to filter the list of packages. Defaults to '.*'.
     :param ignore_msgs: If True, ignore packages that end in 'msgs'.
     """
-    rospy.loginfo(f"Getting ROS packages with pattern '{package_pattern}'")
     packages = rospkg.RosPack().list()
     count = len(packages)
 
@@ -638,7 +619,6 @@ def rospkg_info(packages: List[str]) -> dict:
 
     :param packages: A list of ROS package names. Smaller lists are better for performance.
     """
-    rospy.loginfo(f"Getting details for ROS packages: {packages}")
     details = {}
     rospack = rospkg.RosPack()
 
@@ -664,7 +644,6 @@ def rospkg_info(packages: List[str]) -> dict:
 @tool
 def rospkg_roots() -> List[str]:
     """Returns the paths to the ROS package roots."""
-    rospy.loginfo("Getting ROS package roots")
     return rospkg.get_ros_package_path()
 
 
@@ -751,7 +730,6 @@ def roslaunch(package: str, launch_file: str) -> str:
     :param package: The name of the ROS package containing the launch file.
     :param launch_file: The name of the launch file to launch.
     """
-    rospy.loginfo(f"Launching ROS launch file '{launch_file}' in package '{package}'")
     try:
         os.system(f"roslaunch {package} {launch_file}")
         return f"Launched ROS launch file '{launch_file}' in package '{package}'."
@@ -765,7 +743,6 @@ def roslaunch_list(package: str) -> dict:
 
     :param package: The name of the ROS package to list launch files for.
     """
-    rospy.loginfo(f"Getting ROS launch files in package '{package}'")
     try:
         rospack = rospkg.RosPack()
         directory = rospack.get_path(package)
@@ -796,7 +773,6 @@ def rosnode_kill(node: str) -> str:
 
     :param node: The name of the ROS node to kill.
     """
-    rospy.loginfo(f"Killing ROS node '{node}'")
     try:
         os.system(f"rosnode kill {node}")
         return f"Killed ROS node '{node}'."
