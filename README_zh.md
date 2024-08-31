@@ -22,7 +22,7 @@
 ![Version](https://img.shields.io/pypi/v/jpl-rosa)
 ![Downloads](https://img.shields.io/pypi/dw/jpl-rosa)
 
-[中文](README_CN.md) | [English](README.md)
+[English](README.md) | [中文](README_zh.md)
 </div>
 <!-- Header block for project -->
 
