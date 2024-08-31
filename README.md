@@ -21,6 +21,7 @@
 ![Version](https://img.shields.io/pypi/v/jpl-rosa)
 ![Downloads](https://img.shields.io/pypi/dw/jpl-rosa)
 
+[中文](README_CN.md) | [English](README.md)
 </div>
 <!-- Header block for project -->
 
@@ -62,7 +63,7 @@ For detailed information on creating custom agents, adding tools, and customizin
 
 ## TurtleSim Demo 🐢
 
-We have included a demo that uses ROSA to control the TurtleSim robot in simulation. To run the demo, you will need to have Docker installed on your machine. 🐳
+We have included a demo that uses ROSA to control the TurtleSim robot in simulation. To run the demo, you will need to have [Docker](https://www.docker.com/) installed on your machine. 🐳
 
 The following video shows ROSA reasoning about how to draw a 5-point star, then 
 executing the necessary commands to do so.
