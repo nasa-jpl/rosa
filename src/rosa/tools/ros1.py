@@ -51,8 +51,16 @@ def get_entities(
     in_namespace = len(entities)
 
     if pattern:
-        entities = list(filter(lambda x: regex.match(f".*{pattern}", x), entities))
+        entities = list(filter(lambda x: regex.match(f".*{pattern}.*", x), entities))
     match_pattern = len(entities)
+
+    if blacklist:
+        entities = list(
+            filter(
+                lambda x: not any(regex.match(f".*{bl}.*", x) for bl in blacklist),
+                entities,
+            )
+        )
 
     if total == 0:
         entities = [f"There are currently no {type}s available in the system."]
@@ -65,22 +73,11 @@ def get_entities(
             f"There are currently no {type}s available matching the specified pattern."
         ]
 
-    if blacklist:
-        entities = list(
-            filter(
-                lambda x: not any(
-                    regex.match(f".*{pattern}", x) for pattern in blacklist
-                ),
-                entities,
-            )
-        )
-
     return total, in_namespace, match_pattern, sorted(entities)
 
 
 @tool
 def rosgraph_get(
-    namespace: Optional[str] = "/",
     node_pattern: Optional[str] = ".*",
     topic_pattern: Optional[str] = ".*",
     blacklist: List[str] = None,
@@ -89,12 +86,12 @@ def rosgraph_get(
     """
     Get a list of tuples representing nodes and topics in the ROS graph.
 
-    :param namespace: ROS namespace to scope return values by. Namespace must already be resolved.
     :param node_pattern: A regex pattern for the nodes to include in the graph (publishers and subscribers).
     :param topic_pattern: A regex pattern for the topics to include in the graph.
     :param exclude_self_connections: Exclude connections where the publisher and subscriber are the same node.
 
     :note: you should avoid using the topic pattern when searching for nodes, as it may not return any results.
+    :important: you must NOT use this function to get lists of nodes, topics, etc.
 
     Example regex patterns:
     - .*node.* any node containing "node"
@@ -102,9 +99,6 @@ def rosgraph_get(
     - node.* any node that starts with "node"
     - (.*node1.*|.*node2.*|.*node3.*) any node containing either "node1", "node2", or "node3"
     """
-    rospy.loginfo(
-        f"Getting ROS graph with namespace '{namespace}', node_pattern '{node_pattern}', and topic_pattern '{topic_pattern}'"
-    )
     try:
         publishers, subscribers, services = rosgraph.masterapi.Master(
             "/rosout"
@@ -118,8 +112,6 @@ def rosgraph_get(
 
     for pub in publishers:
         for node in pub[1]:
-            if namespace and not node.startswith(namespace):
-                continue
             if pub[0] in topic_pub_map:
                 topic_pub_map[pub[0]].append(node)
             else:
@@ -127,8 +119,6 @@ def rosgraph_get(
 
     for sub in subscribers:
         for node in sub[1]:
-            if namespace and not node.startswith(namespace):
-                continue
             if sub[0] in topic_sub_map:
                 topic_sub_map[sub[0]].append(node)
             else:
@@ -219,15 +209,20 @@ def rostopic_list(
     :param pattern: (optional) A Python regex pattern to filter the list of topics.
     :param namespace: (optional) ROS namespace to scope return values by. Namespace must already be resolved.
     """
-    rospy.loginfo(
-        f"Getting ROS topics with pattern '{pattern}' in namespace '{namespace}'"
-    )
     try:
         total, in_namespace, match_pattern, topics = get_entities(
             "topic", pattern, namespace, blacklist
         )
     except Exception as e:
         return {"error": f"Failed to get ROS topics: {e}"}
+
+    if blacklist:
+        topics = list(
+            filter(
+                lambda x: not any(regex.match(f".*{bl}.*", x) for bl in blacklist),
+                topics,
+            )
+        )
 
     return dict(
         namespace=namespace if namespace else "/",
@@ -250,15 +245,20 @@ def rosnode_list(
     :param pattern: (optional) A Python regex pattern to filter the list of nodes.
     :param namespace: (optional) ROS namespace to scope return values by. Namespace must already be resolved.
     """
-    rospy.loginfo(
-        f"Getting ROS nodes with pattern '{pattern}' in namespace '{namespace}'"
-    )
     try:
         total, in_namespace, match_pattern, nodes = get_entities(
             "node", pattern, namespace, blacklist
         )
     except Exception as e:
         return {"error": f"Failed to get ROS nodes: {e}"}
+
+    if blacklist:
+        nodes = list(
+            filter(
+                lambda x: not any(regex.match(f".*{bl}.*", x) for bl in blacklist),
+                nodes,
+            )
+        )
 
     return dict(
         namespace=namespace if namespace else "/",
@@ -276,7 +276,6 @@ def rostopic_info(topics: List[str]) -> dict:
 
     :param topics: A list of ROS topic names. Smaller lists are better for performance.
     """
-    rospy.loginfo(f"Getting details for ROS topics: {topics}")
     details = {}
 
     for topic in topics:
@@ -334,11 +333,11 @@ def rostopic_echo(
     topic: str,
     count: int,
     return_echoes: bool = False,
-    delay: float = 0.0,
+    delay: float = 1.0,
     timeout: float = 1.0,
 ) -> dict:
     """
-    Opens a new terminal window and echoes the contents of a specific ROS topic.
+    Echoes the contents of a specific ROS topic.
 
     :param topic: The name of the ROS topic to echo.
     :param count: The number of messages to echo. Valid range is 1-100.
@@ -360,7 +359,6 @@ def rostopic_echo(
     for i in range(count):
         try:
             msg = rospy.wait_for_message(topic, msg_class, timeout)
-            print(msg)
 
             if return_echoes:
                 msgs.append(msg)
@@ -369,7 +367,6 @@ def rostopic_echo(
                 time.sleep(delay)
 
         except (rospy.ROSException, rospy.ROSInterruptException) as e:
-            print(f"Failed to get message from topic '{topic}': {e}")
             break
 
     response = dict(topic=topic, requested_count=count, actual_count=len(msgs))
@@ -387,7 +384,6 @@ def rosnode_info(nodes: List[str]) -> dict:
 
     :param nodes: A list of ROS node names. Smaller lists are better for performance.
     """
-    rospy.loginfo(f"Getting details for ROS nodes: {nodes}")
     details = {}
 
     for node in nodes:
@@ -420,9 +416,6 @@ def rosservice_list(
     :param exclude_parameters: (optional) If True, exclude services related to parameters.
     :param exclude_pattern: (optional) A Python regex pattern to exclude services.
     """
-    rospy.loginfo(
-        f"Getting ROS services with node '{node}', namespace '{namespace}', and include_nodes '{include_nodes}'"
-    )
     services = rosservice.get_service_list(node, namespace, include_nodes)
 
     if exclude_logging:
@@ -466,7 +459,6 @@ def rosservice_info(services: List[str]) -> dict:
 
     :param services: A list of ROS service names. Smaller lists are better for performance.
     """
-    rospy.loginfo(f"Getting details for ROS services: {services}")
     details = {}
 
     for service in services:
@@ -478,12 +470,25 @@ def rosservice_info(services: List[str]) -> dict:
 
 
 @tool
+def rosservice_call(service: str, args: List[str]) -> dict:
+    """Calls a specific ROS service with the provided arguments.
+
+    :param service: The name of the ROS service to call.
+    :param args: A list of arguments to pass to the service.
+    """
+    try:
+        response = rosservice.call_service(service, args)
+        return response
+    except Exception as e:
+        return {"error": f"Failed to call service '{service}': {e}"}
+
+
+@tool
 def rosmsg_info(msg_type: List[str]) -> dict:
     """Returns details about a specific ROS message type.
 
     :param msg_type: A list of ROS message types. Smaller lists are better for performance.
     """
-    rospy.loginfo(f"Getting details for ROS messages: {msg_type}")
     details = {}
 
     for msg in msg_type:
@@ -499,12 +504,10 @@ def rossrv_info(srv_type: List[str], raw: bool = False) -> dict:
     :param srv_type: A list of ROS service types. Smaller lists are better for performance.
     :param raw: (optional) if True, include comments and whitespace (default: False)
     """
-    rospy.loginfo(f"Getting details for ROS srv type: {srv_type}")
     details = {}
 
     for srv in srv_type:
         # Get the Python class corresponding to the srv file
-        print(f"Getting details for {srv}")
         srv_path = rosmsg.get_srv_text(srv, raw=raw)
         details[srv] = srv_path
     return details
@@ -516,7 +519,6 @@ def rosparam_list(namespace: str = "/", blacklist: List[str] = None) -> dict:
 
     :param namespace: (optional) ROS namespace to scope return values by.
     """
-    rospy.loginfo(f"Getting ROS parameters in namespace '{namespace}'")
     try:
         params = rosparam.list_params(namespace)
         if blacklist:
@@ -539,7 +541,6 @@ def rosparam_get(params: List[str]) -> dict:
 
     :param params: A list of ROS parameter names. Parameter names must be fully resolved. Do not use wildcards.
     """
-    rospy.loginfo(f"Getting values for ROS parameters: {params}")
     values = {}
     for param in params:
         p = rosparam.get_param(param)
@@ -559,8 +560,6 @@ def rosparam_set(param: str, value: str, is_rosa_param: bool) -> str:
     if is_rosa_param and not param.startswith("/rosa"):
         param = f"/rosa/{param}".replace("//", "/")
 
-    rospy.loginfo(f"Setting ROS parameter '{param}' to '{value}'")
-
     try:
         rosparam.set_param(param, value)
         return f"Set parameter '{param}' to '{value}'."
@@ -579,7 +578,6 @@ def rospkg_list(
     :param package_pattern: A Python regex pattern to filter the list of packages. Defaults to '.*'.
     :param ignore_msgs: If True, ignore packages that end in 'msgs'.
     """
-    rospy.loginfo(f"Getting ROS packages with pattern '{package_pattern}'")
     packages = rospkg.RosPack().list()
     count = len(packages)
 
@@ -621,7 +619,6 @@ def rospkg_info(packages: List[str]) -> dict:
 
     :param packages: A list of ROS package names. Smaller lists are better for performance.
     """
-    rospy.loginfo(f"Getting details for ROS packages: {packages}")
     details = {}
     rospack = rospkg.RosPack()
 
@@ -647,7 +644,6 @@ def rospkg_info(packages: List[str]) -> dict:
 @tool
 def rospkg_roots() -> List[str]:
     """Returns the paths to the ROS package roots."""
-    rospy.loginfo("Getting ROS package roots")
     return rospkg.get_ros_package_path()
 
 
@@ -658,38 +654,127 @@ def roslog_list(min_size: int = 2048, blacklist: Optional[List[str]] = None) -> 
 
     :param min_size: The minimum size of the log file in bytes to include in the list.
     """
-    rospy.loginfo("Getting ROS log files")
-    log_dir = f"{rospkg.get_log_dir()}/"
-    logs = os.listdir(log_dir)
 
-    # Filter out any log files that match any of the blacklist patterns
-    logs = list(
-        filter(
-            lambda x: not any(regex.match(f".*{pattern}", x) for pattern in blacklist),
-            logs,
-        )
+    logs = []
+    log_dirs = get_roslog_directories()
+
+    for _, log_dir in log_dirs.items():
+        if not log_dir:
+            continue
+
+        # Get all .log files in the directory
+        log_files = [
+            os.path.join(log_dir, f)
+            for f in os.listdir(log_dir)
+            if os.path.isfile(os.path.join(log_dir, f)) and f.endswith(".log")
+        ]
+
+        # Filter out blacklisted files
+        if blacklist:
+            log_files = list(
+                filter(
+                    lambda x: not any(
+                        regex.match(f".*{pattern}.*", x) for pattern in blacklist
+                    ),
+                    log_files,
+                )
+            )
+
+        # Filter out files that are too small
+        log_files = list(filter(lambda x: os.path.getsize(x) > min_size, log_files))
+
+        # Get the size of each log file in KB or MB if it's larger than 1 MB
+        log_files = [
+            {
+                f.replace(log_dir, ""): (
+                    f"{round(os.path.getsize(f) / 1024, 2)} KB"
+                    if os.path.getsize(f) < 1024 * 1024
+                    else f"{round(os.path.getsize(f) / (1024 * 1024), 2)} MB"
+                ),
+            }
+            for f in log_files
+        ]
+
+        if len(log_files) > 0:
+            logs.append(
+                {
+                    "directory": log_dir,
+                    "total": len(log_files),
+                    "files": log_files,
+                }
+            )
+
+    return dict(
+        total=len(logs),
+        logs=logs,
     )
 
-    # Get the log file sizes, in bytes
-    log_sizes = {}
-    for log in logs:
-        log_path = os.path.join(log_dir, log)
-        size = os.path.getsize(log_path)
-        if size >= min_size:
-            log_sizes[log] = size
 
-    # Sort the list by size (largest first)
-    log_sizes = dict(sorted(log_sizes.items(), key=lambda item: item[1], reverse=True))
+def get_roslog_directories() -> dict:
+    """Returns any available ROS log directories."""
+    default_directory = rospkg.get_log_dir()
+    latest_directory = os.path.join(default_directory, "latest")
+    from_env = os.getenv("ROS_LOG_DIR")
 
-    return {
-        "log_file_directory": log_dir,
-        "logs_with_size_in_bytes": log_sizes,
-        "notes": "Recommend only displaying the top N log files when you present this list to the user.",
-    }
+    return dict(
+        default=default_directory,
+        latest=latest_directory,
+        from_env=from_env,
+    )
 
 
 @tool
-def roslog_get_log_directory() -> str:
-    """Returns the path to the ROS log directory."""
-    rospy.loginfo("Getting ROS log directory")
-    return f"{rospkg.get_log_dir()}/"
+def roslaunch(package: str, launch_file: str) -> str:
+    """Launches a ROS launch file.
+
+    :param package: The name of the ROS package containing the launch file.
+    :param launch_file: The name of the launch file to launch.
+    """
+    try:
+        os.system(f"roslaunch {package} {launch_file}")
+        return f"Launched ROS launch file '{launch_file}' in package '{package}'."
+    except Exception as e:
+        return f"Failed to launch ROS launch file '{launch_file}' in package '{package}': {e}"
+
+
+@tool
+def roslaunch_list(package: str) -> dict:
+    """Returns a list of available ROS launch files in a package.
+
+    :param package: The name of the ROS package to list launch files for.
+    """
+    try:
+        rospack = rospkg.RosPack()
+        directory = rospack.get_path(package)
+        launch = os.path.join(directory, "launch")
+
+        launch_files = []
+
+        # Get all files in the launch directory
+        if os.path.exists(launch):
+            launch_files = [
+                f for f in os.listdir(launch) if os.path.isfile(os.path.join(launch, f))
+            ]
+
+        return {
+            "package": package,
+            "directory": directory,
+            "total": len(launch_files),
+            "launch_files": launch_files,
+        }
+
+    except Exception as e:
+        return {"error": f"Failed to get ROS launch files in package '{package}': {e}"}
+
+
+@tool
+def rosnode_kill(node: str) -> str:
+    """Kills a specific ROS node.
+
+    :param node: The name of the ROS node to kill.
+    """
+    try:
+        os.system(f"rosnode kill {node}")
+        return f"Killed ROS node '{node}'."
+    except Exception as e:
+        return f"Failed to kill ROS node '{node}': {e}"

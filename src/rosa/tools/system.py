@@ -26,14 +26,13 @@ def set_verbosity(enable_verbose_messages: bool) -> str:
     :arg enable_verbose_messages: A boolean value to enable or disable verbose messages.
     """
     global VERBOSE
-    print(f"Setting verbosity to {enable_verbose_messages}")
     VERBOSE = enable_verbose_messages
     set_verbose(VERBOSE)
     return f"Verbose messages are now {'enabled' if VERBOSE else 'disabled'}."
 
 
 @tool
-def set_debuging(enable_debug_messages: bool) -> str:
+def set_debugging(enable_debug_messages: bool) -> str:
     """Sets the debug mode of the agent to enable or disable debug messages.
     Set this to true to provide debug output for the user. Debug output
     includes information about API calls, tool execution, and other.
@@ -41,7 +40,6 @@ def set_debuging(enable_debug_messages: bool) -> str:
     :arg enable_debug_messages: A boolean value to enable or disable debug messages.
     """
     global DEBUG
-    print(f"Setting debug to {enable_debug_messages}")
     DEBUG = enable_debug_messages
     set_debug(DEBUG)
     return f"Debug messages are now {'enabled' if DEBUG else 'disabled'}."

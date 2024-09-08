@@ -1,4 +1,5 @@
 <launch>
+    <arg name="streaming" default="false" />
     <node name="rosa_turtle_agent"
           pkg="turtle_agent"
           type="turtle_agent.py"
@@ -6,5 +7,6 @@
           respawn_delay="10"
           cwd="node"
           output="screen" >
+        <param name="streaming" value="$(arg streaming)" />
     </node>
 </launch>

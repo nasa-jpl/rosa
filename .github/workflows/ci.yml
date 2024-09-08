@@ -1,0 +1,70 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
+      - dev
+
+jobs:
+  test-noetic:
+    runs-on: ubuntu-latest
+    container:
+      image: osrf/ros:noetic-desktop
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libc6 libc6-dev
+          sudo apt-get install -y python3.9
+          sudo apt-get install -y python3-pip
+          python3.9 -m pip install --user -e .
+        shell: bash
+
+      - name: Run tests
+        run: |
+          . /opt/ros/noetic/setup.bash
+          python3.9 -m unittest discover -s tests --verbose
+        shell: bash
+        env:
+          ROS_VERSION: 1
+
+  test-humble:
+    runs-on: ubuntu-latest
+    container:
+      image: osrf/ros:humble-desktop
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-pip
+          python3.10 -m pip install --user -e .
+        shell: bash
+
+      - name: Run tests
+        run: |
+          . /opt/ros/humble/setup.bash
+          python3.10 -m unittest discover -s tests --verbose
+        shell: bash
+        env:
+          ROS_VERSION: 2
