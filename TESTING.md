@@ -1,99 +1,53 @@
-# ROSA Testing Plan
+# [INSERT PROJECT NAME HERE] Testing
 
 ## Introduction
-This document provides an overview of the testing architecture for the ROSA project. It encompasses continuous testing concepts, including testing across the software development lifecycle and automated test execution.
+This document provides an overview of the testing architecture for [INSERT PROJECT NAME HERE]. It encompasses continuous testing concepts such as testing across the software development lifecycle as well as automated execution of tests through automation. 
 
 ---
 
 ## Testing Categories
 
-The following test categories are included in our testing setup:
+The below list of test categories are included in our testing setup. Further details are provided below.
 
-- [x] **Static Code Analysis:** Checks code for syntax, style, vulnerabilities, and bugs.
-- [x] **Unit Tests:** Tests functions or components to verify that they perform as intended.
-- [x] **Security Tests:** Identifies potential security vulnerabilities.
-- [x] **Build Tests:** Ensures the code builds into binaries or packages successfully.
-- [x] **System Tests:** Validates the complete system's behavior in a production-like environment.
+<!-- ADD / MODIFY BELOW CATEGORIES TO AS NEEDED -->
+- [ ] **Static Code Analysis:** checks code for syntax, style, vulnerabilities, and bugs
+- [ ] **Unit Tests:** tests functions or components to verify that they perform as intended
+- [ ] **Security Tests:** identifies potential security vulnerabilities
+- [ ] **Build Tests:** checks if the code builds into binaries or packages successfully
+- [ ] **Acceptance Tests:** validates against end-user & stakeholder requirements
 
-### Static Code Analysis Tests
-- **Location:** `./static_analysis/`
-- **Purpose:** To ensure code quality by identifying syntax errors, style issues, and potential vulnerabilities.
-- **Running Tests:**
-  - **Manually:**
-    1. Run `flake8 .` in the root directory.
-    2. Review the output for issues.
-    3. Address any flagged problems.
-  - **Automatically:**
-    - **Frequency:** Triggered by code changes or commits.
-    - **Results Location:** `./reports/static_analysis/`
-- **Contributing:**
-  - **Framework Used:** Flake8, Bandit
-  - **Tips:**
-    - Follow PEP8 guidelines.
-    - Address all critical vulnerabilities before committing.
+<!-- CHOOSE MORE FROM THE BELOW LIST OR CREATE YOUR OWN
+- [ ] **Integration Tests**
+- [ ] **System Tests**
+- [ ] **Performance Tests**
+- [ ] **Security Tests**
+- [ ] **Usability Tests**
+- [ ] **Regression Tests**
+- [ ] **Smoke Tests**
+-->
 
-### Unit Tests
-- **Location:** `./tests/unit/`
-- **Purpose:** To validate individual functions or components within ROSA.
-- **Running Tests:**
-  - **Manually:**
-    1. Navigate to the `./tests/unit/` directory.
-    2. Run `python -m unittest discover`.
-    3. Review the test results.
-  - **Automatically:**
-    - **Frequency:** Triggered by pull requests.
-    - **Results Location:** `./reports/unit_tests/`
-- **Contributing:**
-  - **Framework Used:** Unittest
-  - **Tips:**
-    - Test all non-trivial methods and edge cases.
-    - Use mocks for dependencies like ROS environments.
+<!-- REPEAT THIS SECTION AS NEEDED FOR ABOVE CATEGORIES -->
+### [INSERT TESTING CATEGORY HERE] Tests
 
-### Security Tests
-- **Location:** `./tests/security/`
-- **Purpose:** To identify and mitigate security vulnerabilities in the codebase.
-- **Running Tests:**
-  - **Manually:**
-    1. Run security tests using `bandit -r .`.
-    2. Analyze the security report.
-  - **Automatically:**
-    - **Frequency:** Nightly.
-    - **Results Location:** `./reports/security/`
-- **Contributing:**
-  - **Framework Used:** Bandit, OWASP ZAP
-  - **Tips:**
-    - Regularly update the list of known vulnerabilities.
-    - Prioritize fixing high-severity issues.
-
-### Build Tests
-- **Location:** `./tests/build/`
-- **Purpose:** To verify that the project builds successfully into binaries or packages.
-- **Running Tests:**
-  - **Manually:**
-    1. Run the build script `./build.sh`.
-    2. Check the output for any errors.
-  - **Automatically:**
-    - **Frequency:** On every push to the main branch.
-    - **Results Location:** `./reports/build/`
-- **Contributing:**
-  - **Framework Used:** Custom build scripts
-  - **Tips:**
-    - Ensure all dependencies are listed and correct.
-    - Validate the output binaries or packages after each build.
-
-### System Tests
-- **Location:** `./tests/system/`
-- **Purpose:** To validate the entire ROSA system in a production-like environment.
-- **Running Tests:**
-  - **Manually:**
-    1. Deploy ROSA in a test environment.
-    2. Run system test scripts `./system_tests.sh`.
-    3. Review logs and results.
-  - **Automatically:**
-    - **Frequency:** Weekly.
-    - **Results Location:** `./reports/system/`
-- **Contributing:**
-  - **Framework Used:** Unittest, Custom Scripts
-  - **Tips:**
-    - Replicate the production environment as closely as possible.
-    - Test for performance, integration, and security.
+<!-- ADD SUB-BLOCKS AS NEEDED FOR MULTIPLE TEST FILES OR GROUPS WITHIN SAME CATEGORY ABOVE -->
+<!-- #### [INSERT SUB-CATEGORY NAME IF MORE THAN ONE SUB-BLOCK] -->
+- Location: `[INSERT RELATIVE PATH TO SUB-FOLDER / FILE / FILE PATTERN HERE]`
+- Purpose: [INSERT A 1-SENTENCE PURPOSE STATEMENT FOR TEST HERE]
+- Running Tests:
+  - Manually:
+    1. [INSERT STEP 1]
+    2. [INSERT STEP 2]
+    3. [INSERT WHERE TO VIEW RESULTS]
+  - Automatically:
+    - Frequency:
+      - [INSERT TRIGGER OF WHAT KICKS OFF YOUR TESTS, E.G. CODE CHANGES, COMMITS, ETC.]
+      - [INSERT TIMING OF WHEN YOUR TESTS KICK OFF, E.G. NIGHTLY, EVERY WEEK, ETC.]
+    - Results Location: `[INSERT PATH OR LOCATION WHERE RESULTS WILL RESIDE]`
+- Contributing:
+  - Framework Used: [INSERT YOUR TESTING FRAMEWORK OF CHOICE]
+  - Tips:
+    - [INSERT TIPS ON CONTRIBUTING TESTS HERE]
+    <!-- e.g. 
+    - Test every non-trivial function or method in your code
+    - Test conditions including malformed arguments and null conditions
+    > 
