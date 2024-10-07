@@ -35,9 +35,10 @@ from llm import get_llm
 from prompts import get_prompts
 
 
+# Typical method for defining tools in ROSA
 @tool
 def cool_turtle_tool():
-    """A cool turtle tool."""
+    """A cool turtle tool that doesn't really do anything."""
     return "This is a cool turtle tool! It doesn't do anything, but it's cool."
 
 
