@@ -46,8 +46,8 @@ pip3 install jpl-rosa
 from rosa import ROSA
 
 llm = get_your_llm_here()
-rosa = ROSA(ros_version=1, llm=llm)
-rosa.invoke("Show me a list of topics that have publishers but no subscribers")
+agent = ROSA(ros_version=1, llm=llm)
+agent.invoke("Show me a list of topics that have publishers but no subscribers")
 ```
 
 For detailed information on configuring the LLM, please refer to our [Model Configuration Wiki page](https://github.com/nasa-jpl/rosa/wiki/Model-Configuration).
