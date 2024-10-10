@@ -10,6 +10,7 @@
 
 <div align="center">
 
+[![arXiv](https://img.shields.io/badge/arXiv-2410.06472v1-b31b1b.svg)](https://arxiv.org/abs/2410.06472v1)
 ![ROS 1](https://img.shields.io/badge/ROS_1-Noetic-blue)
 ![ROS 2](https://img.shields.io/badge/ROS_2-Humble|Iron|Jazzy-blue)
 ![License](https://img.shields.io/pypi/l/jpl-rosa)
@@ -74,6 +75,7 @@ For detailed instructions on setting up and running the TurtleSim demo, please r
 
 ## 📘 Learn More
 
+- [📕 Read the paper](https://arxiv.org/abs/2410.06472v1)
 - [🗺️ Roadmap](https://github.com/nasa-jpl/rosa/wiki/Feature-Roadmap)
 - [🏷️ Releases](https://github.com/nasa-jpl/rosa/releases)
 - [❓ FAQ](https://github.com/nasa-jpl/rosa/wiki/FAQ)
