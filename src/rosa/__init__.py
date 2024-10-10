@@ -13,6 +13,6 @@
 #  limitations under the License.
 
 from .prompts import RobotSystemPrompts
-from .rosa import ROSA
+from .rosa import ROSA, ChatModel
 
-__all__ = ["ROSA", "RobotSystemPrompts"]
+__all__ = ["ROSA", "RobotSystemPrompts", "ChatModel"]

@@ -29,6 +29,7 @@ DEVELOPMENT=${DEVELOPMENT:-false}
 case "$(uname)" in
     Linux*|Darwin*)
         echo "Enabling X11 forwarding..."
+        export DISPLAY=host.docker.internal:0
         xhost +
         ;;
     MINGW*|CYGWIN*|MSYS*)
