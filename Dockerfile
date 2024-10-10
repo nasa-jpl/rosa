@@ -27,7 +27,7 @@ WORKDIR /app/
 RUN /bin/bash -c 'if [ "$DEVELOPMENT" = "true" ]; then \
     python3.9 -m pip install --user -e .; \
     else \
-    python3.9 -m pip install -U jpl-rosa>=1.0.6; \
+    python3.9 -m pip install -U jpl-rosa>=1.0.7; \
     fi'
 
 CMD ["/bin/bash", "-c", "source /opt/ros/noetic/setup.bash && \

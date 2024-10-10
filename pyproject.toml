@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "jpl-rosa"
-version = "1.0.6"
+version = "1.0.7"
 description = "ROSA: the Robot Operating System Agent"
 readme = "README.md"
 authors = [{ name = "Rob Royce", email = "Rob.Royce@jpl.nasa.gov" }]
