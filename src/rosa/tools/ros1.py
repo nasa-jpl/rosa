@@ -470,12 +470,14 @@ def rosservice_info(services: List[str]) -> dict:
 
 
 @tool
-def rosservice_call(service: str, args: List[str]) -> dict:
+def rosservice_call(service: str, args: Optional[List[any]] = None) -> dict:
     """Calls a specific ROS service with the provided arguments.
 
     :param service: The name of the ROS service to call.
     :param args: A list of arguments to pass to the service.
     """
+    if not args:
+        args = []
     try:
         response = rosservice.call_service(service, args)
         return response
