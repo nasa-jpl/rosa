@@ -470,12 +470,14 @@ def rosservice_info(services: List[str]) -> dict:
 
 
 @tool
-def rosservice_call(service: str, args: List[str]) -> dict:
+def rosservice_call(service: str, args: Optional[List[any]] = None) -> dict:
     """Calls a specific ROS service with the provided arguments.
 
     :param service: The name of the ROS service to call.
     :param args: A list of arguments to pass to the service.
     """
+    if not args:
+        args = []
     try:
         response = rosservice.call_service(service, args)
         return response
@@ -738,43 +740,60 @@ def roslaunch(package: str, launch_file: str) -> str:
 
 
 @tool
-def roslaunch_list(package: str) -> dict:
-    """Returns a list of available ROS launch files in a package.
+def roslaunch_list(packages: List[str]) -> dict:
+    """Returns a list of available ROS launch files in the specified packages.
 
-    :param package: The name of the ROS package to list launch files for.
+    :param packages: A list of ROS package names to list launch files for.
     """
-    try:
-        rospack = rospkg.RosPack()
-        directory = rospack.get_path(package)
-        launch = os.path.join(directory, "launch")
+    results = {}
+    errors = []
 
-        launch_files = []
+    rospack = rospkg.RosPack()
+    for package in packages:
+        try:
+            directory = rospack.get_path(package)
+            launch = os.path.join(directory, "launch")
 
-        # Get all files in the launch directory
-        if os.path.exists(launch):
-            launch_files = [
-                f for f in os.listdir(launch) if os.path.isfile(os.path.join(launch, f))
-            ]
+            launch_files = []
 
+            # Get all files in the launch directory
+            if os.path.exists(launch):
+                launch_files = [
+                    f
+                    for f in os.listdir(launch)
+                    if os.path.isfile(os.path.join(launch, f))
+                ]
+
+            results[package] = {
+                "directory": directory,
+                "total": len(launch_files),
+                "launch_files": launch_files,
+            }
+        except Exception as e:
+            errors.append(
+                f"Failed to get ROS launch files for package '{package}': {e}"
+            )
+
+    if not results:
         return {
-            "package": package,
-            "directory": directory,
-            "total": len(launch_files),
-            "launch_files": launch_files,
+            "error": "Failed to get ROS launch files for all specified packages.",
+            "details": errors,
         }
 
-    except Exception as e:
-        return {"error": f"Failed to get ROS launch files in package '{package}': {e}"}
+    return {"results": results, "errors": errors}
 
 
 @tool
-def rosnode_kill(node: str) -> str:
+def rosnode_kill(node_names: List[str]) -> dict:
     """Kills a specific ROS node.
 
-    :param node: The name of the ROS node to kill.
+    :param node_names: A list of node names to kill.
     """
+    if not node_names or len(node_names) == 0:
+        return {"error": "Please provide the name(s) of the ROS node to kill."}
+
     try:
-        os.system(f"rosnode kill {node}")
-        return f"Killed ROS node '{node}'."
+        successes, failures = rosnode.kill_nodes(node_names)
+        return dict(successesfully_killed=successes, failed_to_kill=failures)
     except Exception as e:
-        return f"Failed to kill ROS node '{node}': {e}"
+        return {"error": f"Failed to kill ROS node(s): {e}"}

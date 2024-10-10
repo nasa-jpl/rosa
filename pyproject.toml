@@ -25,18 +25,18 @@ requires-python = ">=3.9, <4"
 dependencies = [
     "PyYAML==6.0.1",
     "python-dotenv>=1.0.1",
-    "langchain==0.2.14",
-    "langchain-community==0.2.12",
-    "langchain-core==0.2.34",
-    "langchain-openai==0.1.22",
-    "langchain-ollama",
+    "langchain==0.3.2",
+    "langchain-community==0.3.1",
+    "langchain-core==0.3.9",
+    "langchain-openai==0.2.2",
+    "langchain-ollama==0.2.0",
     "pydantic",
     "pyinputplus",
     "azure-identity",
     "cffi",
     "rich",
     "pillow>=10.4.0",
-    "numpy>=1.21.2",
+    "numpy>=1.26.4",
 ]
 
 [project.urls]

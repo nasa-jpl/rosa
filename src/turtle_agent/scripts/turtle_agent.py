@@ -21,8 +21,9 @@ import dotenv
 import pyinputplus as pyip
 import rospy
 from langchain.agents import tool, Tool
-from rich.console import Group  # Add this import
+# from langchain_ollama import ChatOllama
 from rich.console import Console
+from rich.console import Group
 from rich.live import Live
 from rich.markdown import Markdown
 from rich.panel import Panel
@@ -35,9 +36,10 @@ from llm import get_llm
 from prompts import get_prompts
 
 
+# Typical method for defining tools in ROSA
 @tool
 def cool_turtle_tool():
-    """A cool turtle tool."""
+    """A cool turtle tool that doesn't really do anything."""
     return "This is a cool turtle tool! It doesn't do anything, but it's cool."
 
 
@@ -47,6 +49,14 @@ class TurtleAgent(ROSA):
         self.__blacklist = ["master", "docker"]
         self.__prompts = get_prompts()
         self.__llm = get_llm(streaming=streaming)
+
+        # self.__llm = ChatOllama(
+        #     base_url="host.docker.internal:11434",
+        #     model="llama3.1",
+        #     temperature=0,
+        #     num_ctx=8192,
+        # )
+
         self.__streaming = streaming
 
         # Another method for adding tools

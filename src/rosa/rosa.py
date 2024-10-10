@@ -23,10 +23,13 @@ from langchain.prompts import MessagesPlaceholder
 from langchain_community.callbacks import get_openai_callback
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_ollama import ChatOllama
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
 
 from .prompts import RobotSystemPrompts, system_prompts
 from .tools import ROSATools
+
+ChatModel = Union[ChatOpenAI, AzureChatOpenAI, ChatOllama]
 
 
 class ROSA:
@@ -35,7 +38,7 @@ class ROSA:
 
     Args:
         ros_version (Literal[1, 2]): The version of ROS that the agent will interact with.
-        llm (Union[AzureChatOpenAI, ChatOpenAI]): The language model to use for generating responses.
+        llm (Union[AzureChatOpenAI, ChatOpenAI, ChatOllama]): The language model to use for generating responses.
         tools (Optional[list]): A list of additional LangChain tool functions to use with the agent.
         tool_packages (Optional[list]): A list of Python packages containing LangChain tool functions to use.
         prompts (Optional[RobotSystemPrompts]): Custom prompts to use with the agent.
@@ -63,7 +66,7 @@ class ROSA:
     def __init__(
         self,
         ros_version: Literal[1, 2],
-        llm: Union[AzureChatOpenAI, ChatOpenAI],
+        llm: ChatModel,
         tools: Optional[list] = None,
         tool_packages: Optional[list] = None,
         prompts: Optional[RobotSystemPrompts] = None,
