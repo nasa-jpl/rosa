@@ -28,7 +28,11 @@
 > [!IMPORTANT]
 > 📚 **New to ROSA?** Check out our [Wiki](https://github.com/nasa-jpl/rosa/wiki) for documentation, guides and FAQs!
 
+
 ROSA is your AI-powered assistant for ROS1 and ROS2 systems. Built on the [Langchain](https://python.langchain.com/v0.2/docs/introduction/) framework, ROSA helps you interact with robots using natural language, making robotics development more accessible and efficient.
+
+#### ROSA Demo: NeBula-Spot in JPL's Mars Yard (click for YouTube)
+[![ROSA Demo: NeBula-Spot in JPL's Mars Yard](https://img.youtube.com/vi/mZTrSg7tEsA/0.jpg)](https://www.youtube.com/watch?v=mZTrSg7tEsA)
 
 ## 🚀 Quick Start
 
