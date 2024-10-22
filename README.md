@@ -32,7 +32,8 @@
 ROSA is your AI-powered assistant for ROS1 and ROS2 systems. Built on the [Langchain](https://python.langchain.com/v0.2/docs/introduction/) framework, ROSA helps you interact with robots using natural language, making robotics development more accessible and efficient.
 
 #### ROSA Demo: NeBula-Spot in JPL's Mars Yard (click for YouTube)
-[![ROSA Demo: NeBula-Spot in JPL's Mars Yard](https://img.youtube.com/vi/mZTrSg7tEsA/0.jpg)](https://www.youtube.com/watch?v=mZTrSg7tEsA)
+[![Spot YouTube Thumbnail](https://github.com/user-attachments/assets/19a99b5c-6103-4be4-8875-1810cf4558c5)](https://www.youtube.com/watch?v=mZTrSg7tEsA)
+
 
 ## 🚀 Quick Start
 
@@ -76,6 +77,14 @@ https://github.com/user-attachments/assets/77b97014-6d2e-4123-8d0b-ea0916d93a4e
 
 For detailed instructions on setting up and running the TurtleSim demo, please refer to our [TurtleSim Demo Guide](https://github.com/nasa-jpl/rosa/wiki/Guide:-TurtleSim-Demo) in the Wiki.
 
+
+## IsaacSim Extension (Coming Soon!)
+
+ROSA will soon be coming to Nvidia IsaacSim! While you can already use ROSA with robots running in IsaacSim (using the ROS/ROS2 bridge), we are adding direct integration
+in the form of an IsaacSim extension. This will allow you to not only control your robots in IsaacSim, but control IsaacSim itself. Check out the video below to learn mroe.
+
+#### ROSA Demo: Nvidia IsaacSim Extension (click for YouTube)
+[![Carter YouTube Thumbnail Play](https://github.com/user-attachments/assets/a6948d5e-2726-4dd8-8dee-19dfb5188f1d)](https://www.youtube.com/watch?v=mm5525G_EfQ)
 
 ## 📘 Learn More
 
