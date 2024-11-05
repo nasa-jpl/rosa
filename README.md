@@ -1,8 +1,9 @@
 <!-- Header block for project --> <hr>
 <div align="center">
+<!--   <img width="292" alt="ROSA_logo_dark_bg@2x" src="https://github.com/user-attachments/assets/7b4a8e64-9a08-4180-806a-5076d3672c05"> -->
+<!--   <img width="213" alt="ROSA_sticker_color@2x" src="https://github.com/user-attachments/assets/5fa3a03e-5ef8-4942-84ac-95acf2f1777d"> -->
+  <img width="292" alt="ROSA_logo_light_bg@2x" src="https://github.com/user-attachments/assets/80c1d2d9-6f2f-4c32-add4-e110a15d155d">
 
-  [//]: # "  [INSERT YOUR LOGO IMAGE HERE (IF APPLICABLE)]"
-  <h1 align="center">ROSA - The ROS Agent 🤖</h1>
 </div>
 <pre align="center">
   The ROS Agent (ROSA) is designed to interact with ROS-based<br>robotics systems using natural language queries. 🗣️🤖
