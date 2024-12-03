@@ -54,13 +54,33 @@ pip3 install jpl-rosa
 
 The following sections describe specific instructions for specific Mac hardware and operating system.
 
-#### Sonoma 14.6.1, M2 Max (Anaconda)
+#### Sonoma 14.6.1, M2 Max (Anaconda Python)
 
 * Create a conda environment for python 3.9 and activate it
 * Install jpl-rosa python package:
 ```bash
-python -m pip install jpl-rosa```
-* next
+python -m pip install jpl-rosa
+```
+* Install MacOS homebrew if not already installed (https://brew.sh/)
+* Update your brew packages:
+```bash
+brew update
+```
+* Install Xquartz (for X11 graphical render support)
+```bash
+brew install --cask xquartz
+```
+* Launch XQuarts:
+```bash
+ open -a XQuartz
+```
+* You should see QXuartz in the top menu bar, choose settings, and check box options in the X11 Preferences Security tab.
+* Reboot your machine
+
+
+
+
+* Clone this repository and cd into its top-level directory
 
 ### Usage Examples
 
