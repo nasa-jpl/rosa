@@ -72,15 +72,27 @@ brew install --cask xquartz
 ```
 * Launch XQuarts:
 ```bash
- open -a XQuartz
+open -a XQuartz
 ```
 * You should see QXuartz in the top menu bar, choose settings, and make sure both options are checked in the X11 Preferences Security tab.
 * Reboot your machine
-
-
-
-
+* Allow X11 connections from anywhere:
+```bash
+xhost +
+```
 * Clone this repository and cd into its top-level directory
+* Edit the ".env" file with at least your OPENAI_API_KEY
+* Edit the "demo.sh" script and change the line "export DISPLAY=host.docker.internal:0" to "export=[IP_ADDRESS]:0" where IP_ADDRESS is your machine's IP address on the local internet.
+* Edit the file "src/turtle_agent/scripts/llm.py" with these changes:
+  * Add the following import statement at the top:  "from langchain_openai import ChatOpenAI"
+  * Create an instance of ChatOpenAI() and make sure its return at the top of the function "def get_llm()"
+* Launch the demo.sh script and wait several seconds for the Turtle_Sim window to appear
+* When the docker container appears, start the simulation:
+```bash
+root@docker-desktop:/app# start streaming:=True
+```
+* Wait a few seconds and the simulation interactive console will appear and you can type 'help' or 'examples' to get more information
+
 
 ### Usage Examples
 
