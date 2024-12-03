@@ -50,6 +50,18 @@ ROSA is your AI-powered assistant for ROS1 and ROS2 systems. Built on the [Langc
 pip3 install jpl-rosa
 ```
 
+#### MacOS 
+
+The following sections describe specific instructions for specific Mac hardware and operating system.
+
+#### Sonoma 14.6.1, M2 Max (Anaconda)
+
+* Create a conda environment for python 3.9 and activate it
+* Install jpl-rosa python package:
+```bash
+python -m pip install jpl-rosa```
+* next
+
 ### Usage Examples
 
 ```python
