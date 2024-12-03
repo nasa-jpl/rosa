@@ -74,7 +74,7 @@ brew install --cask xquartz
 ```bash
  open -a XQuartz
 ```
-* You should see QXuartz in the top menu bar, choose settings, and check box options in the X11 Preferences Security tab.
+* You should see QXuartz in the top menu bar, choose settings, and make sure both options are checked in the X11 Preferences Security tab.
 * Reboot your machine
 
 
