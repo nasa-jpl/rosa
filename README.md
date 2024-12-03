@@ -91,8 +91,12 @@ xhost +
 ```bash
 root@docker-desktop:/app# start streaming:=True
 ```
-* Wait a few seconds and the simulation interactive console will appear and you can type 'help' or 'examples' to get more information
-
+* Wait a few seconds and the simulation interactive console will appear and you can then type 'help' or 'examples' to get more information about commands you can run.
+* The following commands worked for me:
+```
+> create a new turtle named 'george' at [3,3]
+> move forward
+```
 
 ### Usage Examples
 
