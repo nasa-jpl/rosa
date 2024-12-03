@@ -56,6 +56,8 @@ The following sections describe specific instructions for specific Mac hardware 
 
 #### Sonoma 14.6.1, M2 Max (Anaconda Python)
 
+The following instructions are based off a few things found on the internet, included [this helpful gist.](https://gist.github.com/sorny/969fe55d85c9b0035b0109a31cbcb088)
+
 * Create a conda environment for python 3.9 and activate it
 * Install jpl-rosa python package:
 ```bash
