@@ -50,6 +50,56 @@ ROSA is your AI-powered assistant for ROS1 and ROS2 systems. Built on the [Langc
 pip3 install jpl-rosa
 ```
 
+#### MacOS 
+
+The following sections describe specific instructions for specific Mac hardware and operating system.
+
+#### Sonoma 14.6.1, M2 Max (Anaconda Python)
+
+The following instructions are based off a few things found on the internet, included [this helpful gist.](https://gist.github.com/sorny/969fe55d85c9b0035b0109a31cbcb088)
+
+* Create a conda environment for python 3.9 and activate it
+* Install jpl-rosa python package:
+```bash
+python -m pip install jpl-rosa
+```
+* Install MacOS homebrew if not already installed (https://brew.sh/)
+* Update your brew packages:
+```bash
+brew update
+```
+* Install Xquartz (for X11 graphical render support)
+```bash
+brew install --cask xquartz
+```
+* Launch XQuarts:
+```bash
+open -a XQuartz
+```
+* You should see QXuartz in the top menu bar, choose settings, and make sure both options are checked in the X11 Preferences Security tab.
+* Reboot your machine
+* Allow X11 connections from anywhere:
+```bash
+xhost +
+```
+* Clone this repository and cd into its top-level directory
+* Edit the ".env" file with at least your OPENAI_API_KEY
+* Edit the "demo.sh" script and change the line "export DISPLAY=host.docker.internal:0" to "export=[IP_ADDRESS]:0" where IP_ADDRESS is your machine's IP address on the local internet.
+* Edit the file "src/turtle_agent/scripts/llm.py" with these changes:
+  * Add the following import statement at the top:  "from langchain_openai import ChatOpenAI"
+  * Create an instance of ChatOpenAI() and make sure its return at the top of the function "def get_llm()"
+* Launch the demo.sh script and wait several seconds for the Turtle_Sim window to appear
+* When the docker container appears, start the simulation:
+```bash
+root@docker-desktop:/app# start streaming:=True
+```
+* Wait a few seconds and the simulation interactive console will appear and you can then type 'help' or 'examples' to get more information about commands you can run.
+* The following commands worked for me:
+```
+> create a new turtle named 'george' at [3,3]
+> move forward
+```
+
 ### Usage Examples
 
 ```python
