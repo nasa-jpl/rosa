@@ -1,5 +1,5 @@
-#!/usr/bin/env bash
-# Copyright (c) 2024. Jet Propulsion Laboratory. All rights reserved.
+
+Copyright (c) 2024. Jet Propulsion Laboratory. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ fi
 HEADLESS=${HEADLESS:-false}
 DEVELOPMENT=${DEVELOPMENT:-false}
 
-# Enable X11 forwarding based on OS
+ Enable X11 forwarding based on OS
 case "$(uname)" in
     Linux*|Darwin*)
         echo "Enabling X11 forwarding..."
