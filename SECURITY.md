@@ -1,5 +1,38 @@
-# Security Policy
 
-git clone https://github.com/nasa-jpl/rosa.git
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+mgit clone https://github.com/nasa-jpl/rosa.git
 cd rosa
 pip install --user -e .
