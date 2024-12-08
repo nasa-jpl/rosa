@@ -3,7 +3,7 @@ name: Publish jpl-rosa to PyPI
 on:
   release:
     types: [created]
-
+init.py
 jobs:
   publish:
     runs-on: ubuntu-latest
