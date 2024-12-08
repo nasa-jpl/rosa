@@ -25,7 +25,7 @@ fi
 HEADLESS=${HEADLESS:-false}
 DEVELOPMENT=${DEVELOPMENT:-false}
 
-# Enable X11 forwarding based on OS
+ Enable X11 forwarding based on OS
 case "$(uname)" in
     Linux*|Darwin*)
         echo "Enabling X11 forwarding..."
