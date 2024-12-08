@@ -11,15 +11,15 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+^
 from distutils.core import setup
 from setuptools import find_packages
 import pathlib
-
+^
 here = pathlib.Path(__file__).parent.resolve()
 long_description = (here / "README.md").read_text(encoding="utf-8")
 rosa_packages = find_packages(where="src")
-
+^
 setup(
     name="jpl-rosa",
     version="1.0.0",
@@ -65,3 +65,4 @@ setup(
         "Source": "https://github.com/nasa-jpl/rosa",
     },
 )
+^
