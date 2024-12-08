@@ -5,7 +5,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV HEADLESS=false
 ARG DEVELOPMENT=false
 
-# Install linux packages
+ Install linux packages
 RUN apt-get update && apt-get install -y \
     ros-$(rosversion -d)-turtlesim \
     locales \
