@@ -100,6 +100,50 @@ root@docker-desktop:/app# start streaming:=True
 > move forward
 ```
 
+
+#### Windows (WSL2)
+The following sections describe instructions for a Windows 10 machine using WSL2 Ubuntu 22.04 and VSCode.
+
+* Follow [this guide](https://learn.microsoft.com/en-us/windows/wsl/install) to install WSL2 Ubuntu on your machine
+* Install [Chocolatey](https://chocolatey.org/install) package manager
+* Install [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+
+* Install jpl-rosa python package:
+```bash
+pip3 install jpl-rosa
+```
+* Install VcXsrv via Chocolatey (for X11 graphical render support)
+```powershell
+choco install vcxsrv
+```
+* When finished installing, launch VcXsrv (XLaunch)
+  * Uncheck "Native opengl" and check "Disable access control"
+* Launch Docker Desktop
+* Clone this repository and cd into its top-level directory
+* Configure VSCode to handle Linux line endings 
+  * at the bottom bar, change the end of line sequence is LF for this directory
+  * in settings, change "Files: Eol" to use "\n" line endings
+* Make sure [Git is configured](https://docs.github.com/en/get-started/getting-started-with-git/configuring-git-to-handle-line-endings?platform=linux) handle Linux line endings
+```bash
+git config --global core.autocrlf input
+git rm -rf --cached .
+git reset --hard HEAD
+```
+* Edit the ".env" file with at least your OPENAI_API_KEY
+* Edit the file "src/turtle_agent/scripts/llm.py" with these changes:
+  * Add the following import statement at the top:  "from langchain_openai import ChatOpenAI"
+  * Create an instance of ChatOpenAI() and make sure its return at the top of the function "def get_llm()"
+* Launch the demo.sh script in WSL and wait several seconds for the Turtle_Sim window to appear
+```bash
+./demo.sh
+```
+* When the docker container appears, start the simulation:
+```bash
+root@docker-desktop:/app# start streaming:=True
+```
+* Wait a few seconds and the simulation interactive console will appear and you can then type 'help' or 'examples' to get more information about commands you can run.
+
+
 ### Usage Examples
 
 ```python
