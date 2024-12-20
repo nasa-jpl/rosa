@@ -47,12 +47,6 @@ case "$(uname)" in
         ;;
 esac
 
-# Check if X11 forwarding is working
-if ! xset q &>/dev/null; then
-    echo "Error: X11 forwarding is not working. Please check your X11 server and try again."
-    exit 1
-fi
-
 # Build and run the Docker container
 CONTAINER_NAME="rosa-turtlesim-demo"
 echo "Building the $CONTAINER_NAME Docker image..."
