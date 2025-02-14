@@ -14,7 +14,7 @@
 <br>
 <div align="center">
 
-[![arXiv](https://img.shields.io/badge/arXiv-2410.06472v1-b31b1b.svg)](https://arxiv.org/abs/2410.06472v1)
+[![arXiv](https://img.shields.io/badge/arXiv-2410.06472-b31b1b.svg)](https://arxiv.org/abs/2410.06472)
 ![ROS 1](https://img.shields.io/badge/ROS_1-Noetic-blue)
 ![ROS 2](https://img.shields.io/badge/ROS_2-Humble|Iron|Jazzy-blue)
 ![License](https://img.shields.io/pypi/l/jpl-rosa)
@@ -92,7 +92,7 @@ in the form of an IsaacSim extension. This will allow you not only to control yo
 
 ## 📘 Learn More
 
-- [📕 Read the paper](https://arxiv.org/abs/2410.06472v1)
+- [📕 Read the paper](https://arxiv.org/abs/2410.06472)
 - [🗺️ Roadmap](https://github.com/nasa-jpl/rosa/wiki/Feature-Roadmap)
 - [🏷️ Releases](https://github.com/nasa-jpl/rosa/releases)
 - [❓ FAQ](https://github.com/nasa-jpl/rosa/wiki/FAQ)
