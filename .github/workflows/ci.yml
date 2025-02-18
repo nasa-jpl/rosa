@@ -12,7 +12,7 @@ on:
 
 jobs:
   test-noetic:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     container:
       image: osrf/ros:noetic-desktop
     steps:
