@@ -25,6 +25,8 @@ fi
 HEADLESS=${HEADLESS:-false}
 DEVELOPMENT=${DEVELOPMENT:-false}
 
+export DOCKER_BUILDKIT=1
+
 # Enable X11 forwarding based on OS
 case "$(uname)" in
     Linux*|Darwin*)
@@ -33,7 +35,7 @@ case "$(uname)" in
         if grep -q "WSL" /proc/version; then
             export DISPLAY=:0
         else
-            export DISPLAY=host.docker.internal:0
+            export DISPLAY=:1
         fi
         xhost +
         ;;
@@ -56,7 +58,7 @@ fi
 # Build and run the Docker container
 CONTAINER_NAME="rosa-turtlesim-demo"
 echo "Building the $CONTAINER_NAME Docker image..."
-docker build --build-arg DEVELOPMENT=$DEVELOPMENT -t $CONTAINER_NAME -f Dockerfile . || { echo "Error: Docker build failed"; exit 1; }
+docker build --build-arg BUILDKIT_INLINE_CACHE=1 --build-arg DEVELOPMENT=$DEVELOPMENT -t $CONTAINER_NAME -f Dockerfile . || { echo "Error: Docker build failed"; exit 1; }
 
 echo "Running the Docker container..."
 docker run -it --rm --name $CONTAINER_NAME \
