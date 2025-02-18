@@ -56,8 +56,12 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y python3-pip
+          DEBIAN_FRONTEND=noninteractive sudo apt-get update
+          DEBIAN_FRONTEND=noninteractive sudo apt-get install -y python3.10 python3-pip
+        shell: bash
+
+      - name: Install Package
+        run: |
           python3.10 -m pip install --user -e .
         shell: bash
 
