@@ -12,7 +12,7 @@ on:
 
 jobs:
   test-noetic:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     container:
       image: osrf/ros:noetic-desktop
     steps:
@@ -42,7 +42,7 @@ jobs:
           ROS_VERSION: 1
 
   test-humble:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     container:
       image: osrf/ros:humble-desktop
     steps:
