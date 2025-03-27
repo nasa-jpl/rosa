@@ -25,28 +25,11 @@ RUN rosdep update && \
 COPY . /app/
 WORKDIR /app/
 
-# Modify the RUN command to use ARG
 RUN /bin/bash -c 'if [ "$DEVELOPMENT" = "true" ]; then \
     python3.9 -m pip install --user -e .; \
     else \
     python3.9 -m pip install -U jpl-rosa>=1.0.7; \
     fi'
 
-CMD ["/bin/bash", "-c", "source /opt/ros/noetic/setup.bash && \
-    roscore > /dev/null 2>&1 & \
-    sleep 5 && \
-    if [ \"$HEADLESS\" = \"false\" ]; then \
-    rosrun turtlesim turtlesim_node & \
-    else \
-    xvfb-run -a -s \"-screen 0 1920x1080x24\" rosrun turtlesim turtlesim_node & \
-    fi && \
-    sleep 5 && \
-    if [ \"$WEB_GUI\" = \"true\" ]; then \
-    echo \"Starting web GUI on port 5000...\" && \
-    echo \"Access the web interface at: http://localhost:5000\" && \
-    catkin build && source devel/setup.bash && roslaunch turtle_agent web_gui.launch & \
-    else \
-    echo \"Run \\`start\\` to build and launch the ROSA-TurtleSim demo.\" && \
-    echo \"Run \\`web_gui\\` to launch the web interface.\" \
-    fi && \
-    /bin/bash"]
+# Use the startup script
+CMD ["/app/start.sh"]
