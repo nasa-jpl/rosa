@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ROSA TurtleSim Web Interface</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #3772FF;
+        }
+        .chat-container {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            height: 400px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .user-message {
+            background-color: #E6F2FF;
+            text-align: right;
+            margin-left: 20%;
+        }
+        .bot-message {
+            background-color: #F0F0F0;
+            margin-right: 20%;
+        }
+        .input-container {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        #user-input {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-right: 10px;
+        }
+        button {
+            background-color: #3772FF;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #2a5cd6;
+        }
+        .examples-container {
+            margin-top: 20px;
+        }
+        .example {
+            display: inline-block;
+            margin: 5px;
+            padding: 8px 12px;
+            background-color: #f0f0f0;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+        .example:hover {
+            background-color: #e0e0e0;
+        }
+        .loading {
+            text-align: center;
+            margin: 20px;
+            display: none;
+        }
+        .markdown ul, .markdown ol {
+            padding-left: 20px;
+        }
+        .markdown code {
+            background-color: #f0f0f0;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        .markdown pre {
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🐢 ROSA TurtleSim Web Interface 🤖</h1>
+        <p>Ask questions or give commands to control the TurtleSim</p>
+    </header>
+
+    <div class="chat-container" id="chat-container"></div>
+
+    <div class="input-container">
+        <input type="text" id="user-input" placeholder="Ask something about turtlesim..." autofocus>
+        <button id="send-button">Send</button>
+        <button id="clear-button">Clear Chat</button>
+    </div>
+
+    <div class="loading" id="loading">
+        <p>Thinking... 🤔</p>
+    </div>
+
+    <div class="examples-container">
+        <h3>Example Queries:</h3>
+        <div id="examples">
+            {% for example in examples %}
+            <div class="example">{{ example }}</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script>
+        // DOM elements
+        const chatContainer = document.getElementById('chat-container');
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+        const clearButton = document.getElementById('clear-button');
+        const loadingIndicator = document.getElementById('loading');
+        const exampleQueries = document.querySelectorAll('.example');
+
+        // Add a user message to the chat
+        function addUserMessage(message) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message', 'user-message');
+            messageElement.textContent = message;
+            chatContainer.appendChild(messageElement);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // Add a bot message to the chat
+        function addBotMessage(message) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message', 'bot-message', 'markdown');
+            messageElement.textContent = message;
+            chatContainer.appendChild(messageElement);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // Send a message to the server
+        async function sendMessage(message) {
+            if (!message.trim()) return;
+
+            addUserMessage(message);
+            userInput.value = '';
+            loadingIndicator.style.display = 'block';
+
+            try {
+                const response = await fetch('/query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ query: message })
+                });
+
+                loadingIndicator.style.display = 'none';
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    addBotMessage(data.response);
+                } else {
+                    const errorData = await response.json();
+                    addBotMessage(`Error: ${errorData.error || 'Something went wrong'}`);
+                }
+            } catch (error) {
+                loadingIndicator.style.display = 'none';
+                addBotMessage(`Error: ${error.message}`);
+            }
+        }
+
+        // Clear chat history
+        async function clearChat() {
+            try {
+                await fetch('/clear', { method: 'POST' });
+                chatContainer.innerHTML = '';
+                addBotMessage("Hi! I'm the ROSA-TurtleSim agent 🐢🤖. How can I help you today?");
+            } catch (error) {
+                console.error('Error clearing chat:', error);
+            }
+        }
+
+        // Event listeners
+        sendButton.addEventListener('click', () => {
+            sendMessage(userInput.value);
+        });
+
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage(userInput.value);
+            }
+        });
+
+        clearButton.addEventListener('click', clearChat);
+
+        // Handle example queries
+        exampleQueries.forEach(example => {
+            example.addEventListener('click', () => {
+                userInput.value = example.textContent;
+                sendMessage(example.textContent);
+            });
+        });
+
+        // Initial greeting
+        window.addEventListener('load', () => {
+            addBotMessage("Hi! I'm the ROSA-TurtleSim agent 🐢🤖. How can I help you today?");
+        });
+    </script>
+</body>
+</html> 

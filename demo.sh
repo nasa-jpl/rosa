@@ -24,6 +24,7 @@ fi
 # Set default headless mode
 HEADLESS=${HEADLESS:-false}
 DEVELOPMENT=${DEVELOPMENT:-false}
+WEB_GUI=${WEB_GUI:-false}
 
 # Enable X11 forwarding based on OS
 case "$(uname)" in
@@ -68,6 +69,8 @@ docker run -it --rm --name $CONTAINER_NAME \
     -e DISPLAY=$DISPLAY \
     -e HEADLESS=$HEADLESS \
     -e DEVELOPMENT=$DEVELOPMENT \
+    -e WEB_GUI=$WEB_GUI \
+    -p 5000:5000 \
     -v /tmp/.X11-unix:/tmp/.X11-unix \
     -v "$PWD/src":/app/src \
     -v "$PWD/tests":/app/tests \

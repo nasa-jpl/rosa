@@ -1,0 +1,10 @@
+<launch>
+    <node name="rosa_turtle_web_gui"
+          pkg="turtle_agent"
+          type="web_gui.py"
+          respawn="false"
+          respawn_delay="10"
+          cwd="node"
+          output="screen" >
+    </node>
+</launch> 
