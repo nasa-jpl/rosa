@@ -21,6 +21,17 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
+# Function to check if container exists and remove it
+remove_existing_container() {
+    local container_id=$(docker ps -a -q -f name=$CONTAINER_NAME)
+    if [ ! -z "$container_id" ]; then
+        echo "Container $CONTAINER_NAME already exists. Removing it..."
+        docker stop $container_id > /dev/null 2>&1
+        docker rm $container_id > /dev/null 2>&1
+        echo "Container removed."
+    fi
+}
+
 # Set default headless mode
 HEADLESS=${HEADLESS:-false}
 DEVELOPMENT=${DEVELOPMENT:-false}
@@ -63,6 +74,9 @@ fi
 CONTAINER_NAME="rosa-turtlesim-demo"
 echo "Building the $CONTAINER_NAME Docker image..."
 docker build --build-arg DEVELOPMENT=$DEVELOPMENT -t $CONTAINER_NAME -f Dockerfile . || { echo "Error: Docker build failed"; exit 1; }
+
+# Remove existing container if it exists
+remove_existing_container
 
 echo "Running the Docker container..."
 docker run -it --rm --name $CONTAINER_NAME \
