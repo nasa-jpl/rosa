@@ -31,9 +31,9 @@ COPY . /app/
 WORKDIR /app/
 
 RUN /bin/bash -c 'if [ "$DEVELOPMENT" = "true" ]; then \
-    python3.9 -m pip install --user -e .; \
+    python3.9 -m pip install --user --ignore-installed PyYAML -e .; \
     else \
-    python3.9 -m pip install -U jpl-rosa>=1.0.7; \
+    python3.9 -m pip install --ignore-installed PyYAML -U jpl-rosa>=1.0.7; \
     fi'
 
 # Use the startup script
