@@ -1,0 +1,196 @@
+=======================================
+ ROSA TURTLESIM AGENT - DETAILED SETUP
+=======================================
+
+This document provides comprehensive instructions for setting up and running the ROSA TurtleSim Agent
+with either the web interface or terminal interface.
+
+TABLE OF CONTENTS
+----------------
+1. Prerequisites
+2. Getting Started
+3. Running the Web GUI
+4. Running the Terminal Interface
+5. Commands and Examples
+6. Customization
+7. Troubleshooting
+
+---------------
+1. PREREQUISITES
+---------------
+
+To run this application, you'll need:
+
+- Docker (version 20.10.0 or later)
+  Installation: https://docs.docker.com/get-docker/
+
+- X11 server
+  - Linux: Typically pre-installed
+  - macOS: Install XQuartz (https://www.xquartz.org/)
+  - Windows: Install VcXsrv (https://sourceforge.net/projects/vcxsrv/)
+
+- Web browser (for web GUI mode)
+  Any modern browser (Chrome, Firefox, Safari, Edge)
+
+- Git
+  Installation: https://git-scm.com/book/en/v2/Getting-Started-Installing-Git
+
+- OpenAI API key
+  Get one at: https://platform.openai.com/api-keys
+
+- Internet connection (for API calls to OpenAI)
+
+-----------------
+2. GETTING STARTED
+-----------------
+
+1. Clone the repository:
+   ```
+   git clone https://github.com/For-low/rosa.git
+   cd rosa
+   ```
+
+2. Configure OpenAI API key:
+   Create a file named `.env` in the root directory with:
+   ```
+   OPENAI_API_KEY=your_api_key_here
+   ```
+
+3. Set execute permissions for scripts:
+   ```
+   chmod +x demo.sh
+   chmod +x start.sh
+   ```
+
+--------------------
+3. RUNNING THE WEB GUI
+--------------------
+
+The web GUI provides a user-friendly interface for interacting with the ROSA TurtleSim agent.
+
+1. First, stop any existing containers:
+   ```
+   docker stop rosa-turtlesim-demo || true
+   docker rm rosa-turtlesim-demo || true
+   ```
+
+2. Start the container with web GUI enabled:
+   ```
+   WEB_GUI=true ./demo.sh
+   ```
+
+3. Wait for the container to fully start. You should see:
+   "Starting web GUI on port 5000..."
+
+4. Open your web browser and navigate to:
+   http://localhost:5000
+
+5. You should now see the neo-brutalist web interface. You can:
+   - Type commands in the chat box
+   - Click on example commands to execute them
+   - Clear the chat history using the "Clear Chat" button
+
+6. To stop the container, press Ctrl+C in the terminal or run:
+   ```
+   docker stop rosa-turtlesim-demo
+   ```
+
+---------------------------
+4. RUNNING THE TERMINAL INTERFACE
+---------------------------
+
+If you prefer using the terminal interface:
+
+1. Stop any existing containers:
+   ```
+   docker stop rosa-turtlesim-demo || true
+   docker rm rosa-turtlesim-demo || true
+   ```
+
+2. Start the container without web GUI:
+   ```
+   ./demo.sh
+   ```
+   
+3. The turtlesim window will appear and the agent will start.
+   Follow the terminal prompts to interact with the agent.
+
+4. To stop the container, press Ctrl+C in the terminal.
+
+----------------------
+5. COMMANDS AND EXAMPLES
+----------------------
+
+The ROSA TurtleSim agent understands natural language commands. Here are some examples:
+
+Basic commands:
+- "Move the turtle forward"
+- "Rotate the turtle 90 degrees"
+- "Move to position (3, 3)"
+- "Clear the screen"
+- "Set the pen color to red"
+
+Drawing shapes:
+- "Draw a square"
+- "Draw a circle"
+- "Draw a triangle"
+- "Draw a 5-pointed star"
+- "Draw a hexagon with side length 2"
+
+Complex commands:
+- "Draw a red square, then a blue circle inside it"
+- "Teleport to position (3, 3) and draw a hexagon"
+- "Change the pen size to 5 and draw a spiral"
+- "Change the background color to light blue"
+
+---------------
+6. CUSTOMIZATION
+---------------
+
+Customizing the Web Interface:
+- Edit the HTML/CSS in: src/turtle_agent/scripts/web/templates/index.html
+- Edit the Flask app in: src/turtle_agent/scripts/web/app.py
+
+Environment Variables:
+- OPENAI_API_KEY: Your OpenAI API key
+- WEB_GUI: Set to "true" to enable the web interface
+- OPENAI_MODEL: Specify the OpenAI model to use (default: "gpt-4")
+- DEBUG: Set to "true" for more verbose logging
+
+-----------------
+7. TROUBLESHOOTING
+-----------------
+
+X11 Forwarding Issues:
+- Linux: Run `xhost +local:docker` before running the container
+- macOS: Make sure XQuartz is running with "Allow connections from network clients" enabled
+- Windows: Configure VcXsrv with "Disable access control" checked
+
+Web Interface Not Accessible:
+- Verify port 5000 is not in use: `lsof -i :5000`
+- Check if container is running: `docker ps`
+- Inspect logs: `docker logs rosa-turtlesim-demo`
+- Try accessing with different browser or incognito mode
+
+OpenAI API Issues:
+- Check your API key is correct in .env
+- Verify internet connectivity
+- Check OpenAI status: https://status.openai.com/
+
+Fixing Broken Container:
+- Run these commands to clean up and restart:
+  ```
+  docker stop rosa-turtlesim-demo || true
+  docker rm rosa-turtlesim-demo || true
+  docker system prune -f
+  WEB_GUI=true ./demo.sh  # or ./demo.sh for terminal mode
+  ```
+
+For other issues, check the logs:
+```
+docker logs rosa-turtlesim-demo
+```
+
+=====================================
+End of Instructions
+===================================== 
