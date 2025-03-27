@@ -27,14 +27,19 @@ DEVELOPMENT=${DEVELOPMENT:-false}
 
 # Enable X11 forwarding based on OS
 case "$(uname)" in
-    Linux*|Darwin*)
-        echo "Enabling X11 forwarding..."
+    Linux*)
+        echo "Enabling X11 forwarding for Linux..."
         # If running under WSL, use :0 for DISPLAY
         if grep -q "WSL" /proc/version; then
             export DISPLAY=:0
         else
-            export DISPLAY=host.docker.internal:0
+            export DISPLAY=:0  # Use local display for Linux
         fi
+        xhost +local:
+        ;;
+    Darwin*)
+        echo "Enabling X11 forwarding for macOS..."
+        export DISPLAY=host.docker.internal:0
         xhost +
         ;;
     MINGW*|CYGWIN*|MSYS*)
