@@ -25,9 +25,9 @@ requires-python = ">=3.9, <4"
 dependencies = [
     "PyYAML==6.0.1",
     "python-dotenv>=1.0.1",
-    "langchain==0.3.2",
-    "langchain-community==0.3.1",
-    "langchain-core==0.3.9",
+    "langchain==0.3.23",
+    "langchain-community==0.3.21",
+    "langchain-core==0.3.52",
     "langchain-openai==0.2.2",
     "langchain-ollama==0.2.0",
     "pydantic",
