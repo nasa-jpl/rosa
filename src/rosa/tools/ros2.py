@@ -89,7 +89,7 @@ def get_entities(
 
 
 @tool
-def ros2_node_list(pattern: str = None, blacklist: Optional[List[str]] = None) -> dict:
+def ros2_node_list(pattern: Optional[str] = None, blacklist: Optional[List[str]] = None) -> dict:
     """
     Get a list of ROS2 nodes running on the system.
 
@@ -101,7 +101,7 @@ def ros2_node_list(pattern: str = None, blacklist: Optional[List[str]] = None) -
 
 
 @tool
-def ros2_topic_list(pattern: str = None, blacklist: Optional[List[str]] = None) -> dict:
+def ros2_topic_list(pattern: Optional[str] = None, blacklist: Optional[List[str]] = None) -> dict:
     """
     Get a list of ROS2 topics.
 
@@ -158,7 +158,7 @@ def ros2_topic_echo(
 
 @tool
 def ros2_service_list(
-    pattern: str = None, blacklist: Optional[List[str]] = None
+    pattern: Optional[str] = None, blacklist: Optional[List[str]] = None
 ) -> dict:
     """
     Get a list of ROS2 services.
