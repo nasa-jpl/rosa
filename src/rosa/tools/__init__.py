@@ -32,31 +32,10 @@ def inject_blacklist(default_blacklist: List[str]):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            if args and isinstance(args[0], dict):
-                if "blacklist" in args[0]:
-                    args[0]["blacklist"] = default_blacklist + args[0]["blacklist"]
-                else:
-                    args[0]["blacklist"] = default_blacklist
-            else:
-                if "blacklist" in kwargs:
-                    kwargs["blacklist"] = default_blacklist + kwargs["blacklist"]
-                else:
-                    params = inspect.signature(func).parameters
-                    if "blacklist" in params:
-                        kwargs["blacklist"] = default_blacklist
+            if "blacklist" not in kwargs:
+                kwargs["blacklist"] = default_blacklist
             return func(*args, **kwargs)
 
-        # Rebuild the signature to include 'blacklist'
-        sig = inspect.signature(func)
-        new_params = [
-            (
-                param.replace(default=default_blacklist)
-                if param.name == "blacklist"
-                else param
-            )
-            for param in sig.parameters.values()
-        ]
-        wrapper.__signature__ = sig.replace(parameters=new_params)
         return wrapper
 
     return decorator
@@ -83,8 +62,10 @@ class ROSATools:
             self.__iterative_add(ros1, blacklist=blacklist)
         elif self.__ros_version == 2:
             from . import ros2
+            from . import ros2_advanced_control  # Import the new advanced control tools
 
             self.__iterative_add(ros2, blacklist=blacklist)
+            self.__iterative_add(ros2_advanced_control)  # Add the new tools
         else:
             raise ValueError("Invalid ROS version. Must be either 1 or 2.")
 
