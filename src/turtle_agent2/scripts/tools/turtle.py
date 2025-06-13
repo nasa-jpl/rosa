@@ -379,9 +379,12 @@ def teleport_relative(name: str, linear: float, angular: float):
     :param linear: linear distance
     :param angular: angular distance
     """
-    in_bounds, message = will_be_within_bounds(name, linear, 0.0, angular)
-    if not in_bounds:
-        return message
+    # Only check bounds if there's linear movement
+    # Pure rotations (linear=0) should always be allowed
+    if abs(linear) > 1e-6:
+        in_bounds, message = will_be_within_bounds(name, linear, 0.0, angular)
+        if not in_bounds:
+            return message
 
     name = name.replace("/", "")
     node = get_node()
@@ -468,7 +471,10 @@ def publish_twist_to_cmd_vel(
         for step in range(steps):
             pub.publish(vel)
             time.sleep(1.0)  # Sleep for 1 second between publishes
-            rclpy.spin_once(node, timeout_sec=0.1)  # Process any callbacks
+            
+            # Allow more time for pose updates to propagate
+            for _ in range(10):
+                rclpy.spin_once(node, timeout_sec=0.1)
             
             # Check for position after each step to detect issues early
             intermediate_pose = get_turtle_pose.invoke({"names": [name]})
@@ -480,6 +486,11 @@ def publish_twist_to_cmd_vel(
                 if (current_x <= 0.01 or current_x >= 10.99 or 
                     current_y <= 0.01 or current_y >= 10.99):
                     return f"Movement stopped at step {step+1}/{steps} - turtle hit boundary at ({current_x:.3f}, {current_y:.3f}). Check bounds before moving."
+            
+        # Allow extra time for final pose to update
+        time.sleep(0.5)
+        for _ in range(10):
+            rclpy.spin_once(node, timeout_sec=0.1)
             
         # Get final pose
         current_pose = get_turtle_pose.invoke({"names": [name]})
@@ -860,9 +871,25 @@ def validate_shape_fits(name: str, shape_type: str, size: float, start_x: float 
         if not fits_y:
             problems.append(f"Y range ({min_y:.1f} to {max_y:.1f}) exceeds bounds [0, 11]")
         
-        # Suggest better starting position
-        better_x = max(size, min(11-size, current_x))
-        better_y = max(height/2, min(11-height/2, current_y))
+        # Calculate proper suggested position based on actual bounding box
+        # We need: min_x >= 0, max_x <= 11, min_y >= 0, max_y <= 11
+        # Given the bounding box calculations above, solve for valid starting position
+        
+        # Calculate offset from starting position to bounding box edges
+        offset_left = current_x - min_x    # how far left the shape extends
+        offset_right = max_x - current_x   # how far right the shape extends  
+        offset_down = current_y - min_y    # how far down the shape extends
+        offset_up = max_y - current_y      # how far up the shape extends
+        
+        # Calculate valid range for starting position
+        min_valid_x = 0 + offset_left      # leftmost valid starting x
+        max_valid_x = 11 - offset_right    # rightmost valid starting x
+        min_valid_y = 0 + offset_down      # lowest valid starting y
+        max_valid_y = 11 - offset_up       # highest valid starting y
+        
+        # Suggest position closest to current position within valid range
+        better_x = max(min_valid_x, min(max_valid_x, current_x))
+        better_y = max(min_valid_y, min(max_valid_y, current_y))
         
         return f"✗ {shape_type.capitalize()} with size {size} will NOT FIT starting at ({current_x:.1f}, {current_y:.1f}). Problems: {'; '.join(problems)}. Try starting near ({better_x:.1f}, {better_y:.1f}) instead."
 

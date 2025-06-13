@@ -200,25 +200,10 @@ class TurtleAgent2(ROSA, Node):
                 await self.submit(input)
 
     async def submit(self, query: str):
-        debug_log_path = "/app/src/turtle_agent2/rosa_debug.log"
-        print(f"[SUBMIT] Processing query: {query}")
-        with open(debug_log_path, "a") as f:
-            f.write(f"[AGENT DEBUG] Processing query: {query}\n")
-            f.write(f"[AGENT DEBUG] ROSA internal streaming flag: {self._ROSA__streaming}\n")
-            f.flush()
         try:
             # Always use streaming mode since we forced it to True
-            print(f"[SUBMIT] Attempting streaming response...")
-            with open(debug_log_path, "a") as f:
-                f.write(f"[AGENT DEBUG] Calling stream_response\n")
-                f.flush()
             await self.stream_response(query)
         except Exception as e:
-            print(f"[SUBMIT] Streaming failed: {e}")
-            with open(debug_log_path, "a") as f:
-                f.write(f"[AGENT ERROR] Exception in submit: {e}\n")
-                f.write(f"[AGENT ERROR] Falling back to print_response\n")
-                f.flush()
             self.print_response(query)
 
     def print_response(self, query: str):
@@ -259,13 +244,6 @@ class TurtleAgent2(ROSA, Node):
         Raises:
             Any exceptions raised during the streaming process.
         """
-        # Write debug to file instead of stderr
-        debug_log_path = "/app/src/turtle_agent2/rosa_debug.log"
-        with open(debug_log_path, "a") as f:
-            f.write(f"[STREAM DEBUG] Starting to stream response for: {query}\n")
-            f.write(f"[STREAM DEBUG] ROSA internal streaming flag: {self._ROSA__streaming}\n")
-            f.flush()
-        
         console = Console()
         content = ""
         self.last_events = []
@@ -274,15 +252,7 @@ class TurtleAgent2(ROSA, Node):
 
         with Live(panel, console=console, auto_refresh=False) as live:
             try:
-                with open(debug_log_path, "a") as f:
-                    f.write(f"[STREAM DEBUG] About to call self.astream()\n")
-                    f.flush()
-                    
                 async for event in self.astream(query):
-                    with open(debug_log_path, "a") as f:
-                        f.write(f"[STREAM DEBUG] Received event: {event}\n")
-                        f.flush()
-                        
                     event["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[
                         :-3
                     ]
@@ -292,9 +262,6 @@ class TurtleAgent2(ROSA, Node):
                         live.refresh()
                     elif event["type"] in ["tool_start", "tool_end", "error"]:
                         self.last_events.append(event)
-                        with open(debug_log_path, "a") as f:
-                            f.write(f"[STREAM DEBUG] Tool event appended: {event['type']} - {event}\n")
-                            f.flush()
                     elif event["type"] == "final":
                         content = event["content"]
                         panel.renderable = Markdown(content)
@@ -302,21 +269,12 @@ class TurtleAgent2(ROSA, Node):
                         live.refresh()
                         
             except Exception as e:
-                with open(debug_log_path, "a") as f:
-                    f.write(f"[STREAM ERROR] Exception in astream: {e}\n")
-                    f.flush()
                 # If streaming fails, fall back to non-streaming
                 content = self.invoke(query)
                 panel.renderable = Markdown(content)
                 panel.title = "Final Response"
                 live.refresh()
 
-        with open(debug_log_path, "a") as f:
-            f.write(f"[STREAM DEBUG] Streaming completed\n")
-            f.write(f"[STREAM DEBUG] Total events collected: {len(self.last_events)}\n")
-            f.write(f"[STREAM DEBUG] Events: {[e.get('type', 'unknown') for e in self.last_events]}\n")
-            f.flush()
-        
         # Always add info command after final response, regardless of events
         if self.last_events:
             panel.renderable = Markdown(
@@ -381,25 +339,6 @@ class TurtleAgent2(ROSA, Node):
 
 def main():
     dotenv.load_dotenv(dotenv.find_dotenv())
-
-    # Parse command line arguments
-    parser = argparse.ArgumentParser(description='ROSA TurtleSim Agent for ROS2')
-    parser.add_argument('--streaming', action='store_true', help='Enable streaming mode')
-    parser.add_argument('--verbose', action='store_true', help='Enable verbose output')
-    args = parser.parse_args()
-
-    # Clear debug log file - write to mounted directory
-    debug_log_path = "/app/src/turtle_agent2/rosa_debug.log"
-    with open(debug_log_path, "w") as f:
-        f.write("ROSA TurtleAgent2 Debug Log\n")
-        f.write("==========================\n")
-        f.flush()
-
-    print("Debug logging enabled - writing to", debug_log_path)
-    with open(debug_log_path, "a") as f:
-        f.write("Debug logging enabled\n")
-        f.flush()
-
     turtle_agent = TurtleAgent2(verbose=True, streaming=True)  # Always use streaming and verbose
 
     try:

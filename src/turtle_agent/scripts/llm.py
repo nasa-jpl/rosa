@@ -15,39 +15,16 @@
 import os
 
 import dotenv
-from azure.identity import ClientSecretCredential, get_bearer_token_provider
-from langchain_openai import AzureChatOpenAI
+from langchain_openai import ChatOpenAI
 
 
 def get_llm(streaming: bool = False):
     """A helper function to get the LLM instance."""
     dotenv.load_dotenv(dotenv.find_dotenv())
 
-    APIM_SUBSCRIPTION_KEY = get_env_variable("APIM_SUBSCRIPTION_KEY")
-    default_headers = {}
-    if APIM_SUBSCRIPTION_KEY is not None:
-        # only set this if the APIM API requires a subscription...
-        default_headers["Ocp-Apim-Subscription-Key"] = APIM_SUBSCRIPTION_KEY
-
-    # Set up authority and credentials for Azure authentication
-    credential = ClientSecretCredential(
-        tenant_id=get_env_variable("AZURE_TENANT_ID"),
-        client_id=get_env_variable("AZURE_CLIENT_ID"),
-        client_secret=get_env_variable("AZURE_CLIENT_SECRET"),
-        authority="https://login.microsoftonline.com",
-    )
-
-    token_provider = get_bearer_token_provider(
-        credential, "https://cognitiveservices.azure.com/.default"
-    )
-
-    llm = AzureChatOpenAI(
-        azure_deployment=get_env_variable("DEPLOYMENT_ID"),
-        azure_ad_token_provider=token_provider,
-        openai_api_type="azure_ad",
-        api_version=get_env_variable("API_VERSION"),
-        azure_endpoint=get_env_variable("API_ENDPOINT"),
-        default_headers=default_headers,
+    llm = ChatOpenAI(
+        api_key=get_env_variable("OPENAI_API_KEY"),
+        model="gpt-4o",
         streaming=streaming,
     )
 
