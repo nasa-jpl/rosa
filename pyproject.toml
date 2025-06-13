@@ -8,12 +8,11 @@ version = "1.0.8"
 description = "ROSA: the Robot Operating System Agent"
 readme = "README.md"
 authors = [{ name = "Rob Royce", email = "Rob.Royce@jpl.nasa.gov" }]
-license = { file = "LICENSE" }
+license = "Apache-2.0"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: Apache Software License",
     "Natural Language :: English",
     "Operating System :: Unix",
     "Programming Language :: Python :: 3",

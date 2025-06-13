@@ -1,0 +1,214 @@
+# Multi-stage Dockerfile for testing ROSA with different ROS distributions
+# Usage: docker build --target ros1-noetic --build-arg DEVELOPMENT=true -t rosa-test-noetic -f Dockerfile.test .
+
+# =============================================================================
+# ROS1 Noetic (Ubuntu 20.04, Python 3.8)
+# =============================================================================
+FROM --platform=linux/amd64 osrf/ros:noetic-desktop AS ros1-noetic
+LABEL authors="Rob Royce" \
+      version="1.0" \
+      description="ROSA testing environment for ROS1 Noetic" \
+      ros.version="1" \
+      ros.distro="noetic" \
+      python.version="3.9" \
+      org.opencontainers.image.source="https://github.com/nasa-jpl/rosa" \
+      org.opencontainers.image.title="ROSA Test - ROS1 Noetic" \
+      org.opencontainers.image.description="Docker image for testing ROSA with ROS1 Noetic"
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV HEADLESS=false
+ENV ROS_VERSION=1
+ARG DEVELOPMENT=false
+
+# Install linux packages including python3.9-pip specifically
+RUN apt-get update && apt-get install -y \
+    ros-$(rosversion -d)-turtlesim \
+    locales \
+    xvfb \
+    python3.9 \
+    python3.9-dev \
+    python3.9-distutils \
+    python3-pip \
+    curl && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install pip for python3.9 specifically
+RUN curl https://bootstrap.pypa.io/get-pip.py | python3.9
+
+# Install basic python packages including pytest
+RUN python3.9 -m pip install -U pip setuptools wheel python-dotenv catkin_tools pytest pytest-asyncio
+
+# Set up ROS environment
+RUN rosdep update && \
+    echo "source /opt/ros/noetic/setup.bash" >> /root/.bashrc && \
+    echo "alias start='catkin build && source devel/setup.bash && roslaunch turtle_agent agent.launch'" >> /root/.bashrc && \
+    echo "export ROSLAUNCH_SSH_UNKNOWN=1" >> /root/.bashrc
+
+COPY . /app/
+WORKDIR /app/
+
+# Install the package using pip directly (avoiding setup.py develop deprecation)
+RUN /bin/bash -c 'if [ "$DEVELOPMENT" = "true" ]; then \
+    python3.9 -m pip install --user -e . --use-pep517; \
+    else \
+    python3.9 -m pip install --user -e . --use-pep517; \
+    fi'
+
+CMD ["/bin/bash"]
+
+# =============================================================================
+# ROS2 Humble (Ubuntu 22.04, Python 3.10)  
+# =============================================================================
+FROM --platform=linux/amd64 osrf/ros:humble-desktop AS ros2-humble
+LABEL authors="Rob Royce" \
+      version="1.0" \
+      description="ROSA testing environment for ROS2 Humble" \
+      ros.version="2" \
+      ros.distro="humble" \
+      python.version="3.10" \
+      org.opencontainers.image.source="https://github.com/nasa-jpl/rosa" \
+      org.opencontainers.image.title="ROSA Test - ROS2 Humble" \
+      org.opencontainers.image.description="Docker image for testing ROSA with ROS2 Humble"
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV HEADLESS=false
+ENV ROS_VERSION=2
+ARG DEVELOPMENT=false
+
+# Install packages including python3.10 and testing dependencies
+RUN apt-get update && apt-get install -y \
+    ros-humble-turtlesim \
+    locales \
+    xvfb \
+    python3.10 \
+    python3.10-dev \
+    python3-pip \
+    curl && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install testing packages
+RUN python3.10 -m pip install -U pip setuptools wheel python-dotenv pytest pytest-asyncio
+
+COPY . /app/
+WORKDIR /app/
+
+# Install ROSA package (always use local development version for testing)
+RUN python3.10 -m pip install --user -e .
+
+# Set up ROS2 workspace and build turtle_agent2
+RUN mkdir -p /app/ros2_ws/src && \
+    ln -s /app/src/turtle_agent2 /app/ros2_ws/src/turtle_agent2 && \
+    cd /app/ros2_ws && \
+    /bin/bash -c "source /opt/ros/humble/setup.bash && colcon build --packages-select turtle_agent2"
+
+# Set up ROS2 environment
+RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc && \
+    echo "source /app/ros2_ws/install/setup.bash" >> /root/.bashrc && \
+    echo "alias start2='cd /app/ros2_ws && colcon build --packages-select turtle_agent2 && source install/setup.bash && ros2 run turtle_agent2 turtle_agent2.py'" >> /root/.bashrc
+
+CMD ["/bin/bash"]
+
+# =============================================================================
+# ROS2 Iron (Ubuntu 22.04, Python 3.10)
+# =============================================================================
+FROM --platform=linux/amd64 osrf/ros:iron-desktop AS ros2-iron
+LABEL authors="Rob Royce" \
+      version="1.0" \
+      description="ROSA testing environment for ROS2 Iron" \
+      ros.version="2" \
+      ros.distro="iron" \
+      python.version="3.10" \
+      org.opencontainers.image.source="https://github.com/nasa-jpl/rosa" \
+      org.opencontainers.image.title="ROSA Test - ROS2 Iron" \
+      org.opencontainers.image.description="Docker image for testing ROSA with ROS2 Iron"
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV HEADLESS=false
+ENV ROS_VERSION=2
+ARG DEVELOPMENT=false
+
+# Install packages including python3.10 and testing dependencies
+RUN apt-get update && apt-get install -y \
+    ros-iron-turtlesim \
+    locales \
+    xvfb \
+    python3.10 \
+    python3.10-dev \
+    python3-pip \
+    curl && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install testing packages
+RUN python3.10 -m pip install -U pip setuptools wheel python-dotenv pytest pytest-asyncio
+
+COPY . /app/
+WORKDIR /app/
+
+# Install ROSA package (always use local development version for testing)
+RUN python3.10 -m pip install --user -e . --use-pep517
+
+# Set up ROS2 workspace and build turtle_agent2
+RUN mkdir -p /app/ros2_ws/src && \
+    ln -s /app/src/turtle_agent2 /app/ros2_ws/src/turtle_agent2 && \
+    cd /app/ros2_ws && \
+    /bin/bash -c "source /opt/ros/iron/setup.bash && colcon build --packages-select turtle_agent2"
+
+# Set up ROS2 environment
+RUN echo "source /opt/ros/iron/setup.bash" >> /root/.bashrc && \
+    echo "source /app/ros2_ws/install/setup.bash" >> /root/.bashrc && \
+    echo "alias start2='cd /app/ros2_ws && colcon build --packages-select turtle_agent2 && source install/setup.bash && ros2 run turtle_agent2 turtle_agent2.py'" >> /root/.bashrc
+
+CMD ["/bin/bash"]
+
+# =============================================================================
+# ROS2 Jazzy (Ubuntu 24.04, Python 3.12)
+# =============================================================================
+FROM --platform=linux/amd64 osrf/ros:jazzy-desktop AS ros2-jazzy
+LABEL authors="Rob Royce" \
+      version="1.0" \
+      description="ROSA testing environment for ROS2 Jazzy" \
+      ros.version="2" \
+      ros.distro="jazzy" \
+      python.version="3.12" \
+      org.opencontainers.image.source="https://github.com/nasa-jpl/rosa" \
+      org.opencontainers.image.title="ROSA Test - ROS2 Jazzy" \
+      org.opencontainers.image.description="Docker image for testing ROSA with ROS2 Jazzy"
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV HEADLESS=false
+ENV ROS_VERSION=2
+ARG DEVELOPMENT=false
+
+# Install packages including python3.12 and testing dependencies
+RUN apt-get update && apt-get install -y \
+    ros-jazzy-turtlesim \
+    locales \
+    xvfb \
+    python3.12 \
+    python3.12-dev \
+    python3-pip \
+    python3-pytest-asyncio \
+    curl && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install testing packages (only install what's not available via apt)
+RUN python3.12 -m pip install --break-system-packages python-dotenv
+
+COPY . /app/
+WORKDIR /app/
+
+# Install ROSA package (always use local development version for testing)
+RUN python3.12 -m pip install --break-system-packages --user -e .
+
+# Set up ROS2 workspace and build turtle_agent2
+RUN mkdir -p /app/ros2_ws/src && \
+    ln -s /app/src/turtle_agent2 /app/ros2_ws/src/turtle_agent2 && \
+    cd /app/ros2_ws && \
+    /bin/bash -c "source /opt/ros/jazzy/setup.bash && colcon build --packages-select turtle_agent2"
+
+# Set up ROS2 environment
+RUN echo "source /opt/ros/jazzy/setup.bash" >> /root/.bashrc && \
+    echo "source /app/ros2_ws/install/setup.bash" >> /root/.bashrc && \
+    echo "alias start2='cd /app/ros2_ws && colcon build --packages-select turtle_agent2 && source install/setup.bash && ros2 run turtle_agent2 turtle_agent2.py'" >> /root/.bashrc
+
+CMD ["/bin/bash"]
