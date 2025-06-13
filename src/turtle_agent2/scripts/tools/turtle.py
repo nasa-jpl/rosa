@@ -457,19 +457,44 @@ def publish_twist_to_cmd_vel(
         node = get_node()
         pub = cmd_vel_pubs[name]
 
-        for _ in range(steps):
+        # Get initial pose for error detection
+        initial_pose = get_turtle_pose.invoke({"names": [name]})
+        if name not in initial_pose:
+            return f"Cannot move turtle '{name}' - turtle not found."
+        
+        initial_x = initial_pose[name].x
+        initial_y = initial_pose[name].y
+
+        for step in range(steps):
             pub.publish(vel)
             time.sleep(1.0)  # Sleep for 1 second between publishes
             rclpy.spin_once(node, timeout_sec=0.1)  # Process any callbacks
             
+            # Check for position after each step to detect issues early
+            intermediate_pose = get_turtle_pose.invoke({"names": [name]})
+            if name in intermediate_pose:
+                current_x = intermediate_pose[name].x
+                current_y = intermediate_pose[name].y
+                
+                # Detect if turtle hit a wall (position clamped at boundary)
+                if (current_x <= 0.01 or current_x >= 10.99 or 
+                    current_y <= 0.01 or current_y >= 10.99):
+                    return f"Movement stopped at step {step+1}/{steps} - turtle hit boundary at ({current_x:.3f}, {current_y:.3f}). Check bounds before moving."
+            
+        # Get final pose
         current_pose = get_turtle_pose.invoke({"names": [name]})
         if name not in current_pose:
             return f"Movement completed, but couldn't verify pose - turtle '{name}' not found."
+            
+        # Calculate actual movement distance for validation
+        final_x = current_pose[name].x
+        final_y = current_pose[name].y
+        actual_distance = ((final_x - initial_x)**2 + (final_y - initial_y)**2)**0.5
+        
         return (
-            f"New Pose ({name}): x={current_pose[name].x}, y={current_pose[name].y}, "
-            f"theta={current_pose[name].theta} rads, "
-            f"linear_velocity={current_pose[name].linear_velocity}, "
-            f"angular_velocity={current_pose[name].angular_velocity}."
+            f"New Pose ({name}): x={current_pose[name].x:.3f}, y={current_pose[name].y:.3f}, "
+            f"theta={current_pose[name].theta:.3f} rads, "
+            f"moved {actual_distance:.3f} units"
         )
     except Exception as e:
         return f"Failed to publish {vel} to /{name}/cmd_vel: {e}"
@@ -759,6 +784,115 @@ def pen_up(name: str) -> str:
 def pen_down(name: str) -> str:
     """Turn on the pen so turtle draws while moving."""
     return set_pen.invoke({"name": name, "r": 30, "g": 30, "b": 255, "width": 1, "off": 0})
+
+
+@tool
+def validate_shape_fits(name: str, shape_type: str, size: float, start_x: float = None, start_y: float = None) -> str:
+    """
+    Pre-validate if a shape will fit within turtlesim bounds before attempting to draw it.
+    Use this BEFORE starting any multi-step shape drawing to prevent failures.
+    
+    :param name: turtle name
+    :param shape_type: 'hexagon', 'square', 'circle', 'pentagon', etc.
+    :param size: size parameter (side length for polygons, radius for circles)
+    :param start_x: optional starting x position (uses current position if not provided)
+    :param start_y: optional starting y position (uses current position if not provided)
+    """
+    import math
+    
+    # Get current position if start position not provided
+    if start_x is None or start_y is None:
+        pose = get_turtle_pose.invoke({"names": [name]})
+        if name not in pose:
+            return f"Cannot validate - turtle '{name}' not found."
+        current_x = pose[name].x if start_x is None else start_x
+        current_y = pose[name].y if start_y is None else start_y
+    else:
+        current_x, current_y = start_x, start_y
+    
+    # Calculate bounding box for different shapes
+    if shape_type.lower() == 'hexagon':
+        # Regular hexagon: width = 2 * size, height = sqrt(3) * size
+        width = 2 * size
+        height = math.sqrt(3) * size
+        min_x = current_x - size
+        max_x = current_x + size
+        min_y = current_y - height/2
+        max_y = current_y + height/2
+        
+    elif shape_type.lower() == 'square':
+        # Square: width = height = size
+        width = height = size
+        min_x = current_x
+        max_x = current_x + size
+        min_y = current_y
+        max_y = current_y + size
+        
+    elif shape_type.lower() == 'circle':
+        # Circle: diameter = 2 * size (size = radius)
+        width = height = 2 * size
+        min_x = current_x - size
+        max_x = current_x + size
+        min_y = current_y - size
+        max_y = current_y + size
+        
+    elif shape_type.lower() == 'pentagon':
+        # Regular pentagon: approximate bounding box
+        width = height = 2 * size
+        min_x = current_x - size
+        max_x = current_x + size
+        min_y = current_y - size
+        max_y = current_y + size
+        
+    else:
+        return f"Unknown shape type '{shape_type}'. Supported: hexagon, square, circle, pentagon."
+    
+    # Check if bounding box fits within turtlesim bounds [0,11] x [0,11]
+    fits_x = (min_x >= 0) and (max_x <= 11)
+    fits_y = (min_y >= 0) and (max_y <= 11)
+    
+    if fits_x and fits_y:
+        return f"✓ {shape_type.capitalize()} with size {size} WILL FIT starting at ({current_x:.1f}, {current_y:.1f}). Bounding box: ({min_x:.1f}, {min_y:.1f}) to ({max_x:.1f}, {max_y:.1f})"
+    else:
+        problems = []
+        if not fits_x:
+            problems.append(f"X range ({min_x:.1f} to {max_x:.1f}) exceeds bounds [0, 11]")
+        if not fits_y:
+            problems.append(f"Y range ({min_y:.1f} to {max_y:.1f}) exceeds bounds [0, 11]")
+        
+        # Suggest better starting position
+        better_x = max(size, min(11-size, current_x))
+        better_y = max(height/2, min(11-height/2, current_y))
+        
+        return f"✗ {shape_type.capitalize()} with size {size} will NOT FIT starting at ({current_x:.1f}, {current_y:.1f}). Problems: {'; '.join(problems)}. Try starting near ({better_x:.1f}, {better_y:.1f}) instead."
+
+
+@tool
+def verify_position_accuracy(name: str, expected_x: float, expected_y: float, tolerance: float = 0.1) -> str:
+    """
+    Verify that the turtle is at the expected position within tolerance.
+    Use this after movements to detect drift and precision issues.
+    
+    :param name: turtle name
+    :param expected_x: expected x coordinate
+    :param expected_y: expected y coordinate
+    :param tolerance: acceptable distance from expected position (default 0.1)
+    """
+    import math
+    
+    pose = get_turtle_pose.invoke({"names": [name]})
+    if name not in pose:
+        return f"Cannot verify position - turtle '{name}' not found."
+    
+    actual_x = pose[name].x
+    actual_y = pose[name].y
+    
+    distance = math.sqrt((actual_x - expected_x)**2 + (actual_y - expected_y)**2)
+    
+    if distance <= tolerance:
+        return f"✓ Position accurate: expected ({expected_x:.3f}, {expected_y:.3f}), actual ({actual_x:.3f}, {actual_y:.3f}), error {distance:.3f}"
+    else:
+        return f"✗ Position drift detected: expected ({expected_x:.3f}, {expected_y:.3f}), actual ({actual_x:.3f}, {actual_y:.3f}), error {distance:.3f} > tolerance {tolerance}. Consider using teleport_absolute to correct."
 
 
 # Initialize default turtle publisher

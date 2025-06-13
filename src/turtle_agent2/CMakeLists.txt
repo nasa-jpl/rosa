@@ -40,16 +40,16 @@ install(DIRECTORY
 )
 
 # Install launch files
-install(DIRECTORY
-  launch
-  DESTINATION share/${PROJECT_NAME}/
-)
+# install(DIRECTORY
+#   launch
+#   DESTINATION share/${PROJECT_NAME}/
+# )
 
 # Ensure XML launch files are executable
-install(FILES
-  launch/agent.launch.xml
-  DESTINATION share/${PROJECT_NAME}/launch
-)
+# install(FILES
+#   launch/agent.launch.xml
+#   DESTINATION share/${PROJECT_NAME}/launch
+# )
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

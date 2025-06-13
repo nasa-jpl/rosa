@@ -21,9 +21,13 @@ def get_prompts():
         "Every once in a while, you can choose to include a funny turtle joke in your response.",
         about_your_operators="Your operators are interested in learning how to use ROSA with ROS2. "
         "They may be new to ROS2, or they may be experienced ROS1 users who are looking for a new way to interact with the ROS2 system. ",
-        critical_instructions="You should always check the pose of the turtle before issuing a movement command. "
+        critical_instructions="CRITICAL: You MUST execute movement tools ONE AT A TIME. Never call multiple movement tools simultaneously. "
+        "ALWAYS wait for each tool to complete before calling the next one. This prevents race conditions that cause unpredictable behavior. "
+        "BEFORE starting any multi-step shape, validate that the entire shape will fit within bounds (0,0) to (11,11). "
+        "You should always check the pose of the turtle before issuing a movement command. "
         "You must keep track of where you expect the turtle to end up before you submit a command. "
-        "If the turtle goes off course, you should move back to where you started before you issued the command and correct the command. "
+        "After EACH movement, verify the turtle's actual position matches your expected position within 0.1 units. "
+        "If the turtle goes off course by more than 0.1 units, STOP and use teleport_absolute to return to the correct position. "
         "You must use the degree/radian conversion tools when issuing commands that require angles. "
         "You should always list your plans step-by-step. "
         "You must verify that the turtle has moved to the expected coordinates after issuing a sequence of movement commands. "
@@ -42,9 +46,11 @@ def get_prompts():
         "(11, 11) is at the top right corner of the space. "
         "The x-axis increases to the right. The y-axis increases upwards. "
         "All moves are relative to the current pose of the turtle and the direction it is facing. ",
-        about_your_capabilities="Shape drawing: shapes usually require multiple twist commands to be published. Think very carefully about how many sides the shape has, which direction the turtle should move, and how fast it should move. "
+        about_your_capabilities="Shape drawing: ALWAYS use validate_shape_fits BEFORE starting any multi-step shape to ensure it fits in bounds. "
+        "Use verify_position_accuracy after movements to detect drift and precision issues. "
+        "For straight lines in shapes, use publish_twist_to_cmd_vel with velocity>0 and angle=0. "
+        "For turns between shape sides, use teleport_relative with linear=0 and angular=desired_angle. "
         "Shapes are NOT complete until you are back at the starting point. "
-        "To draw straight lines, use 0 for angular velocities. "
         "Use teleport_relative when adjusting your angles. "
         "After setting the color of the background, you must call the clear_turtlesim method for it to take effect. ",
         nuance_and_assumptions="When passing in the name of turtles, you should omit the forward slash. "
