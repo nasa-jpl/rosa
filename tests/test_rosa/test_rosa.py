@@ -17,7 +17,9 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from langchain_core.messages import AIMessage, HumanMessage
-from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI, AzureChatOpenAI
+from langchain_ollama import ChatOllama
+from langchain_anthropic import ChatAnthropic
 
 from rosa import ROSA, RobotSystemPrompts
 from rosa.rosa import ROSAError, ROSAConfigurationError, ROSAExecutionError
@@ -338,6 +340,396 @@ class TestROSAPrivateMethods(unittest.TestCase):
             rosa._record_chat_history("test query", "test response")
             
             self.assertEqual(len(rosa._ROSA__chat_history), 0)
+
+
+class TestROSAStreaming(unittest.TestCase):
+    """Test ROSA streaming functionality."""
+    
+    def setUp(self):
+        """Set up test fixtures."""
+        self.mock_llm = MagicMock()
+        
+    def test_astream_final_output_no_extra_spaces(self):
+        """Test that final_output in chat history has proper spacing without leading spaces."""
+        import asyncio
+        
+        async def run_test():
+            with patch('rosa.rosa.ROSATools') as mock_tools, \
+                 patch.object(ROSA, '_get_prompts'), \
+                 patch.object(ROSA, '_get_agent'), \
+                 patch.object(ROSA, '_get_executor') as mock_get_executor, \
+                 patch.object(ROSA, '_validate_inputs') as mock_validate:
+                
+                # Skip validation for this test
+                mock_validate.return_value = None
+                
+                # Setup mocks
+                mock_tools_instance = MagicMock()
+                mock_tools.return_value = mock_tools_instance 
+                mock_tools_instance.get_tools.return_value = []
+                
+                mock_executor = MagicMock()
+                mock_get_executor.return_value = mock_executor
+                
+                # Mock streaming events WITHOUT on_chain_end to test proper concatenation
+                # Typical LLM streaming includes spaces in tokens
+                mock_events = [
+                    {
+                        "event": "on_chat_model_stream",
+                        "data": {"chunk": MagicMock(content="Hello")}
+                    },
+                    {
+                        "event": "on_chat_model_stream", 
+                        "data": {"chunk": MagicMock(content=" World")}
+                    }
+                ]
+                
+                # Mock the async iterator
+                async def mock_astream_events(*args, **kwargs):
+                    for event in mock_events:
+                        yield event
+                        
+                mock_executor.astream_events = mock_astream_events
+                
+                # Create ROSA instance with streaming enabled and chat history
+                rosa = ROSA(ros_version=1, llm=self.mock_llm, streaming=True, accumulate_chat_history=True)
+                
+                # Execute streaming
+                chunks = []
+                async for chunk in rosa.astream("test query"):
+                    chunks.append(chunk)
+                
+                # Check that the chat history contains the buggy final_output with extra spaces
+                # The bug is: final_output += f" {content}" creates " Hello World" instead of "HelloWorld"
+                self.assertEqual(len(rosa._ROSA__chat_history), 2)  # HumanMessage + AIMessage
+                ai_message_content = rosa._ROSA__chat_history[-1].content
+                
+                # After the fix: final_output should be "Hello World" (no leading space)
+                self.assertEqual(ai_message_content, "Hello World", 
+                               "Chat history should not have extra leading spaces from streaming concatenation")
+        
+        # Run the async test - this test should PASS after the fix
+        asyncio.run(run_test())
+
+    def test_astream_single_word_response(self):
+        """Test streaming with single word responses."""
+        import asyncio
+        
+        async def run_test():
+            with patch('rosa.rosa.ROSATools') as mock_tools, \
+                 patch.object(ROSA, '_get_prompts'), \
+                 patch.object(ROSA, '_get_agent'), \
+                 patch.object(ROSA, '_get_executor') as mock_get_executor, \
+                 patch.object(ROSA, '_validate_inputs') as mock_validate:
+                
+                mock_validate.return_value = None
+                mock_tools_instance = MagicMock()
+                mock_tools.return_value = mock_tools_instance 
+                mock_tools_instance.get_tools.return_value = []
+                
+                mock_executor = MagicMock()
+                mock_get_executor.return_value = mock_executor
+                
+                # Single word response
+                mock_events = [
+                    {"event": "on_chat_model_stream", "data": {"chunk": MagicMock(content="Yes")}}
+                ]
+                
+                async def mock_astream_events(*args, **kwargs):
+                    for event in mock_events:
+                        yield event
+                        
+                mock_executor.astream_events = mock_astream_events
+                rosa = ROSA(ros_version=1, llm=self.mock_llm, streaming=True, accumulate_chat_history=True)
+                
+                chunks = []
+                async for chunk in rosa.astream("test query"):
+                    chunks.append(chunk)
+                
+                # Should have exactly one token
+                self.assertEqual(len([c for c in chunks if c["type"] == "token"]), 1)
+                ai_message_content = rosa._ROSA__chat_history[-1].content
+                self.assertEqual(ai_message_content, "Yes")
+        
+        asyncio.run(run_test())
+
+    def test_astream_multi_paragraph_response(self):
+        """Test streaming with multi-paragraph responses."""
+        import asyncio
+        
+        async def run_test():
+            with patch('rosa.rosa.ROSATools') as mock_tools, \
+                 patch.object(ROSA, '_get_prompts'), \
+                 patch.object(ROSA, '_get_agent'), \
+                 patch.object(ROSA, '_get_executor') as mock_get_executor, \
+                 patch.object(ROSA, '_validate_inputs') as mock_validate:
+                
+                mock_validate.return_value = None
+                mock_tools_instance = MagicMock()
+                mock_tools.return_value = mock_tools_instance 
+                mock_tools_instance.get_tools.return_value = []
+                
+                mock_executor = MagicMock()
+                mock_get_executor.return_value = mock_executor
+                
+                # Multi-paragraph response with newlines and spaces
+                mock_events = [
+                    {"event": "on_chat_model_stream", "data": {"chunk": MagicMock(content="First")}},
+                    {"event": "on_chat_model_stream", "data": {"chunk": MagicMock(content=" paragraph.")}},
+                    {"event": "on_chat_model_stream", "data": {"chunk": MagicMock(content="\n\nSecond")}},
+                    {"event": "on_chat_model_stream", "data": {"chunk": MagicMock(content=" paragraph.")}}
+                ]
+                
+                async def mock_astream_events(*args, **kwargs):
+                    for event in mock_events:
+                        yield event
+                        
+                mock_executor.astream_events = mock_astream_events
+                rosa = ROSA(ros_version=1, llm=self.mock_llm, streaming=True, accumulate_chat_history=True)
+                
+                chunks = []
+                async for chunk in rosa.astream("test query"):
+                    chunks.append(chunk)
+                
+                ai_message_content = rosa._ROSA__chat_history[-1].content
+                expected = "First paragraph.\n\nSecond paragraph."
+                self.assertEqual(ai_message_content, expected)
+        
+        asyncio.run(run_test())
+
+    def test_astream_code_block_with_indentation(self):
+        """Test streaming with code blocks containing indentation."""
+        import asyncio
+        
+        async def run_test():
+            with patch('rosa.rosa.ROSATools') as mock_tools, \
+                 patch.object(ROSA, '_get_prompts'), \
+                 patch.object(ROSA, '_get_agent'), \
+                 patch.object(ROSA, '_get_executor') as mock_get_executor, \
+                 patch.object(ROSA, '_validate_inputs') as mock_validate:
+                
+                mock_validate.return_value = None
+                mock_tools_instance = MagicMock()
+                mock_tools.return_value = mock_tools_instance 
+                mock_tools_instance.get_tools.return_value = []
+                
+                mock_executor = MagicMock()
+                mock_get_executor.return_value = mock_executor
+                
+                # Code block with indentation
+                mock_events = [
+                    {"event": "on_chat_model_stream", "data": {"chunk": MagicMock(content="```python")}},
+                    {"event": "on_chat_model_stream", "data": {"chunk": MagicMock(content="\ndef")}},
+                    {"event": "on_chat_model_stream", "data": {"chunk": MagicMock(content=" hello():")}},
+                    {"event": "on_chat_model_stream", "data": {"chunk": MagicMock(content="\n    print")}},
+                    {"event": "on_chat_model_stream", "data": {"chunk": MagicMock(content="('Hello')")}},
+                    {"event": "on_chat_model_stream", "data": {"chunk": MagicMock(content="\n```")}}
+                ]
+                
+                async def mock_astream_events(*args, **kwargs):
+                    for event in mock_events:
+                        yield event
+                        
+                mock_executor.astream_events = mock_astream_events
+                rosa = ROSA(ros_version=1, llm=self.mock_llm, streaming=True, accumulate_chat_history=True)
+                
+                chunks = []
+                async for chunk in rosa.astream("test query"):
+                    chunks.append(chunk)
+                
+                ai_message_content = rosa._ROSA__chat_history[-1].content
+                expected = "```python\ndef hello():\n    print('Hello')\n```"
+                self.assertEqual(ai_message_content, expected)
+        
+        asyncio.run(run_test())
+
+    def test_astream_mixed_content(self):
+        """Test streaming with mixed content (text + code)."""
+        import asyncio
+        
+        async def run_test():
+            with patch('rosa.rosa.ROSATools') as mock_tools, \
+                 patch.object(ROSA, '_get_prompts'), \
+                 patch.object(ROSA, '_get_agent'), \
+                 patch.object(ROSA, '_get_executor') as mock_get_executor, \
+                 patch.object(ROSA, '_validate_inputs') as mock_validate:
+                
+                mock_validate.return_value = None
+                mock_tools_instance = MagicMock()
+                mock_tools.return_value = mock_tools_instance 
+                mock_tools_instance.get_tools.return_value = []
+                
+                mock_executor = MagicMock()
+                mock_get_executor.return_value = mock_executor
+                
+                # Mixed content: text + code + text
+                mock_events = [
+                    {"event": "on_chat_model_stream", "data": {"chunk": MagicMock(content="Here's")}},
+                    {"event": "on_chat_model_stream", "data": {"chunk": MagicMock(content=" the")}},
+                    {"event": "on_chat_model_stream", "data": {"chunk": MagicMock(content=" code:")}},
+                    {"event": "on_chat_model_stream", "data": {"chunk": MagicMock(content=" `print")}},
+                    {"event": "on_chat_model_stream", "data": {"chunk": MagicMock(content="('hi')`")}},
+                    {"event": "on_chat_model_stream", "data": {"chunk": MagicMock(content=" works")}},
+                    {"event": "on_chat_model_stream", "data": {"chunk": MagicMock(content=" well.")}}
+                ]
+                
+                async def mock_astream_events(*args, **kwargs):
+                    for event in mock_events:
+                        yield event
+                        
+                mock_executor.astream_events = mock_astream_events
+                rosa = ROSA(ros_version=1, llm=self.mock_llm, streaming=True, accumulate_chat_history=True)
+                
+                chunks = []
+                async for chunk in rosa.astream("test query"):
+                    chunks.append(chunk)
+                
+                ai_message_content = rosa._ROSA__chat_history[-1].content
+                expected = "Here's the code: `print('hi')` works well."
+                self.assertEqual(ai_message_content, expected)
+        
+        asyncio.run(run_test())
+
+
+class TestROSATokenUsageCallbacks(unittest.TestCase):
+    """Test token usage callback support for different LLM types."""
+    
+    def test_openai_llm_token_usage_callback(self):
+        """Test that OpenAI LLMs use get_openai_callback for token usage."""
+        # Use real ChatOpenAI instance from the correct package
+        real_openai_llm = ChatOpenAI(api_key="fake-api-key", model="gpt-3.5-turbo")
+        
+        with patch('rosa.rosa.ROSATools') as mock_tools, \
+             patch.object(ROSA, '_get_prompts'), \
+             patch.object(ROSA, '_get_agent'), \
+             patch.object(ROSA, '_get_executor'), \
+             patch('rosa.rosa.get_openai_callback') as mock_callback, \
+             patch.object(ROSA, '_validate_inputs'):
+            
+            mock_tools_instance = MagicMock()
+            mock_tools.return_value = mock_tools_instance
+            mock_tools_instance.get_tools.return_value = []
+            
+            mock_cb = MagicMock()
+            mock_callback.return_value.__enter__.return_value = mock_cb
+            mock_cb.total_tokens = 100
+            mock_cb.prompt_tokens = 60
+            mock_cb.completion_tokens = 40
+            mock_cb.total_cost = 0.002
+            
+            rosa = ROSA(ros_version=1, llm=real_openai_llm, show_token_usage=True, streaming=False)
+            
+            mock_executor = MagicMock()
+            mock_executor.invoke.return_value = {"output": "test response"}
+            rosa._ROSA__executor = mock_executor
+            
+            # Test that OpenAI callback is used for OpenAI models
+            result = rosa.invoke("test query")
+            
+            mock_callback.assert_called_once()
+            self.assertEqual(result, "test response")
+    
+    def test_ollama_llm_token_usage_callback_not_supported(self):
+        """Test that Ollama LLMs correctly use null callback instead of OpenAI callback."""
+        mock_ollama_llm = MagicMock(spec=ChatOllama)
+        mock_ollama_llm.with_config.return_value = mock_ollama_llm
+        mock_ollama_llm.bind_tools.return_value = mock_ollama_llm
+        
+        with patch('rosa.rosa.ROSATools') as mock_tools, \
+             patch.object(ROSA, '_get_prompts'), \
+             patch.object(ROSA, '_get_agent'), \
+             patch.object(ROSA, '_get_executor'), \
+             patch('rosa.rosa.get_openai_callback') as mock_openai_callback, \
+             patch.object(ROSA, '_validate_inputs'):  # Skip validation for mock objects
+            
+            mock_tools_instance = MagicMock()
+            mock_tools.return_value = mock_tools_instance
+            mock_tools_instance.get_tools.return_value = []
+            
+            rosa = ROSA(ros_version=1, llm=mock_ollama_llm, show_token_usage=True, streaming=False)
+            
+            mock_executor = MagicMock()
+            mock_executor.invoke.return_value = {"output": "test response"}
+            rosa._ROSA__executor = mock_executor
+            
+            # After the fix: Ollama models should NOT use get_openai_callback
+            result = rosa.invoke("test query")
+            
+            # OpenAI callback should NOT be called for Ollama models
+            mock_openai_callback.assert_not_called()
+            self.assertEqual(result, "test response")
+    
+    def test_generic_llm_token_usage_callback_not_supported(self):
+        """Test that generic LLMs correctly use null callback instead of OpenAI callback."""
+        mock_generic_llm = MagicMock()  # Generic LLM without specific type
+        mock_generic_llm.with_config.return_value = mock_generic_llm
+        mock_generic_llm.bind_tools.return_value = mock_generic_llm
+        
+        with patch('rosa.rosa.ROSATools') as mock_tools, \
+             patch.object(ROSA, '_get_prompts'), \
+             patch.object(ROSA, '_get_agent'), \
+             patch.object(ROSA, '_get_executor'), \
+             patch('rosa.rosa.get_openai_callback') as mock_openai_callback, \
+             patch.object(ROSA, '_validate_inputs'):  # Skip validation for mock objects
+            
+            mock_tools_instance = MagicMock()
+            mock_tools.return_value = mock_tools_instance
+            mock_tools_instance.get_tools.return_value = []
+            
+            rosa = ROSA(ros_version=1, llm=mock_generic_llm, show_token_usage=True, streaming=False)
+            
+            mock_executor = MagicMock()
+            mock_executor.invoke.return_value = {"output": "test response"}
+            rosa._ROSA__executor = mock_executor
+            
+            # After the fix: Generic LLMs should NOT use get_openai_callback
+            result = rosa.invoke("test query")
+            
+            # OpenAI callback should NOT be called for generic LLMs
+            mock_openai_callback.assert_not_called()
+            self.assertEqual(result, "test response")
+    
+    def test_streaming_token_usage_disabled_by_default(self):
+        """Test that token usage is disabled when streaming is enabled."""
+        mock_openai_llm = MagicMock(spec=ChatOpenAI)
+        mock_openai_llm.with_config.return_value = mock_openai_llm
+        mock_openai_llm.bind_tools.return_value = mock_openai_llm
+        
+        with patch('rosa.rosa.ROSATools') as mock_tools, \
+             patch.object(ROSA, '_get_prompts'), \
+             patch.object(ROSA, '_get_agent'), \
+             patch.object(ROSA, '_get_executor'), \
+             patch.object(ROSA, '_validate_inputs'):  # Skip validation for mock objects
+            
+            mock_tools_instance = MagicMock()
+            mock_tools.return_value = mock_tools_instance
+            mock_tools_instance.get_tools.return_value = []
+            
+            # Streaming enabled (default), show_token_usage should be False
+            rosa = ROSA(ros_version=1, llm=mock_openai_llm, streaming=True)
+            
+            self.assertFalse(rosa._ROSA__show_token_usage)
+    
+    def test_can_enable_token_usage_with_non_streaming(self):
+        """Test that token usage can be enabled when streaming is disabled."""
+        mock_openai_llm = MagicMock(spec=ChatOpenAI)
+        mock_openai_llm.with_config.return_value = mock_openai_llm
+        mock_openai_llm.bind_tools.return_value = mock_openai_llm
+        
+        with patch('rosa.rosa.ROSATools') as mock_tools, \
+             patch.object(ROSA, '_get_prompts'), \
+             patch.object(ROSA, '_get_agent'), \
+             patch.object(ROSA, '_get_executor'), \
+             patch.object(ROSA, '_validate_inputs'):  # Skip validation for mock objects
+            
+            mock_tools_instance = MagicMock()
+            mock_tools.return_value = mock_tools_instance
+            mock_tools_instance.get_tools.return_value = []
+            
+            # Streaming disabled, show_token_usage explicitly enabled
+            rosa = ROSA(ros_version=1, llm=mock_openai_llm, streaming=False, show_token_usage=True)
+            
+            self.assertTrue(rosa._ROSA__show_token_usage)
 
 
 if __name__ == '__main__':

@@ -21,17 +21,18 @@ from langchain.agents.format_scratchpad.openai_tools import (
 )
 from langchain.agents.output_parsers.openai_tools import OpenAIToolsAgentOutputParser
 from langchain.prompts import MessagesPlaceholder
-from langchain_community.callbacks import get_openai_callback
+from langchain_community.callbacks import get_openai_callback, get_anthropic_callback
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import Runnable
+from langchain_openai import ChatOpenAI, AzureChatOpenAI
 from langchain_ollama import ChatOllama
-from langchain_openai import AzureChatOpenAI, ChatOpenAI
+from langchain_community.chat_models import ChatAnthropic
 
 from .prompts import RobotSystemPrompts, system_prompts
 from .tools import ROSATools
 
-ChatModel = Union[ChatOpenAI, AzureChatOpenAI, ChatOllama]
+ChatModel = Union[ChatOpenAI, AzureChatOpenAI, ChatOllama, ChatAnthropic]
 
 
 class ROSAError(Exception):
@@ -55,7 +56,7 @@ class ROSA:
 
     Args:
         ros_version (Literal[1, 2]): The version of ROS that the agent will interact with.
-        llm (Union[AzureChatOpenAI, ChatOpenAI, ChatOllama]): The language model to use for generating responses.
+        llm (Union[AzureChatOpenAI, ChatOpenAI, ChatOllama, ChatAnthropic]): The language model to use for generating responses.
         tools (Optional[list]): A list of additional LangChain tool functions to use with the agent.
         tool_packages (Optional[list]): A list of Python packages containing LangChain tool functions to use.
         prompts (Optional[RobotSystemPrompts]): Custom prompts to use with the agent.
@@ -157,9 +158,9 @@ class ROSA:
         if ros_version not in (1, 2):
             raise ROSAConfigurationError(f"Invalid ROS version: {ros_version}. Must be 1 or 2.")
             
-        if not isinstance(llm, (ChatOpenAI, AzureChatOpenAI, ChatOllama)):
+        if not isinstance(llm, (ChatOpenAI, AzureChatOpenAI, ChatOllama, ChatAnthropic)):
             raise ROSAConfigurationError(
-                f"Invalid LLM type: {type(llm)}. Must be ChatOpenAI, AzureChatOpenAI, or ChatOllama."
+                f"Invalid LLM type: {type(llm)}. Must be ChatOpenAI, AzureChatOpenAI, ChatOllama, or ChatAnthropic."
             )
             
         if max_history_length is not None and (not isinstance(max_history_length, int) or max_history_length <= 0):
@@ -215,7 +216,7 @@ class ROSA:
         self.__logger.debug(f"Processing query: {query[:100]}{'...' if len(query) > 100 else ''}")
         
         try:
-            with get_openai_callback() as cb:
+            with self._get_usage_callback() as cb:
                 result = self.__executor.invoke(
                     {"input": query, self.MEMORY_KEY: self.__chat_history}
                 )
@@ -286,7 +287,7 @@ class ROSA:
                     # Extract the content from the event and yield it
                     content = event["data"]["chunk"].content
                     if content:
-                        final_output += f" {content}"
+                        final_output += content
                         yield {"type": "token", "content": content}
 
                 # Handle tool start events
@@ -405,6 +406,46 @@ class ROSA:
             ]
         )
         return template
+
+    def _get_usage_callback(self):
+        """Get the appropriate token usage callback based on LLM type.
+        
+        Returns:
+            A context manager for tracking token usage, or a null callback
+            for unsupported LLM types.
+        """
+        # Get the underlying LLM instance (handles RunnableBinding wrapper)
+        llm_instance = self.__llm
+        if hasattr(llm_instance, 'bound') and hasattr(llm_instance.bound, '__class__'):
+            llm_instance = llm_instance.bound
+        
+        # Check if this is an OpenAI-compatible model
+        if isinstance(llm_instance, (ChatOpenAI, AzureChatOpenAI)):
+            return get_openai_callback()
+        else:
+            # For non-OpenAI models (Ollama, Anthropic, etc.), return a null callback
+            return self._get_null_callback()
+    
+    def _get_null_callback(self):
+        """Get a null callback that doesn't track usage for non-OpenAI models.
+        
+        Returns:
+            A context manager that provides a dummy callback object.
+        """
+        from contextlib import contextmanager
+        
+        @contextmanager
+        def null_callback():
+            class NullUsageCallback:
+                def __init__(self):
+                    self.total_tokens = 0
+                    self.prompt_tokens = 0
+                    self.completion_tokens = 0
+                    self.total_cost = 0.0
+            
+            yield NullUsageCallback()
+        
+        return null_callback()
 
     def _print_usage(self, cb) -> None:
         """Print the token usage if show_token_usage is enabled.
