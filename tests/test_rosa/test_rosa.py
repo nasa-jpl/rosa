@@ -293,8 +293,8 @@ class TestROSAPrivateMethods(unittest.TestCase):
             rosa = ROSA(ros_version=1, llm=self.mock_llm)
             
             # Should not raise for valid inputs
-            rosa._validate_inputs(1, self.mock_llm)
-            rosa._validate_inputs(2, self.mock_llm)
+            rosa._validate_inputs(1, self.mock_llm, 50)
+            rosa._validate_inputs(2, self.mock_llm, None)
     
     def test_validate_inputs_invalid_ros_version(self):
         """Test _validate_inputs with invalid ROS version."""
@@ -306,7 +306,7 @@ class TestROSAPrivateMethods(unittest.TestCase):
             rosa = ROSA(ros_version=1, llm=self.mock_llm)
             
             with self.assertRaisesRegex(ROSAConfigurationError, "Invalid ROS version: 3"):
-                rosa._validate_inputs(3, self.mock_llm)
+                rosa._validate_inputs(3, self.mock_llm, 50)
     
     def test_record_chat_history_enabled(self):
         """Test _record_chat_history when accumulation is enabled."""

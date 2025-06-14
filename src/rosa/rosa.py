@@ -64,6 +64,7 @@ class ROSA:
         accumulate_chat_history (bool): Whether to accumulate chat history. Defaults to True.
         show_token_usage (bool): Whether to show token usage. Does not work when streaming is enabled. Defaults to False.
         streaming (bool): Whether to stream the output of the agent. Defaults to True.
+        max_history_length (Optional[int]): Maximum chat history messages. None for unlimited. Defaults to 50.
 
     Attributes:
         chat_history (list): A list of messages representing the chat history.
@@ -78,6 +79,7 @@ class ROSA:
         - Custom `prompts` can be provided to tailor the agent's behavior for specific robots or use cases.
         - Token usage display is automatically disabled when streaming is enabled.
         - Use `invoke()` for non-streaming responses and `astream()` for streaming responses.
+        - Chat history trimmed automatically when max_history_length exceeded.
     
     Raises:
         ROSAConfigurationError: If the agent is configured incorrectly.
@@ -101,12 +103,13 @@ class ROSA:
         accumulate_chat_history: bool = True,
         show_token_usage: bool = False,
         streaming: bool = True,
+        max_history_length: Optional[int] = 50,
     ):
         # Setup logging
         self.__logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         
         # Validate inputs
-        self._validate_inputs(ros_version, llm)
+        self._validate_inputs(ros_version, llm, max_history_length)
 
         self.__logger.info(f"Initializing ROSA agent with ROS version {ros_version}")
         self.__logger.info(f"LLM: {llm}")
@@ -124,6 +127,7 @@ class ROSA:
         self.__accumulate_chat_history = accumulate_chat_history
         self.__streaming = streaming
         self.__show_token_usage = show_token_usage if not streaming else False
+        self.__max_history_length = max_history_length
         
         # Initialize components
         try:
@@ -139,12 +143,13 @@ class ROSA:
             self.__logger.error(f"Failed to initialize ROSA agent: {e}")
             raise ROSAConfigurationError(f"Failed to initialize ROSA agent: {e}") from e
     
-    def _validate_inputs(self, ros_version: Literal[1, 2], llm: ChatModel) -> None:
+    def _validate_inputs(self, ros_version: Literal[1, 2], llm: ChatModel, max_history_length: Optional[int]) -> None:
         """Validate constructor inputs.
         
         Args:
             ros_version: The ROS version to validate.
             llm: The language model to validate.
+            max_history_length: The maximum history length to validate.
             
         Raises:
             ROSAConfigurationError: If inputs are invalid.
@@ -156,15 +161,31 @@ class ROSA:
             raise ROSAConfigurationError(
                 f"Invalid LLM type: {type(llm)}. Must be ChatOpenAI, AzureChatOpenAI, or ChatOllama."
             )
+            
+        if max_history_length is not None and (not isinstance(max_history_length, int) or max_history_length <= 0):
+            raise ROSAConfigurationError(
+                f"Invalid max_history_length: {max_history_length}. Must be a positive integer or None."
+            )
 
     @property
     def chat_history(self):
         """Get the chat history."""
         return self.__chat_history
 
-    def clear_chat(self):
-        """Clear the chat history."""
-        self.__chat_history = []
+    def clear_chat(self, retain_system_messages: bool = False) -> None:
+        """
+        Clear the chat history.
+        
+        Args:
+            retain_system_messages (bool): If True, keep system messages in the history.
+                                         If False, clear all messages. Defaults to False.
+        """
+        if retain_system_messages:
+            from langchain_core.messages import SystemMessage
+            self.__chat_history = [msg for msg in self.__chat_history 
+                                   if isinstance(msg, SystemMessage)]
+        else:
+            self.__chat_history = []
 
     def invoke(self, query: str) -> str:
         """
@@ -399,11 +420,161 @@ class ROSA:
     def _record_chat_history(self, query: str, response: str) -> None:
         """Record the chat history if accumulation is enabled.
         
+        This method atomically adds new Human/AI message pairs to the chat history
+        and then applies trimming logic if the history exceeds the maximum length.
+        
         Args:
             query: The user's query.
             response: The agent's response.
         """
-        if self.__accumulate_chat_history:
-            self.__chat_history.extend(
-                [HumanMessage(content=query), AIMessage(content=response)]
+        if not self.__accumulate_chat_history:
+            return
+            
+        try:
+            # Get original length for logging
+            original_length = len(self.__chat_history)
+            
+            # Atomically add the new message pair
+            new_messages = [HumanMessage(content=query), AIMessage(content=response)]
+            self.__chat_history.extend(new_messages)
+            
+            # Apply trimming logic if needed
+            if self.__max_history_length is not None:
+                trimmed_history = self._trim_chat_history(self.__chat_history)
+                
+                # Check if trimming occurred
+                if len(trimmed_history) < len(self.__chat_history):
+                    trimmed_count = len(self.__chat_history) - len(trimmed_history)
+                    self.__logger.debug(
+                        f"Chat history trimmed: removed {trimmed_count} messages "
+                        f"(from {len(self.__chat_history)} to {len(trimmed_history)})"
+                    )
+                    
+                # Update history with trimmed version
+                self.__chat_history = trimmed_history
+                
+        except Exception as e:
+            self.__logger.error(
+                f"Error occurred while recording chat history: {e}", 
+                exc_info=True
             )
+            # Don't re-raise - we want the main operation to continue even if 
+            # history recording fails
+    
+    def _trim_chat_history(self, chat_history: list) -> list:
+        """Trim chat history to keep only the most recent messages within the limit.
+        
+        Preserves conversation context by keeping Human/AI message pairs intact.
+        Uses FIFO strategy - removes oldest pairs first when limit is exceeded.
+        
+        Args:
+            chat_history: List of messages to trim.
+            
+        Returns:
+            Trimmed list of messages preserving most recent pairs.
+        """
+        # No trimming needed if unlimited history or under limit
+        if self.__max_history_length is None or len(chat_history) <= self.__max_history_length:
+            return chat_history
+        
+        # Handle empty history
+        if not chat_history:
+            return []
+        
+        # Calculate how many messages to keep
+        target_length = self.__max_history_length
+        
+        # If odd number of messages, preserve the incomplete pair at the end
+        if len(chat_history) % 2 == 1:
+            # Keep the last incomplete message plus as many complete pairs as possible
+            incomplete_message = chat_history[-1:]
+            complete_pairs_section = chat_history[:-1]
+            
+            # Calculate how many complete pair messages we can fit
+            remaining_slots = target_length - 1  # Reserve 1 slot for incomplete message
+            
+            # Each pair takes 2 messages, so keep the most recent pairs
+            if remaining_slots >= 2:
+                num_pairs_to_keep = remaining_slots // 2
+                start_index = len(complete_pairs_section) - (num_pairs_to_keep * 2)
+                kept_pairs = complete_pairs_section[start_index:]
+                return kept_pairs + incomplete_message
+            else:
+                # Not enough space for any complete pairs, just keep the incomplete message
+                return incomplete_message
+        else:
+            # Even number of messages - all are complete pairs
+            # Keep the most recent complete pairs
+            num_pairs_to_keep = target_length // 2
+            start_index = len(chat_history) - (num_pairs_to_keep * 2)
+            return chat_history[start_index:]
+    
+    def get_history_length(self) -> int:
+        """
+        Get the current number of messages in chat history.
+        
+        Returns:
+            int: The number of messages in the chat history.
+        """
+        return len(self.__chat_history)
+    
+    def trim_history(self, max_length: int) -> None:
+        """
+        Manually trim chat history to the specified maximum length.
+        
+        This method allows for manual trimming of the chat history, using the same
+        logic as the automatic trimming system. Messages are preserved in pairs
+        when possible to maintain conversation context.
+        
+        Args:
+            max_length (int): Maximum number of messages to keep. Must be positive.
+            
+        Raises:
+            ValueError: If max_length is not a positive integer.
+        """
+        if not isinstance(max_length, int) or max_length <= 0:
+            raise ValueError("max_length must be a positive integer")
+        
+        # Temporarily set the max length to perform trimming
+        original_max_length = self.__max_history_length
+        self.__max_history_length = max_length
+        
+        try:
+            self.__chat_history = self._trim_chat_history(self.__chat_history)
+        finally:
+            # Restore original max length setting
+            self.__max_history_length = original_max_length
+    
+    def get_history_usage(self) -> dict:
+        """
+        Get information about chat history memory usage and token estimation.
+        
+        Returns:
+            dict: A dictionary containing:
+                - message_count (int): Number of messages in history
+                - estimated_tokens (int): Rough estimate of token count
+                - memory_bytes (int): Approximate memory usage in bytes
+        """
+        message_count = len(self.__chat_history)
+        
+        if message_count == 0:
+            return {
+                'message_count': 0,
+                'estimated_tokens': 0,
+                'memory_bytes': 0
+            }
+        
+        # Calculate estimated tokens (rough approximation: 1 token ≈ 4 characters)
+        total_chars = sum(len(str(msg.content)) for msg in self.__chat_history)
+        estimated_tokens = total_chars // 4
+        
+        # Calculate approximate memory usage
+        import sys
+        memory_bytes = sum(sys.getsizeof(msg) + sys.getsizeof(msg.content) 
+                          for msg in self.__chat_history)
+        
+        return {
+            'message_count': message_count,
+            'estimated_tokens': estimated_tokens,
+            'memory_bytes': memory_bytes
+        }
