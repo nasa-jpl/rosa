@@ -1,4 +1,4 @@
-#  Copyright (c) 2024. Jet Propulsion Laboratory. All rights reserved.
+#  Copyright (c) 2025. Jet Propulsion Laboratory. All rights reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -20,6 +20,9 @@ from langchain.agents import tool
 
 from src.rosa.tools import ROSATools, inject_blacklist
 
+ROS_1_VERSION = 1
+ROS_2_VERSION = 2
+
 
 @tool
 def sample_tool(blacklist=None):
@@ -29,10 +32,10 @@ def sample_tool(blacklist=None):
 
 class TestROSATools(unittest.TestCase):
     def setUp(self):
-        self.ros_version = int(os.getenv("ROS_VERSION", 1))
+        self.ros_version = int(os.getenv("ROS_VERSION", "1"))
 
     def test_initializes_with_ros_version_1(self):
-        if self.ros_version == 1:
+        if self.ros_version == ROS_1_VERSION:
             tools = ROSATools(ros_version=1)
             self.assertEqual(tools._ROSATools__ros_version, 1)
         else:
@@ -41,7 +44,7 @@ class TestROSATools(unittest.TestCase):
                 self.assertEqual(tools._ROSATools__ros_version, 1)
 
     def test_initializes_with_ros_version_2(self):
-        if self.ros_version == 2:
+        if self.ros_version == ROS_2_VERSION:
             tools = ROSATools(ros_version=2)
             self.assertEqual(tools._ROSATools__ros_version, 2)
         else:
@@ -50,7 +53,7 @@ class TestROSATools(unittest.TestCase):
                 self.assertEqual(tools._ROSATools__ros_version, 2)
 
     def test_raises_value_error_for_invalid_ros_version(self):
-        if self.ros_version == 1:
+        if self.ros_version == ROS_1_VERSION:
             with self.assertRaises(ModuleNotFoundError):
                 ROSATools(ros_version=2)
         else:
@@ -61,7 +64,7 @@ class TestROSATools(unittest.TestCase):
     @patch("src.rosa.tools.log")
     @patch("src.rosa.tools.system")
     def test_adds_default_tools(self, mock_system, mock_log, mock_calculation):
-        if self.ros_version == 1:
+        if self.ros_version == ROS_1_VERSION:
             tools = ROSATools(ros_version=1)
         else:
             tools = ROSATools(ros_version=2)

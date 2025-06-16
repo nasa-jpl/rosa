@@ -1,4 +1,4 @@
-#  Copyright (c) 2024. Jet Propulsion Laboratory. All rights reserved.
+#  Copyright (c) 2025. Jet Propulsion Laboratory. All rights reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -15,22 +15,23 @@
 import os
 import subprocess
 import unittest
+from contextlib import suppress
 from unittest.mock import patch
 
-try:
+with suppress(ModuleNotFoundError):
     from src.rosa.tools.ros2 import (
         execute_ros_command,
-        ros2_node_list,
-        ros2_topic_list,
-        ros2_topic_echo,
-        ros2_service_list,
         ros2_node_info,
-        ros2_param_list,
+        ros2_node_list,
         ros2_param_get,
+        ros2_param_list,
         ros2_param_set,
+        ros2_service_list,
+        ros2_topic_echo,
+        ros2_topic_list,
     )
-except ModuleNotFoundError:
-    pass
+
+EXPECTED_ROS_VERSION = 2
 
 
 @unittest.skipIf(
@@ -38,7 +39,6 @@ except ModuleNotFoundError:
     "Skipping ROS2 tests because ROS_VERSION is set to 1",
 )
 class TestROS2Tools(unittest.TestCase):
-
     @patch("src.rosa.tools.ros2.subprocess.check_output")
     def test_execute_valid_ros2_command(self, mock_check_output):
         mock_check_output.return_value = b"Node /example_node\n"
@@ -142,7 +142,7 @@ class TestROS2Tools(unittest.TestCase):
         self.assertEqual(result, {"error": "Invalid topic"})
 
     @patch("src.rosa.tools.ros2.execute_ros_command")
-    def test_ros2_topic_echo_invalid_count(self, mock_execute):
+    def test_ros2_topic_echo_invalid_count(self, mock_execute):  # noqa: ARG002
         result = ros2_topic_echo.invoke({"topic": "/example_topic", "count": 11})
         self.assertEqual(result, {"error": "Count must be between 1 and 10."})
 
@@ -286,5 +286,5 @@ class TestROS2Tools(unittest.TestCase):
 if __name__ == "__main__":
     import os
 
-    if os.environ.get("ROS_VERSION") == 2:
+    if os.environ.get("ROS_VERSION") == EXPECTED_ROS_VERSION:
         unittest.main()

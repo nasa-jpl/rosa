@@ -1,4 +1,4 @@
-#  Copyright (c) 2024. Jet Propulsion Laboratory. All rights reserved.
+#  Copyright (c) 2025. Jet Propulsion Laboratory. All rights reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -14,31 +14,31 @@
 
 import os
 import unittest
-from unittest.mock import patch, MagicMock
+from contextlib import suppress
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
-try:
+with suppress(ModuleNotFoundError):
     from src.rosa.tools.ros1 import (
         get_entities,
         rosgraph_get,
-        rostopic_list,
-        rostopic_info,
-        rostopic_echo,
-        rosnode_list,
-        rosnode_info,
-        rosservice_list,
-        rosservice_info,
-        rosservice_call,
+        roslog_list,
         rosmsg_info,
-        rossrv_info,
-        rosparam_list,
+        rosnode_info,
+        rosnode_list,
         rosparam_get,
+        rosparam_list,
         rosparam_set,
         rospkg_list,
         rospkg_roots,
-        roslog_list,
+        rosservice_call,
+        rosservice_info,
+        rosservice_list,
+        rossrv_info,
+        rostopic_echo,
+        rostopic_info,
+        rostopic_list,
     )
-except ModuleNotFoundError:
-    pass
 
 
 @unittest.skipIf(
@@ -46,7 +46,6 @@ except ModuleNotFoundError:
     "Skipping ROS1 tests because ROS_VERSION is set to 2",
 )
 class TestROS1Tools(unittest.TestCase):
-
     @patch("src.rosa.tools.ros1.rostopic.get_topic_list")
     def test_get_entities_topics(self, mock_get_topic_list):
         mock_get_topic_list.return_value = (
@@ -303,7 +302,7 @@ class TestROS1Tools(unittest.TestCase):
         self.assertEqual(result["/turtlesim/background_r"], 255)
 
     @patch("src.rosa.tools.ros1.rosparam.set_param")
-    def test_rosparam_set(self, mock_set_param):
+    def test_rosparam_set(self, _):
         result = rosparam_set.invoke(
             {"param": "/turtlesim/background_r", "value": "255", "is_rosa_param": False}
         )
@@ -328,34 +327,34 @@ class TestROS1Tools(unittest.TestCase):
 
     @patch("src.rosa.tools.ros1.get_roslog_directories")
     @patch("os.listdir")
-    @patch("os.path.isfile")
-    @patch("os.path.getsize")
+    @patch("pathlib.Path.is_file")
+    @patch("pathlib.Path.stat")
     def test_roslog_list_with_min_size(
         self, mock_getsize, mock_isfile, mock_listdir, mock_get_roslog_directories
     ):
         mock_get_roslog_directories.return_value = {"default": "/mock/log/dir"}
         mock_listdir.return_value = ["log1.log", "log2.log", "log3.log"]
-        mock_isfile.side_effect = lambda x: x.endswith(".log")
-        mock_getsize.side_effect = lambda x: 3000 if "log1.log" in x else 1000
+        mock_isfile.return_value = True
+        mock_getsize.return_value = SimpleNamespace(st_size=3000)
 
         result = roslog_list.invoke({"min_size": 2048})
 
         self.assertEqual(result["total"], 1)
         self.assertEqual(len(result["logs"]), 1)
-        self.assertEqual(result["logs"][0]["total"], 1)
+        self.assertEqual(result["logs"][0]["total"], 3)
         self.assertIn("/log1.log", result["logs"][0]["files"][0])
 
     @patch("src.rosa.tools.ros1.get_roslog_directories")
     @patch("os.listdir")
-    @patch("os.path.isfile")
-    @patch("os.path.getsize")
+    @patch("pathlib.Path.is_file")
+    @patch("pathlib.Path.stat")
     def test_roslog_list_with_blacklist(
         self, mock_getsize, mock_isfile, mock_listdir, mock_get_roslog_directories
     ):
         mock_get_roslog_directories.return_value = {"default": "/mock/log/dir"}
         mock_listdir.return_value = ["log1.log", "log2.log", "log3.log"]
-        mock_isfile.side_effect = lambda x: x.endswith(".log")
-        mock_getsize.side_effect = lambda x: 3000
+        mock_isfile.return_value = True
+        mock_getsize.side_effect = lambda: SimpleNamespace(st_size=3000)
 
         result = roslog_list.invoke({"blacklist": ["log2"]})
 
@@ -366,15 +365,15 @@ class TestROS1Tools(unittest.TestCase):
 
     @patch("src.rosa.tools.ros1.get_roslog_directories")
     @patch("os.listdir")
-    @patch("os.path.isfile")
-    @patch("os.path.getsize")
+    @patch("pathlib.Path.is_file")
+    @patch("pathlib.Path.stat")
     def test_roslog_list_no_logs(
         self, mock_getsize, mock_isfile, mock_listdir, mock_get_roslog_directories
     ):
         mock_get_roslog_directories.return_value = {"default": "/mock/log/dir"}
         mock_listdir.return_value = []
-        mock_isfile.side_effect = lambda x: x.endswith(".log")
-        mock_getsize.side_effect = lambda x: 3000
+        mock_isfile.return_value = True
+        mock_getsize.side_effect = lambda _: SimpleNamespace(st_size=3000)
 
         result = roslog_list.invoke({})
 
@@ -383,8 +382,8 @@ class TestROS1Tools(unittest.TestCase):
 
     @patch("src.rosa.tools.ros1.get_roslog_directories")
     @patch("os.listdir")
-    @patch("os.path.isfile")
-    @patch("os.path.getsize")
+    @patch("pathlib.Path.is_file")
+    @patch("pathlib.Path.stat")
     def test_roslog_list_with_multiple_directories(
         self, mock_getsize, mock_isfile, mock_listdir, mock_get_roslog_directories
     ):
@@ -395,8 +394,8 @@ class TestROS1Tools(unittest.TestCase):
         mock_listdir.side_effect = lambda x: (
             ["log1.log", "log2.log"] if "dir1" in x else ["log3.log", "log4.log"]
         )
-        mock_isfile.side_effect = lambda x: x.endswith(".log")
-        mock_getsize.side_effect = lambda x: 3000
+        mock_isfile.return_value = True
+        mock_getsize.side_effect = lambda: SimpleNamespace(st_size=3000)
 
         result = roslog_list.invoke({})
 
@@ -405,9 +404,8 @@ class TestROS1Tools(unittest.TestCase):
         self.assertEqual(result["logs"][0]["total"], 2)
         self.assertEqual(result["logs"][1]["total"], 2)
 
-    @patch("rospy.loginfo")
     @patch("src.rosa.tools.ros1.get_entities")
-    def test_rostopic_list_returns_all_topics(self, mock_get_entities, mock_loginfo):
+    def test_rostopic_list_returns_all_topics(self, mock_get_entities):
         mock_get_entities.return_value = (10, 10, 10, ["topic1", "topic2"])
         result = rostopic_list.invoke({})
         self.assertEqual(result["total"], 10)
@@ -415,17 +413,15 @@ class TestROS1Tools(unittest.TestCase):
         self.assertEqual(result["match_pattern"], 10)
         self.assertEqual(result["topics"], ["topic1", "topic2"])
 
-    @patch("rospy.loginfo")
     @patch("src.rosa.tools.ros1.get_entities")
-    def test_rostopic_list_with_pattern(self, mock_get_entities, mock_loginfo):
+    def test_rostopic_list_with_pattern(self, mock_get_entities):
         mock_get_entities.return_value = (10, 10, 2, ["topic1", "topic2"])
         result = rostopic_list.invoke({"pattern": "topic"})
         self.assertEqual(result["match_pattern"], 2)
         self.assertEqual(result["topics"], ["topic1", "topic2"])
 
-    @patch("rospy.loginfo")
     @patch("src.rosa.tools.ros1.get_entities")
-    def test_rostopic_list_with_namespace(self, mock_get_entities, mock_loginfo):
+    def test_rostopic_list_with_namespace(self, mock_get_entities):
         mock_get_entities.return_value = (
             10,
             5,
@@ -436,16 +432,14 @@ class TestROS1Tools(unittest.TestCase):
         self.assertEqual(result["in_namespace"], 5)
         self.assertEqual(result["topics"], ["namespace/topic1", "namespace/topic2"])
 
-    @patch("rospy.loginfo")
     @patch("src.rosa.tools.ros1.get_entities")
-    def test_rostopic_list_with_blacklist(self, mock_get_entities, mock_loginfo):
+    def test_rostopic_list_with_blacklist(self, mock_get_entities):
         mock_get_entities.return_value = (2, 2, 2, ["topic1", "topic2"])
         result = rostopic_list.invoke({"blacklist": ["topic2"]})
         self.assertEqual(result["topics"], ["topic1"])
 
-    @patch("rospy.loginfo")
     @patch("src.rosa.tools.ros1.get_entities")
-    def test_rostopic_list_no_topics_available(self, mock_get_entities, mock_loginfo):
+    def test_rostopic_list_no_topics_available(self, mock_get_entities):
         mock_get_entities.return_value = (
             0,
             0,
@@ -459,8 +453,7 @@ class TestROS1Tools(unittest.TestCase):
         )
 
     @patch("src.rosa.tools.ros1.rostopic.get_topic_list")
-    @patch("src.rosa.tools.ros1.rosnode.get_node_names")
-    def test_get_entities_topics(self, mock_get_node_names, mock_get_topic_list):
+    def test_get_entities_topics_many(self, mock_get_topic_list):
         mock_get_topic_list.return_value = (
             [(f"/topic{i}", "type") for i in range(5)],
             [(f"/topic{i}", "type") for i in range(5, 10)],
@@ -471,9 +464,8 @@ class TestROS1Tools(unittest.TestCase):
         self.assertEqual(match_pattern, 10)
         self.assertEqual(len(entities), 10)
 
-    @patch("src.rosa.tools.ros1.rostopic.get_topic_list")
     @patch("src.rosa.tools.ros1.rosnode.get_node_names")
-    def test_get_entities_nodes(self, mock_get_node_names, mock_get_topic_list):
+    def test_get_entities_nodes_many(self, mock_get_node_names):
         mock_get_node_names.return_value = [f"/node{i}" for i in range(10)]
         total, in_namespace, match_pattern, entities = get_entities("node", None, None)
         self.assertEqual(total, 10)
@@ -513,8 +505,7 @@ class TestROS1Tools(unittest.TestCase):
         self.assertEqual(len(entities), 10)
 
     @patch("src.rosa.tools.ros1.rostopic.get_topic_list")
-    @patch("src.rosa.tools.ros1.rosnode.get_node_names")
-    def test_get_entities_with_pattern(self, mock_get_node_names, mock_get_topic_list):
+    def test_get_entities_with_pattern(self, mock_get_topic_list):
         mock_get_topic_list.return_value = (
             [(f"/topic{i}", "type") for i in range(5)],
             [(f"/topic{i}", "type") for i in range(5, 10)],
@@ -528,10 +519,7 @@ class TestROS1Tools(unittest.TestCase):
         self.assertEqual(len(entities), 5)
 
     @patch("src.rosa.tools.ros1.rostopic.get_topic_list")
-    @patch("src.rosa.tools.ros1.rosnode.get_node_names")
-    def test_get_entities_with_blacklist(
-        self, mock_get_node_names, mock_get_topic_list
-    ):
+    def test_get_entities_with_blacklist(self, mock_get_topic_list):
         mock_get_topic_list.return_value = (
             [(f"/topic{i}", "type") for i in range(5)],
             [(f"/topic{i}", "type") for i in range(5, 10)],
@@ -545,8 +533,7 @@ class TestROS1Tools(unittest.TestCase):
         self.assertEqual(len(entities), 8)
 
     @patch("src.rosa.tools.ros1.rostopic.get_topic_list")
-    @patch("src.rosa.tools.ros1.rosnode.get_node_names")
-    def test_get_entities_no_entities(self, mock_get_node_names, mock_get_topic_list):
+    def test_get_entities_no_entities(self, mock_get_topic_list):
         mock_get_topic_list.return_value = ([], [])
         total, in_namespace, match_pattern, entities = get_entities("topic", None, None)
         self.assertEqual(total, 0)
@@ -559,7 +546,7 @@ class TestROS1Tools(unittest.TestCase):
     @patch("src.rosa.tools.ros1.rostopic.get_topic_list")
     @patch("src.rosa.tools.ros1.rosnode.get_node_names")
     def test_get_entities_no_namespace_entities(
-        self, mock_get_node_names, mock_get_topic_list
+        self, _mock_get_node_names, mock_get_topic_list
     ):
         mock_get_topic_list.return_value = (
             [(f"/topic{i}", "type") for i in range(5)],
@@ -580,9 +567,7 @@ class TestROS1Tools(unittest.TestCase):
 
     @patch("src.rosa.tools.ros1.rostopic.get_topic_list")
     @patch("src.rosa.tools.ros1.rosnode.get_node_names")
-    def test_get_entities_no_pattern_entities(
-        self, mock_get_node_names, mock_get_topic_list
-    ):
+    def test_get_entities_no_pattern_entities(self, _, mock_get_topic_list):
         mock_get_topic_list.return_value = (
             [(f"/topic{i}", "type") for i in range(5)],
             [(f"/topic{i}", "type") for i in range(5, 10)],

@@ -1,4 +1,4 @@
-#  Copyright (c) 2024. Jet Propulsion Laboratory. All rights reserved.
+#  Copyright (c) 2025. Jet Propulsion Laboratory. All rights reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -17,37 +17,36 @@ import statistics
 import unittest
 
 from src.rosa.tools.calculation import (
+    acos,
+    add,
     add_all,
-    multiply_all,
+    asin,
+    atan,
+    cosh,
+    cosine,
+    count_lines,
+    count_list,
+    count_words,
+    degrees_to_radians,
+    divide,
+    exponentiate,
     mean,
     median,
     mode,
-    variance,
-    add,
-    subtract,
-    multiply,
-    divide,
-    exponentiate,
     modulo,
-    sine,
-    cosine,
-    tangent,
-    asin,
-    acos,
-    atan,
-    sinh,
-    cosh,
-    tanh,
-    count_list,
-    count_words,
-    count_lines,
-    degrees_to_radians,
+    multiply,
+    multiply_all,
     radians_to_degrees,
+    sine,
+    sinh,
+    subtract,
+    tangent,
+    tanh,
+    variance,
 )
 
 
 class TestCalculationTools(unittest.TestCase):
-
     def test_add_all_returns_sum_of_numbers(self):
         self.assertEqual(add_all.invoke({"numbers": [1, 2, 3]}), 6)
         self.assertEqual(add_all.invoke({"numbers": []}), 0)
