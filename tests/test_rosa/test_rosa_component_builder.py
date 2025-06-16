@@ -90,9 +90,9 @@ class TestROSAComponentBuilder(unittest.TestCase):
                 packages=custom_packages, tools=None, blacklist=blacklist
             )
 
-            # Verify packages were added with blacklist
+            # Verify packages were added (blacklist is handled in ROSATools constructor)
             mock_rosa_tools_instance.add_packages.assert_called_once_with(
-                custom_packages, blacklist=blacklist
+                custom_packages
             )
             self.assertEqual(result, mock_rosa_tools_instance)
 
