@@ -25,10 +25,8 @@ def set_verbosity(enable_verbose_messages: bool) -> str:
 
     :arg enable_verbose_messages: A boolean value to enable or disable verbose messages.
     """
-    global VERBOSE
-    VERBOSE = enable_verbose_messages
-    set_verbose(VERBOSE)
-    return f"Verbose messages are now {'enabled' if VERBOSE else 'disabled'}."
+    set_verbose(enable_verbose_messages)
+    return f"Verbose messages are now {'enabled' if enable_verbose_messages else 'disabled'}."
 
 
 @tool
@@ -39,10 +37,10 @@ def set_debugging(enable_debug_messages: bool) -> str:
 
     :arg enable_debug_messages: A boolean value to enable or disable debug messages.
     """
-    global DEBUG
-    DEBUG = enable_debug_messages
-    set_debug(DEBUG)
-    return f"Debug messages are now {'enabled' if DEBUG else 'disabled'}."
+    set_debug(enable_debug_messages)
+    return (
+        f"Debug messages are now {'enabled' if enable_debug_messages else 'disabled'}."
+    )
 
 
 @tool

@@ -14,7 +14,7 @@
 
 import logging
 from collections.abc import AsyncIterable
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Literal, Optional
 
 from langchain_core.language_models.chat_models import BaseChatModel
 
@@ -232,8 +232,9 @@ class ROSA:
                 f"ROSA agent initialized with ROS version {self.__ros_version}"
             )
         except Exception as e:
-            self.__logger.error(f"Failed to initialize ROSA agent: {e}")
-            raise ROSAConfigurationError(f"Failed to initialize ROSA agent: {e}") from e
+            self.__logger.exception("Failed to initialize ROSA agent")
+            msg = f"Failed to initialize ROSA agent: {e}"
+            raise ROSAConfigurationError(msg) from e
 
     def _validate_inputs(
         self,
@@ -297,10 +298,12 @@ class ROSA:
         self._check_initialized()
 
         if not query or not query.strip():
-            raise ValueError("Query cannot be empty")
+            msg = "Query cannot be empty"
+            raise ValueError(msg)
 
+        query_preview_length = 100
         self.__logger.debug(
-            f"Processing query: {query[:100]}{'...' if len(query) > 100 else ''}"
+            f"Processing query: {query[:query_preview_length]}{'...' if len(query) > query_preview_length else ''}"
         )
 
         try:
@@ -314,17 +317,19 @@ class ROSA:
                 self._print_usage(cb)
         except Exception as e:
             self.__logger.error(f"Agent execution failed: {e}", exc_info=True)
-            raise ROSAExecutionError(f"Agent execution failed: {e}") from e
+            msg = f"Agent execution failed: {e}"
+            raise ROSAExecutionError(msg) from e
 
         if "output" not in result:
             self.__logger.error("Agent result missing 'output' key")
-            raise ROSAExecutionError("Agent result missing 'output' key")
+            msg = "Agent result missing 'output' key"
+            raise ROSAExecutionError(msg)
 
         self.__chat_manager.record_chat_history(query, result["output"])
         self.__logger.debug("Query processed successfully")
         return result["output"]
 
-    async def astream(self, query: str) -> AsyncIterable[Dict[str, Any]]:
+    async def astream(self, query: str) -> AsyncIterable[dict[str, Any]]:
         """
         Asynchronously stream the agent's response to a user query.
 
@@ -336,7 +341,7 @@ class ROSA:
             query (str): The user's input query.
 
         Returns:
-            AsyncIterable[Dict[str, Any]]: An asynchronous iterable of dictionaries
+            AsyncIterable[dict[str, Any]]: An asynchronous iterable of dictionaries
             containing event information. Each dictionary has a 'type' key and
             additional keys depending on the event type:
             - 'token': Yields generated tokens with 'content'.
@@ -356,15 +361,16 @@ class ROSA:
         self._check_initialized()
 
         if not self.__streaming:
-            raise ValueError(
-                "Streaming is not enabled. Use 'invoke' method instead or initialize ROSA with streaming=True."
-            )
+            msg = "Streaming is not enabled. Use 'invoke' method instead or initialize ROSA with streaming=True."
+            raise ValueError(msg)
 
         if not query or not query.strip():
-            raise ValueError("Query cannot be empty")
+            msg = "Query cannot be empty"
+            raise ValueError(msg)
 
+        query_preview_length = 100
         self.__logger.debug(
-            f"Streaming query: {query[:100]}{'...' if len(query) > 100 else ''}"
+            f"Streaming query: {query[:query_preview_length]}{'...' if len(query) > query_preview_length else ''}"
         )
 
         try:
@@ -479,9 +485,11 @@ class ROSA:
             ROSAError: If the agent has been cleaned up or is not initialized.
         """
         if self._is_cleaned_up:
-            raise ROSAError("Agent has been cleaned up")
+            msg = "Agent has been cleaned up"
+            raise ROSAError(msg)
         if not self._is_initialized:
-            raise ROSAError("Agent not properly initialized")
+            msg = "Agent not properly initialized"
+            raise ROSAError(msg)
 
     def cleanup(self) -> None:
         """Clean up resources and connections.

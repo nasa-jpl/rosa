@@ -12,7 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import os
+from pathlib import Path
 from typing import Literal, Optional
 
 from langchain.agents import tool
@@ -38,23 +38,23 @@ def read_log(
     if num_lines is not None and num_lines < 1:
         return {"error": "Invalid `num_lines` argument. It must be a positive integer."}
 
-    if not os.path.exists(log_file_directory):
+    if not Path(log_file_directory).exists():
         return {
             "error": f"The log directory '{log_file_directory}' does not exist. You should first use your tools to "
             f"get the correct log directory."
         }
 
-    full_log_path = os.path.join(log_file_directory, log_filename)
+    full_log_path = Path(log_file_directory) / log_filename
 
-    if not os.path.exists(full_log_path):
+    if not full_log_path.exists():
         return {
             "error": f"The log file '{log_filename}' does not exist in the log directory '{log_file_directory}'."
         }
 
-    if not os.path.isfile(full_log_path):
+    if not full_log_path.is_file():
         return {"error": f"The path '{full_log_path}' is not a file."}
 
-    with open(full_log_path) as f:
+    with full_log_path.open() as f:
         log_lines = f.readlines()
 
     total_lines = len(log_lines)
@@ -67,9 +67,10 @@ def read_log(
         log_lines = log_lines[-num_lines:]
 
     # If there are more than 200 lines, return a message to use the line_range argument
-    if len(log_lines) > 200:
+    max_log_lines = 200
+    if len(log_lines) > max_log_lines:
         return {
-            "error": f"The log file '{log_filename}' has more than 200 lines. Please use the `num_lines` argument to "
+            "error": f"The log file '{log_filename}' has more than {max_log_lines} lines. Please use the `num_lines` argument to "
             f"read a subset of the log file at a time."
         }
 

@@ -16,13 +16,14 @@ import os
 import re
 import subprocess
 import time
-from typing import List, Optional, Tuple
+from pathlib import Path
+from typing import Optional
 
 from langchain.agents import tool
 from rclpy.logging import get_logging_directory
 
 
-def execute_ros_command(command: str) -> Tuple[bool, str]:
+def execute_ros_command(command: str) -> tuple[bool, str]:
     """
     Execute a ROS2 command.
 
@@ -33,27 +34,32 @@ def execute_ros_command(command: str) -> Tuple[bool, str]:
     # Validate the command is a proper ROS2 command
     cmd = command.split(" ")
     valid_ros2_commands = ["node", "topic", "service", "param", "doctor"]
+    min_command_parts = 2
 
-    if len(cmd) < 2:
-        raise ValueError(f"'{command}' is not a valid ROS2 command.")
+    if len(cmd) < min_command_parts:
+        msg = f"'{command}' is not a valid ROS2 command."
+        raise ValueError(msg)
     if cmd[0] != "ros2":
-        raise ValueError(f"'{command}' is not a valid ROS2 command.")
+        msg = f"'{command}' is not a valid ROS2 command."
+        raise ValueError(msg)
     if cmd[1] not in valid_ros2_commands:
-        raise ValueError(f"'ros2 {cmd[1]}' is not a valid ros2 subcommand.")
+        msg = f"'ros2 {cmd[1]}' is not a valid ros2 subcommand."
+        raise ValueError(msg)
 
     try:
         output = subprocess.check_output(command, shell=True).decode()
-        return True, output
     except Exception as e:
         return False, str(e)
+    else:
+        return True, output
 
 
 def get_entities(
     cmd: str,
     delimiter: str = "\n",
-    pattern: str = None,
-    blacklist: Optional[List[str]] = None,
-) -> List[str]:
+    pattern: Optional[str] = None,
+    blacklist: Optional[list[str]] = None,
+) -> list[str]:
     """
     Get a list of ROS2 entities (nodes, topics, services, etc.).
 
@@ -90,7 +96,7 @@ def get_entities(
 
 @tool
 def ros2_node_list(
-    pattern: Optional[str] = None, blacklist: Optional[List[str]] = None
+    pattern: Optional[str] = None, blacklist: Optional[list[str]] = None
 ) -> dict:
     """
     Get a list of ROS2 nodes running on the system.
@@ -104,7 +110,7 @@ def ros2_node_list(
 
 @tool
 def ros2_topic_list(
-    pattern: Optional[str] = None, blacklist: Optional[List[str]] = None
+    pattern: Optional[str] = None, blacklist: Optional[list[str]] = None
 ) -> dict:
     """
     Get a list of ROS2 topics.
@@ -137,12 +143,13 @@ def ros2_topic_echo(
            This will cause the response to be too large and may cause the tool to fail.
     """
     cmd = f"ros2 topic echo {topic} --once --spin-time {timeout}"
+    max_echo_count = 10
 
-    if count < 1 or count > 10:
-        return {"error": "Count must be between 1 and 10."}
+    if count < 1 or count > max_echo_count:
+        return {"error": f"Count must be between 1 and {max_echo_count}."}
 
     echoes = []
-    for i in range(count):
+    for _ in range(count):
         success, output = execute_ros_command(cmd)
 
         if not success:
@@ -162,7 +169,7 @@ def ros2_topic_echo(
 
 @tool
 def ros2_service_list(
-    pattern: Optional[str] = None, blacklist: Optional[List[str]] = None
+    pattern: Optional[str] = None, blacklist: Optional[list[str]] = None
 ) -> dict:
     """
     Get a list of ROS2 services.
@@ -175,7 +182,7 @@ def ros2_service_list(
 
 
 @tool
-def ros2_node_info(nodes: List[str]) -> dict:
+def ros2_node_info(nodes: list[str]) -> dict:
     """
     Get information about a ROS2 node.
 
@@ -187,7 +194,7 @@ def ros2_node_info(nodes: List[str]) -> dict:
         cmd = f"ros2 node info {node_name}"
         success, output = execute_ros_command(cmd)
         if not success:
-            data[node_name] = dict(error=output)
+            data[node_name] = {"error": output}
             continue
         data[node_name] = output
 
@@ -195,7 +202,7 @@ def ros2_node_info(nodes: List[str]) -> dict:
 
 
 @tool
-def ros2_topic_info(topics: List[str]) -> dict:
+def ros2_topic_info(topics: list[str]) -> dict:
     """
     Get information about a ROS2 topic.
 
@@ -206,10 +213,7 @@ def ros2_topic_info(topics: List[str]) -> dict:
     for topic in topics:
         cmd = f"ros2 topic info {topic} --verbose"
         success, output = execute_ros_command(cmd)
-        if not success:
-            topic_info = dict(error=output)
-        else:
-            topic_info = output
+        topic_info = {"error": output} if not success else output
 
         data[topic] = topic_info
 
@@ -219,8 +223,8 @@ def ros2_topic_info(topics: List[str]) -> dict:
 @tool
 def ros2_param_list(
     node_name: Optional[str] = None,
-    pattern: str = None,
-    blacklist: Optional[List[str]] = None,
+    pattern: Optional[str] = None,
+    blacklist: Optional[list[str]] = None,
 ) -> dict:
     """
     Get a list of parameters for a ROS2 node.
@@ -308,7 +312,7 @@ def ros2_param_set(node_name: str, param_name: str, param_value: str) -> dict:
 
 
 @tool
-def ros2_service_info(services: List[str]) -> dict:
+def ros2_service_info(services: list[str]) -> dict:
     """
     Get information about a ROS2 service.
 
@@ -321,7 +325,7 @@ def ros2_service_info(services: List[str]) -> dict:
         success, output = execute_ros_command(cmd)
 
         if not success:
-            data[service_name] = dict(error=output)
+            data[service_name] = {"error": output}
             continue
 
         data[service_name] = output
@@ -366,7 +370,7 @@ def ros2_log_directories():
 
 
 @tool
-def roslog_list(min_size: int = 2048, blacklist: Optional[List[str]] = None) -> dict:
+def roslog_list(min_size: int = 2048, blacklist: Optional[list[str]] = None) -> dict:
     """
     Returns a list of ROS log files.
 
@@ -377,16 +381,17 @@ def roslog_list(min_size: int = 2048, blacklist: Optional[List[str]] = None) -> 
     log_dirs = ros2_log_directories()
 
     for _, log_dir in log_dirs.items():
-        if not log_dir or not os.path.exists(log_dir):
+        if not log_dir or not Path(log_dir).exists():
             print(f"Log directory does not exist: {log_dir}")
             continue
 
         try:
             # Get all .log files in the directory
+            log_dir_path = Path(log_dir)
             log_files = [
-                os.path.join(log_dir, f)
+                str(log_dir_path / f)
                 for f in os.listdir(log_dir)
-                if os.path.isfile(os.path.join(log_dir, f)) and f.endswith(".log")
+                if (log_dir_path / f).is_file() and f.endswith(".log")
             ]
 
             print(f"Found {len(log_files)} log files in {log_dir}")
@@ -406,15 +411,15 @@ def roslog_list(min_size: int = 2048, blacklist: Optional[List[str]] = None) -> 
             )
 
         # Filter out files that are too small
-        log_files = list(filter(lambda x: os.path.getsize(x) > min_size, log_files))
+        log_files = list(filter(lambda x: Path(x).stat().st_size > min_size, log_files))
 
         # Get the size of each log file in KB or MB if it's larger than 1 MB
         log_files = [
             {
-                os.path.basename(f): (
-                    f"{round(os.path.getsize(f) / 1024, 2)} KB"
-                    if os.path.getsize(f) < 1024 * 1024
-                    else f"{round(os.path.getsize(f) / (1024 * 1024), 2)} MB"
+                Path(f).name: (
+                    f"{round(Path(f).stat().st_size / 1024, 2)} KB"
+                    if Path(f).stat().st_size < 1024 * 1024
+                    else f"{round(Path(f).stat().st_size / (1024 * 1024), 2)} MB"
                 ),
             }
             for f in log_files
@@ -429,7 +434,7 @@ def roslog_list(min_size: int = 2048, blacklist: Optional[List[str]] = None) -> 
                 }
             )
 
-    return dict(
-        total=len(logs),
-        logs=logs,
-    )
+    return {
+        "total": len(logs),
+        "logs": logs,
+    }

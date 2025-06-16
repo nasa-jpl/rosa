@@ -14,19 +14,18 @@
 
 import math
 import statistics
-from typing import List
 
 from langchain.agents import tool
 
 
 @tool
-def add_all(numbers: List[float]) -> float:
+def add_all(numbers: list[float]) -> float:
     """Returns the sum of a list of numbers."""
     return sum(numbers)
 
 
 @tool
-def multiply_all(numbers: List[float]) -> float:
+def multiply_all(numbers: list[float]) -> float:
     """Returns the product of a list of numbers."""
     result = 1
     for number in numbers:
@@ -35,7 +34,7 @@ def multiply_all(numbers: List[float]) -> float:
 
 
 @tool
-def mean(numbers: List[float]) -> dict:
+def mean(numbers: list[float]) -> dict:
     """Returns the mean of a list of numbers."""
     return {
         "mean": statistics.mean(numbers),
@@ -44,25 +43,25 @@ def mean(numbers: List[float]) -> dict:
 
 
 @tool
-def median(numbers: List[float]) -> float:
+def median(numbers: list[float]) -> float:
     """Returns the median of a list of numbers."""
     return statistics.median(numbers)
 
 
 @tool
-def mode(numbers: List[float]) -> List[float]:
+def mode(numbers: list[float]) -> list[float]:
     """Returns the mode of a list of numbers."""
     return statistics.mode(numbers)
 
 
 @tool
-def variance(numbers: List[float]) -> float:
+def variance(numbers: list[float]) -> float:
     """Returns the variance of a list of numbers."""
     return statistics.variance(numbers)
 
 
 @tool
-def add(xy_pairs: List[tuple]) -> List[dict]:
+def add(xy_pairs: list[tuple]) -> list[dict]:
     """Performs addition on the input values x and y.
 
     :arg xy_pairs: A list of tuples containing the input values x and y (e.g. [(x1, y1), (x2, y2), ...])
@@ -77,7 +76,7 @@ def add(xy_pairs: List[tuple]) -> List[dict]:
 
 
 @tool
-def subtract(xy_pairs: List[tuple]) -> List[dict]:
+def subtract(xy_pairs: list[tuple]) -> list[dict]:
     """Performs subtraction on the input values x and y.
 
     :arg xy_pairs: A list of tuples containing the input values x and y (e.g. [(x1, y1), (x2, y2), ...])
@@ -92,7 +91,7 @@ def subtract(xy_pairs: List[tuple]) -> List[dict]:
 
 
 @tool
-def multiply(xy_pairs: List[tuple]) -> List[dict]:
+def multiply(xy_pairs: list[tuple]) -> list[dict]:
     """Performs multiplication on the input values x and y.
 
     :arg xy_pairs: A list of tuples containing the input values x and y (e.g. [(x1, y1), (x2, y2), ...])
@@ -107,7 +106,7 @@ def multiply(xy_pairs: List[tuple]) -> List[dict]:
 
 
 @tool
-def divide(xy_pairs: List[tuple]) -> List[dict]:
+def divide(xy_pairs: list[tuple]) -> list[dict]:
     """Performs division on the input values x and y.
 
     :arg xy_pairs: A list of tuples containing the input values x and y (e.g. [(x1, y1), (x2, y2), ...])
@@ -122,7 +121,7 @@ def divide(xy_pairs: List[tuple]) -> List[dict]:
 
 
 @tool
-def exponentiate(xy_pairs: List[tuple]) -> List[dict]:
+def exponentiate(xy_pairs: list[tuple]) -> list[dict]:
     """Performs exponentiation on the input values x and y.
 
     :arg xy_pairs: A list of tuples containing the input values x and y (e.g. [(x1, y1), (x2, y2), ...])
@@ -137,7 +136,7 @@ def exponentiate(xy_pairs: List[tuple]) -> List[dict]:
 
 
 @tool
-def modulo(xy_pairs: List[tuple]) -> List[dict]:
+def modulo(xy_pairs: list[tuple]) -> list[dict]:
     """Performs modulo on the input values x and y.
 
     :arg xy_pairs: A list of tuples containing the input values x and y (e.g. [(x1, y1), (x2, y2), ...])
@@ -152,7 +151,7 @@ def modulo(xy_pairs: List[tuple]) -> List[dict]:
 
 
 @tool
-def sine(x_values: List[float]) -> List[dict]:
+def sine(x_values: list[float]) -> list[dict]:
     """Performs sine on the input values x.
 
     :arg x_values: A list of values x (e.g. [x1, x2, ...])
@@ -167,7 +166,7 @@ def sine(x_values: List[float]) -> List[dict]:
 
 
 @tool
-def cosine(x_values: List[float]) -> List[dict]:
+def cosine(x_values: list[float]) -> list[dict]:
     """Performs cosine on the input values x.
 
     :arg x_values: A list of values x (e.g. [x1, x2, ...])
@@ -182,7 +181,7 @@ def cosine(x_values: List[float]) -> List[dict]:
 
 
 @tool
-def tangent(x_values: List[float]) -> List[dict]:
+def tangent(x_values: list[float]) -> list[dict]:
     """Performs tangent on the input values x.
 
     :arg x_values: A list of values x (e.g. [x1, x2, ...])
@@ -197,7 +196,7 @@ def tangent(x_values: List[float]) -> List[dict]:
 
 
 @tool
-def asin(x_values: List[float]) -> List[dict]:
+def asin(x_values: list[float]) -> list[dict]:
     """Performs arcsine on the input values x.
 
     :arg x_values: A list of values x (e.g. [x1, x2, ...])
@@ -217,7 +216,7 @@ def asin(x_values: List[float]) -> List[dict]:
 
 
 @tool
-def acos(x_values: List[float]) -> List[dict]:
+def acos(x_values: list[float]) -> list[dict]:
     """Performs arccosine on the input values x.
 
     :arg x_values: A list of values x (e.g. [x1, x2, ...])
@@ -237,7 +236,7 @@ def acos(x_values: List[float]) -> List[dict]:
 
 
 @tool
-def atan(x_values: List[float]) -> List[dict]:
+def atan(x_values: list[float]) -> list[dict]:
     """Performs arctangent on the input values x.
 
     :arg x_values: A list of values x (e.g. [x1, x2, ...])
@@ -252,7 +251,7 @@ def atan(x_values: List[float]) -> List[dict]:
 
 
 @tool
-def sinh(x_values: List[float]) -> List[dict]:
+def sinh(x_values: list[float]) -> list[dict]:
     """Performs hyperbolic sine on the input values x.
 
     :arg x_values: A list of values x (e.g. [x1, x2, ...])
@@ -267,7 +266,7 @@ def sinh(x_values: List[float]) -> List[dict]:
 
 
 @tool
-def cosh(x_values: List[float]) -> List[dict]:
+def cosh(x_values: list[float]) -> list[dict]:
     """Performs hyperbolic cosine on the input values x.
 
     :arg x_values: A list of values x (e.g. [x1, x2, ...])
@@ -282,7 +281,7 @@ def cosh(x_values: List[float]) -> List[dict]:
 
 
 @tool
-def tanh(x_values: List[float]) -> List[dict]:
+def tanh(x_values: list[float]) -> list[dict]:
     """Performs hyperbolic tangent on the input values x.
 
     :arg x_values: A list of values x (e.g. [x1, x2, ...])
@@ -297,7 +296,7 @@ def tanh(x_values: List[float]) -> List[dict]:
 
 
 @tool
-def count_list(items: List) -> int:
+def count_list(items: list) -> int:
     """Returns the number of items in a list."""
     return len(items)
 
@@ -315,7 +314,7 @@ def count_lines(text: str) -> int:
 
 
 @tool
-def degrees_to_radians(degrees: List[float]):
+def degrees_to_radians(degrees: list[float]):
     """
     Convert degrees to radians.
 
@@ -328,7 +327,7 @@ def degrees_to_radians(degrees: List[float]):
 
 
 @tool
-def radians_to_degrees(radians: List[float]):
+def radians_to_degrees(radians: list[float]):
     """
     Convert radians to degrees.
 

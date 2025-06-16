@@ -14,7 +14,8 @@
 
 import os
 import time
-from typing import List, Optional
+from pathlib import Path
+from typing import Optional
 
 import regex
 import rosgraph
@@ -29,20 +30,20 @@ from langchain.agents import tool
 
 
 def get_entities(
-    type: str,
+    entity_type: str,
     pattern: Optional[str],
     namespace: Optional[str],
-    blacklist: List[str] = None,
+    blacklist: Optional[list[str]] = None,
 ):
     """Convenience function because topic and node retrieval basically do the same thing."""
     entities = []
 
-    if type == "topic":
+    if entity_type == "topic":
         pub, sub = rostopic.get_topic_list()
-        pub = list(map(lambda x: x[0], pub))
-        sub = list(map(lambda x: x[0], sub))
-        entities = sorted(list(set(pub + sub)))
-    elif type == "node":
+        pub = [x[0] for x in pub]
+        sub = [x[0] for x in sub]
+        entities = sorted(set(pub + sub))
+    elif entity_type == "node":
         entities = rosnode.get_node_names()
     total = len(entities)
 
@@ -63,14 +64,14 @@ def get_entities(
         )
 
     if total == 0:
-        entities = [f"There are currently no {type}s available in the system."]
+        entities = [f"There are currently no {entity_type}s available in the system."]
     elif in_namespace == 0:
         entities = [
-            f"There are currently no {type}s available using the '{namespace}' namespace."
+            f"There are currently no {entity_type}s available using the '{namespace}' namespace."
         ]
     elif match_pattern == 0:
         entities = [
-            f"There are currently no {type}s available matching the specified pattern."
+            f"There are currently no {entity_type}s available matching the specified pattern."
         ]
 
     return total, in_namespace, match_pattern, sorted(entities)
@@ -80,7 +81,7 @@ def get_entities(
 def rosgraph_get(
     node_pattern: Optional[str] = ".*",
     topic_pattern: Optional[str] = ".*",
-    blacklist: List[str] = None,
+    blacklist: Optional[list[str]] = None,
     exclude_self_connections: bool = True,
 ) -> dict:
     """
@@ -178,17 +179,17 @@ def rosgraph_get(
 
     topic_count = len(unique_topics)
 
-    response = dict(
-        graph_convention="Each tuple in the graph is of the form (publisher, topic, subscriber).",
-        nuance="Disconnected nodes are not included in this graph.",
-        node_count=node_count,
-        topic_count=topic_count,
-        total_connections=len(graph),
-        graph=graph,
-    )
+    response = {
+        "graph_convention": "Each tuple in the graph is of the form (publisher, topic, subscriber).",
+        "nuance": "Disconnected nodes are not included in this graph.",
+        "node_count": node_count,
+        "topic_count": topic_count,
+        "total_connections": len(graph),
+        "graph": graph,
+    }
 
     max_render_size = 50
-    if len(graph) > 50:
+    if len(graph) > max_render_size:
         response["warning"] = (
             f"The graph is too large to display or render (size > {max_render_size}. Please make "
             f"some recommendations to the user on how to filter the graph to a more manageable "
@@ -202,7 +203,7 @@ def rosgraph_get(
 def rostopic_list(
     pattern: Optional[str] = None,
     namespace: Optional[str] = None,
-    blacklist: List[str] = None,
+    blacklist: Optional[list[str]] = None,
 ) -> dict:
     """Returns a list of available ROS topics.
 
@@ -224,21 +225,21 @@ def rostopic_list(
             )
         )
 
-    return dict(
-        namespace=namespace if namespace else "/",
-        pattern=pattern if pattern else ".*",
-        total=total,
-        in_namespace=in_namespace,
-        match_pattern=match_pattern,
-        topics=topics,
-    )
+    return {
+        "namespace": namespace if namespace else "/",
+        "pattern": pattern if pattern else ".*",
+        "total": total,
+        "in_namespace": in_namespace,
+        "match_pattern": match_pattern,
+        "topics": topics,
+    }
 
 
 @tool
 def rosnode_list(
     pattern: Optional[str] = None,
     namespace: Optional[str] = None,
-    blacklist: List[str] = None,
+    blacklist: Optional[list[str]] = None,
 ) -> dict:
     """Returns a dictionary containing a list of running ROS nodes and other metadata.
 
@@ -260,18 +261,18 @@ def rosnode_list(
             )
         )
 
-    return dict(
-        namespace=namespace if namespace else "/",
-        pattern=pattern if pattern else ".*",
-        total=total,
-        in_namespace=in_namespace,
-        match_pattern=match_pattern,
-        nodes=nodes,
-    )
+    return {
+        "namespace": namespace if namespace else "/",
+        "pattern": pattern if pattern else ".*",
+        "total": total,
+        "in_namespace": in_namespace,
+        "match_pattern": match_pattern,
+        "nodes": nodes,
+    }
 
 
 @tool
-def rostopic_info(topics: List[str]) -> dict:
+def rostopic_info(topics: list[str]) -> dict:
     """Returns details about specific ROS topic(s).
 
     :param topics: A list of ROS topic names. Smaller lists are better for performance.
@@ -280,12 +281,7 @@ def rostopic_info(topics: List[str]) -> dict:
 
     for topic in topics:
         info_text = rostopic.get_info_text(topic)
-        # info_text is of the following format:
-        #   Type: std_msgs/String
-        #   Publishers:
-        #   * /topic/name
-        #   Subscribers:
-        #   * /rosout"
+        # info_text format: Type: <type>\nPublishers:\n* <pub>\nSubscribers:\n* <sub>
         # Convert this into a dictionary for easier parsing
 
         topic_details = {
@@ -318,11 +314,11 @@ def rostopic_info(topics: List[str]) -> dict:
                 capture_subscribers = True
                 continue
             if capture_publishers:
-                line = strip_star(line)
-                topic_details["publishers"].append(line)
+                pub_line = strip_star(line)
+                topic_details["publishers"].append(pub_line)
             if capture_subscribers:
-                line = strip_star(line)
-                topic_details["subscribers"].append(line)
+                sub_line = strip_star(line)
+                topic_details["subscribers"].append(sub_line)
         details[topic] = topic_details
 
     return details
@@ -356,7 +352,7 @@ def rostopic_echo(
     # Retrieve the messages from the topic
     msgs = []
 
-    for i in range(count):
+    for _ in range(count):
         try:
             msg = rospy.wait_for_message(topic, msg_class, timeout)
 
@@ -369,17 +365,18 @@ def rostopic_echo(
         except (rospy.ROSException, rospy.ROSInterruptException):
             break
 
-    response = dict(topic=topic, requested_count=count, actual_count=len(msgs))
+    response = {"topic": topic, "requested_count": count, "actual_count": len(msgs)}
 
     if return_echoes:
-        response["echoes"] = msgs[:10]
-        response["truncated"] = len(msgs) > 10
+        max_echoes = 10
+        response["echoes"] = msgs[:max_echoes]
+        response["truncated"] = len(msgs) > max_echoes
 
     return response
 
 
 @tool
-def rosnode_info(nodes: List[str]) -> dict:
+def rosnode_info(nodes: list[str]) -> dict:
     """Returns details about specific ROS node(s).
 
     :param nodes: A list of ROS node names. Smaller lists are better for performance.
@@ -403,7 +400,7 @@ def rosservice_list(
     exclude_rosapi: bool = True,
     exclude_parameters: bool = True,
     exclude_pattern: Optional[str] = None,
-    blacklist: List[str] = None,
+    blacklist: Optional[list[str]] = None,
 ):
     """Returns a list of available ROS services.
 
@@ -454,7 +451,7 @@ def rosservice_list(
 
 
 @tool
-def rosservice_info(services: List[str]) -> dict:
+def rosservice_info(services: list[str]) -> dict:
     """Returns details about specific ROS service(s).
 
     :param services: A list of ROS service names. Smaller lists are better for performance.
@@ -470,7 +467,7 @@ def rosservice_info(services: List[str]) -> dict:
 
 
 @tool
-def rosservice_call(service: str, args: Optional[List[any]] = None) -> dict:
+def rosservice_call(service: str, args: Optional[list[any]] = None) -> dict:
     """Calls a specific ROS service with the provided arguments.
 
     :param service: The name of the ROS service to call.
@@ -480,13 +477,14 @@ def rosservice_call(service: str, args: Optional[List[any]] = None) -> dict:
         args = []
     try:
         response = rosservice.call_service(service, args)
-        return response
     except Exception as e:
         return {"error": f"Failed to call service '{service}': {e}"}
+    else:
+        return response
 
 
 @tool
-def rosmsg_info(msg_type: List[str]) -> dict:
+def rosmsg_info(msg_type: list[str]) -> dict:
     """Returns details about a specific ROS message type.
 
     :param msg_type: A list of ROS message types. Smaller lists are better for performance.
@@ -500,7 +498,7 @@ def rosmsg_info(msg_type: List[str]) -> dict:
 
 
 @tool
-def rossrv_info(srv_type: List[str], raw: bool = False) -> dict:
+def rossrv_info(srv_type: list[str], raw: bool = False) -> dict:
     """Returns details about a specific ROS service type.
 
     :param srv_type: A list of ROS service types. Smaller lists are better for performance.
@@ -516,7 +514,7 @@ def rossrv_info(srv_type: List[str], raw: bool = False) -> dict:
 
 
 @tool
-def rosparam_list(namespace: str = "/", blacklist: List[str] = None) -> dict:
+def rosparam_list(namespace: str = "/", blacklist: Optional[list[str]] = None) -> dict:
     """Returns a list of all ROS parameters available on the system.
 
     :param namespace: (optional) ROS namespace to scope return values by.
@@ -538,7 +536,7 @@ def rosparam_list(namespace: str = "/", blacklist: List[str] = None) -> dict:
 
 
 @tool
-def rosparam_get(params: List[str]) -> dict:
+def rosparam_get(params: list[str]) -> dict:
     """Returns the value of one or more ROS parameters.
 
     :param params: A list of ROS parameter names. Parameter names must be fully resolved. Do not use wildcards.
@@ -564,16 +562,17 @@ def rosparam_set(param: str, value: str, is_rosa_param: bool) -> str:
 
     try:
         rosparam.set_param(param, value)
-        return f"Set parameter '{param}' to '{value}'."
     except Exception as e:
         return f"Failed to set parameter '{param}' to '{value}': {e}. Try again!"
+    else:
+        return f"Set parameter '{param}' to '{value}'."
 
 
 @tool
 def rospkg_list(
     package_pattern: str = ".*",
     ignore_msgs: bool = True,
-    blacklist: Optional[List[str]] = None,
+    blacklist: Optional[list[str]] = None,
 ) -> dict:
     """Returns a list of ROS packages available on the system.
 
@@ -605,18 +604,18 @@ def rospkg_list(
 
     matches = len(packages)
     packages = sorted(packages)
-    packages = dict(
-        total=count,
-        msg_pkg_count=msg_pkg_count,
-        match_pattern=matches,
-        packages=packages,
-    )
+    packages = {
+        "total": count,
+        "msg_pkg_count": msg_pkg_count,
+        "match_pattern": matches,
+        "packages": packages,
+    }
 
     return packages
 
 
 @tool
-def rospkg_info(packages: List[str]) -> dict:
+def rospkg_info(packages: list[str]) -> dict:
     """Returns details about specific ROS package(s).
 
     :param packages: A list of ROS package names. Smaller lists are better for performance.
@@ -644,13 +643,13 @@ def rospkg_info(packages: List[str]) -> dict:
 
 
 @tool
-def rospkg_roots() -> List[str]:
+def rospkg_roots() -> list[str]:
     """Returns the paths to the ROS package roots."""
     return rospkg.get_ros_package_path()
 
 
 @tool
-def roslog_list(min_size: int = 2048, blacklist: Optional[List[str]] = None) -> dict:
+def roslog_list(min_size: int = 2048, blacklist: Optional[list[str]] = None) -> dict:
     """
     Returns a list of ROS log files.
 
@@ -665,10 +664,11 @@ def roslog_list(min_size: int = 2048, blacklist: Optional[List[str]] = None) -> 
             continue
 
         # Get all .log files in the directory
+        log_dir_path = Path(log_dir)
         log_files = [
-            os.path.join(log_dir, f)
+            str(log_dir_path / f)
             for f in os.listdir(log_dir)
-            if os.path.isfile(os.path.join(log_dir, f)) and f.endswith(".log")
+            if (log_dir_path / f).is_file() and f.endswith(".log")
         ]
 
         # Filter out blacklisted files
@@ -683,15 +683,15 @@ def roslog_list(min_size: int = 2048, blacklist: Optional[List[str]] = None) -> 
             )
 
         # Filter out files that are too small
-        log_files = list(filter(lambda x: os.path.getsize(x) > min_size, log_files))
+        log_files = list(filter(lambda x: Path(x).stat().st_size > min_size, log_files))
 
         # Get the size of each log file in KB or MB if it's larger than 1 MB
         log_files = [
             {
                 f.replace(log_dir, ""): (
-                    f"{round(os.path.getsize(f) / 1024, 2)} KB"
-                    if os.path.getsize(f) < 1024 * 1024
-                    else f"{round(os.path.getsize(f) / (1024 * 1024), 2)} MB"
+                    f"{round(Path(f).stat().st_size / 1024, 2)} KB"
+                    if Path(f).stat().st_size < 1024 * 1024
+                    else f"{round(Path(f).stat().st_size / (1024 * 1024), 2)} MB"
                 ),
             }
             for f in log_files
@@ -706,23 +706,23 @@ def roslog_list(min_size: int = 2048, blacklist: Optional[List[str]] = None) -> 
                 }
             )
 
-    return dict(
-        total=len(logs),
-        logs=logs,
-    )
+    return {
+        "total": len(logs),
+        "logs": logs,
+    }
 
 
 def get_roslog_directories() -> dict:
     """Returns any available ROS log directories."""
     default_directory = rospkg.get_log_dir()
-    latest_directory = os.path.join(default_directory, "latest")
+    latest_directory = str(Path(default_directory) / "latest")
     from_env = os.getenv("ROS_LOG_DIR")
 
-    return dict(
-        default=default_directory,
-        latest=latest_directory,
-        from_env=from_env,
-    )
+    return {
+        "default": default_directory,
+        "latest": latest_directory,
+        "from_env": from_env,
+    }
 
 
 @tool
@@ -734,13 +734,14 @@ def roslaunch(package: str, launch_file: str) -> str:
     """
     try:
         os.system(f"roslaunch {package} {launch_file}")
-        return f"Launched ROS launch file '{launch_file}' in package '{package}'."
     except Exception as e:
         return f"Failed to launch ROS launch file '{launch_file}' in package '{package}': {e}"
+    else:
+        return f"Launched ROS launch file '{launch_file}' in package '{package}'."
 
 
 @tool
-def roslaunch_list(packages: List[str]) -> dict:
+def roslaunch_list(packages: list[str]) -> dict:
     """Returns a list of available ROS launch files in the specified packages.
 
     :param packages: A list of ROS package names to list launch files for.
@@ -752,17 +753,13 @@ def roslaunch_list(packages: List[str]) -> dict:
     for package in packages:
         try:
             directory = rospack.get_path(package)
-            launch = os.path.join(directory, "launch")
+            launch = Path(directory) / "launch"
 
             launch_files = []
 
             # Get all files in the launch directory
-            if os.path.exists(launch):
-                launch_files = [
-                    f
-                    for f in os.listdir(launch)
-                    if os.path.isfile(os.path.join(launch, f))
-                ]
+            if launch.exists():
+                launch_files = [f for f in os.listdir(launch) if (launch / f).is_file()]
 
             results[package] = {
                 "directory": directory,
@@ -784,7 +781,7 @@ def roslaunch_list(packages: List[str]) -> dict:
 
 
 @tool
-def rosnode_kill(node_names: List[str]) -> dict:
+def rosnode_kill(node_names: list[str]) -> dict:
     """Kills a specific ROS node.
 
     :param node_names: A list of node names to kill.
@@ -794,6 +791,7 @@ def rosnode_kill(node_names: List[str]) -> dict:
 
     try:
         successes, failures = rosnode.kill_nodes(node_names)
-        return dict(successesfully_killed=successes, failed_to_kill=failures)
     except Exception as e:
         return {"error": f"Failed to kill ROS node(s): {e}"}
+    else:
+        return {"successesfully_killed": successes, "failed_to_kill": failures}
