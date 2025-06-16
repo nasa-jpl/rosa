@@ -6,7 +6,7 @@
 <!-- <img src="https://github.com/user-attachments/assets/d7175d5e-63d2-448c-b9d3-59ca0016ef7a"> -->
 <img width="2057" alt="image" src="https://github.com/user-attachments/assets/ddbd3281-79f0-4d29-b0cd-30a5188ad061">
 
-  
+
 </div>
 <div align="center">
   The ROS Agent (ROSA) is designed to interact with ROS-based<br>robotics systems using natural language queries. 🗣️🤖
@@ -74,7 +74,7 @@ For detailed information on creating custom agents, adding tools, and customizin
 
 We have included a demo that uses ROSA to control the TurtleSim robot in simulation. To run the demo, you will need to have Docker installed on your machine. 🐳
 
-The following video shows ROSA reasoning about how to draw a 5-point star, then 
+The following video shows ROSA reasoning about how to draw a 5-point star, then
 executing the necessary commands to do so.
 
 https://github.com/user-attachments/assets/77b97014-6d2e-4123-8d0b-ea0916d93a4e
@@ -100,7 +100,7 @@ in the form of an IsaacSim extension. This will allow you not only to control yo
 
 ## Changelog
 
-See our [CHANGELOG.md](CHANGELOG.md) for a history of our changes.  
+See our [CHANGELOG.md](CHANGELOG.md) for a history of our changes.
 
 ## Contributing
 
@@ -126,5 +126,5 @@ Key points of contact are:
 
 <div align="center">
   ROSA: Robot Operating System Agent 🤖<br>
-  Copyright (c) 2024. Jet Propulsion Laboratory. All rights reserved.
+  Copyright (c) 2025. Jet Propulsion Laboratory. All rights reserved.
 </div>

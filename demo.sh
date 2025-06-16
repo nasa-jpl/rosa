@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright (c) 2024. Jet Propulsion Laboratory. All rights reserved.
+# Copyright (c) 2025. Jet Propulsion Laboratory. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -68,7 +68,7 @@ if ! DISPLAY=$LOCAL_DISPLAY xset q &>/dev/null; then
     echo "Error: X11 forwarding is not working with DISPLAY=$LOCAL_DISPLAY"
     echo "Current DISPLAY variable: ${DISPLAY:-<not set>}"
     echo "Trying alternative display settings..."
-    
+
     # Try common display alternatives
     for test_display in ":0" ":1" "localhost:0" "127.0.0.1:0"; do
         echo "Testing DISPLAY=$test_display"
@@ -78,7 +78,7 @@ if ! DISPLAY=$LOCAL_DISPLAY xset q &>/dev/null; then
             break
         fi
     done
-    
+
     # Final test
     if ! DISPLAY=$LOCAL_DISPLAY xset q &>/dev/null; then
         echo "Error: Could not establish X11 connection with any display setting."

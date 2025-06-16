@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright (c) 2024. Jet Propulsion Laboratory. All rights reserved.
+# Copyright (c) 2025. Jet Propulsion Laboratory. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -156,19 +156,19 @@ if [ "$TEST_TYPE" = "turtlesim" ] || [ "$TEST_TYPE" = "both" ]; then
                 HEADLESS=true
                 ;;
         esac
-        
+
         # Test X11 connection (only for Linux/macOS)
         if [ "$(uname)" = "Linux" ] || [ "$(uname)" = "Darwin" ]; then
             LOCAL_DISPLAY_TEST=${LOCAL_DISPLAY:-${DISPLAY:-:0}}
             if [ "$(uname)" = "Darwin" ]; then
                 LOCAL_DISPLAY_TEST=${LOCAL_DISPLAY:-:0}
             fi
-            
+
             echo "Testing X11 connection with DISPLAY=$LOCAL_DISPLAY_TEST"
             if ! DISPLAY=$LOCAL_DISPLAY_TEST xset q &>/dev/null; then
                 echo "Warning: X11 forwarding test failed with DISPLAY=$LOCAL_DISPLAY_TEST"
                 echo "Trying alternative display settings..."
-                
+
                 # Try common display alternatives
                 X11_WORKING=false
                 for test_display in ":0" ":1" "localhost:0" "127.0.0.1:0"; do
@@ -184,7 +184,7 @@ if [ "$TEST_TYPE" = "turtlesim" ] || [ "$TEST_TYPE" = "both" ]; then
                         break
                     fi
                 done
-                
+
                 if [ "$X11_WORKING" = "false" ]; then
                     echo "Warning: Could not establish X11 connection with any display setting."
                     echo "GUI applications may not work. Consider setting HEADLESS=true"
@@ -214,14 +214,14 @@ docker build \
 # Function to run unit tests
 run_unit_tests() {
     echo "Running unit tests with $ROS_DISTRO..."
-    
+
     local test_cmd
     if [ "$ROS_VERSION" = "1" ]; then
         test_cmd="source /root/.bashrc && cd /app && python3.9 -m unittest discover tests"
     else
         test_cmd="source /root/.bashrc && cd /app && $PYTHON_CMD -m unittest discover tests"
     fi
-    
+
     if [ "$INTERACTIVE" = "true" ]; then
         echo "Starting interactive session. Run the following command manually:"
         echo "$test_cmd"
@@ -246,7 +246,7 @@ run_unit_tests() {
 # Function to run turtlesim demo
 run_turtlesim_demo() {
     echo "Running turtlesim demo with $ROS_DISTRO..."
-    
+
     local docker_args=()
     docker_args+=(--rm -it)
     docker_args+=(-e ROS_VERSION="$ROS_VERSION")
@@ -255,13 +255,13 @@ run_turtlesim_demo() {
     docker_args+=(-v "$PWD/src":/app/src)
     docker_args+=(-v "$PWD/tests":/app/tests)
     docker_args+=(--network host)
-    
+
     # Add X11 forwarding if not headless
     if [ "$HEADLESS" = "false" ]; then
         docker_args+=(-e DISPLAY="$DISPLAY")
         docker_args+=(-v /tmp/.X11-unix:/tmp/.X11-unix)
     fi
-    
+
     local demo_cmd
     if [ "$ROS_VERSION" = "1" ]; then
         if [ "$HEADLESS" = "false" ]; then
@@ -276,7 +276,7 @@ run_turtlesim_demo() {
             demo_cmd="source /opt/ros/$ROS_DISTRO/setup.bash && source /app/ros2_ws/install/setup.bash && xvfb-run -a -s '-screen 0 1920x1080x24' ros2 run turtlesim turtlesim_node & sleep 5 && echo 'TurtleSim is running in headless mode. Run \`start2\` to build and launch the ROSA-TurtleSim demo (turtle_agent2).' && /bin/bash"
         fi
     fi
-    
+
     docker run "${docker_args[@]}" "$CONTAINER_NAME" /bin/bash -c "$demo_cmd"
 }
 

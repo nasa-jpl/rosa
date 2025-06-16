@@ -1,4 +1,4 @@
-#  Copyright (c) 2024. Jet Propulsion Laboratory. All rights reserved.
+#  Copyright (c) 2025. Jet Propulsion Laboratory. All rights reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 #  limitations under the License.
 
 import os
-from typing import Optional, Literal
+from typing import Literal, Optional
 
 from langchain.agents import tool
 
@@ -54,7 +54,7 @@ def read_log(
     if not os.path.isfile(full_log_path):
         return {"error": f"The path '{full_log_path}' is not a file."}
 
-    with open(full_log_path, "r") as f:
+    with open(full_log_path) as f:
         log_lines = f.readlines()
 
     total_lines = len(log_lines)

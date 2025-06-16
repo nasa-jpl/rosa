@@ -57,7 +57,7 @@ RUN /bin/bash -c 'if [ "$DEVELOPMENT" = "true" ]; then \
 CMD ["/bin/bash"]
 
 # =============================================================================
-# ROS2 Humble (Ubuntu 22.04, Python 3.10)  
+# ROS2 Humble (Ubuntu 22.04, Python 3.10)
 # =============================================================================
 FROM --platform=linux/amd64 osrf/ros:humble-desktop AS ros2-humble
 LABEL authors="Rob Royce" \

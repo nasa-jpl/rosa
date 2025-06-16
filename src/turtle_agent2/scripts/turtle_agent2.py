@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-#  Copyright (c) 2024. Jet Propulsion Laboratory. All rights reserved.
+#  Copyright (c) 2025. Jet Propulsion Laboratory. All rights reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -13,30 +13,25 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import argparse
 import asyncio
 import os
-import sys
 from datetime import datetime
 
 import dotenv
-import pyinputplus as pyip
 import rclpy
+from help import get_help
+from langchain.agents import Tool, tool
+from llm import get_llm
+from prompts import get_prompts
 from rclpy.node import Node
-from langchain.agents import tool, Tool
-# from langchain_ollama import ChatOllama
-from rich.console import Console
-from rich.console import Group
+from rich.console import Console, Group
 from rich.live import Live
 from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.text import Text
-from rosa import ROSA
-
 from tools import turtle as turtle_tools
-from help import get_help
-from llm import get_llm
-from prompts import get_prompts
+
+from rosa import ROSA
 
 
 # Typical method for defining tools in ROSA
@@ -47,31 +42,25 @@ def cool_turtle_tool():
 
 
 class TurtleAgent2(ROSA, Node):
-
     def __init__(self, streaming: bool = True, verbose: bool = True):
         # Initialize ROS2 node first
-        Node.__init__(self, 'rosa_turtle_agent2')
-        
+        Node.__init__(self, "rosa_turtle_agent2")
+
         # Declare parameters with defaults from constructor arguments
-        self.declare_parameter('streaming', streaming)
-        self.declare_parameter('verbose', verbose)
-        
+        self.declare_parameter("streaming", streaming)
+        self.declare_parameter("verbose", verbose)
+
         # Use command line args passed to constructor (they already override ROS2 params)
         actual_streaming = True  # Force streaming mode
         actual_verbose = verbose
-        
-        print(f"ROSA TurtleAgent2 starting with streaming={actual_streaming}, verbose={actual_verbose}")
-        
+
+        print(
+            f"ROSA TurtleAgent2 starting with streaming={actual_streaming}, verbose={actual_verbose}"
+        )
+
         self.__blacklist = ["master", "docker"]
         self.__prompts = get_prompts()
         self.__llm = get_llm(streaming=actual_streaming)
-
-        # self.__llm = ChatOllama(
-        #     base_url="host.docker.internal:11434",
-        #     model="llama3.1",
-        #     temperature=0,
-        #     num_ctx=8192,
-        # )
 
         # Another method for adding tools
         blast_off = Tool(
@@ -92,9 +81,11 @@ class TurtleAgent2(ROSA, Node):
             accumulate_chat_history=True,
             streaming=actual_streaming,
         )
-        
+
         print(f"ROSA initialized. Internal streaming flag: {self._ROSA__streaming}")
-        print(f"ROSA initialized. Internal verbose from executor: verbose setting applied")
+        print(
+            "ROSA initialized. Internal verbose from executor: verbose setting applied"
+        )
 
         self.examples = [
             "Give me a ROS tutorial using the turtlesim.",
@@ -112,7 +103,7 @@ class TurtleAgent2(ROSA, Node):
         }
 
     def blast_off(self, input: str):
-        return f"""
+        return """
         Ok, we're blasting off at the speed of light!
 
         <ROSA_INSTRUCTIONS>
@@ -138,7 +129,7 @@ class TurtleAgent2(ROSA, Node):
         for i, example in enumerate(self.examples, 1):
             print(f"{i}. {example}")
         try:
-            choice = input("\nEnter your choice (1-{}): ".format(len(self.examples))) or "1"
+            choice = input(f"\nEnter your choice (1-{len(self.examples)}): ") or "1"
             choice_num = int(choice)
             if 1 <= choice_num <= len(self.examples):
                 return self.examples[choice_num - 1]
@@ -203,7 +194,7 @@ class TurtleAgent2(ROSA, Node):
         try:
             # Always use streaming mode since we forced it to True
             await self.stream_response(query)
-        except Exception as e:
+        except Exception:
             self.print_response(query)
 
     def print_response(self, query: str):
@@ -253,9 +244,9 @@ class TurtleAgent2(ROSA, Node):
         with Live(panel, console=console, auto_refresh=False) as live:
             try:
                 async for event in self.astream(query):
-                    event["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[
-                        :-3
-                    ]
+                    event["timestamp"] = datetime.now().strftime(
+                        "%Y-%m-%d %H:%M:%S.%f"
+                    )[:-3]
                     if event["type"] == "token":
                         content += event["content"]
                         panel.renderable = Markdown(content)
@@ -267,8 +258,8 @@ class TurtleAgent2(ROSA, Node):
                         panel.renderable = Markdown(content)
                         panel.title = "Final Response"
                         live.refresh()
-                        
-            except Exception as e:
+
+            except Exception:
                 # If streaming fails, fall back to non-streaming
                 content = self.invoke(query)
                 panel.renderable = Markdown(content)
@@ -278,8 +269,7 @@ class TurtleAgent2(ROSA, Node):
         # Always add info command after final response, regardless of events
         if self.last_events:
             panel.renderable = Markdown(
-                content
-                + "\n\nType 'info' for details on how I got my answer."
+                content + "\n\nType 'info' for details on how I got my answer."
             )
             live.refresh()
             self.command_handler["info"] = self.show_event_details
@@ -339,7 +329,9 @@ class TurtleAgent2(ROSA, Node):
 
 def main():
     dotenv.load_dotenv(dotenv.find_dotenv())
-    turtle_agent = TurtleAgent2(verbose=True, streaming=True)  # Always use streaming and verbose
+    turtle_agent = TurtleAgent2(
+        verbose=True, streaming=True
+    )  # Always use streaming and verbose
 
     try:
         asyncio.run(turtle_agent.run())
@@ -357,7 +349,7 @@ if __name__ == "__main__":
     # Initialize ROS2 only if not already initialized
     if not rclpy.ok():
         rclpy.init()
-    
+
     try:
         main()
     finally:

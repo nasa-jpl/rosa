@@ -1,4 +1,4 @@
-#  Copyright (c) 2024. Jet Propulsion Laboratory. All rights reserved.
+#  Copyright (c) 2025. Jet Propulsion Laboratory. All rights reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 import inspect
 from functools import wraps
-from typing import Literal, List, Optional
+from typing import List, Literal, Optional
 
 from langchain.agents import Tool
 
@@ -37,13 +37,12 @@ def inject_blacklist(default_blacklist: List[str]):
                     args[0]["blacklist"] = default_blacklist + args[0]["blacklist"]
                 else:
                     args[0]["blacklist"] = default_blacklist
+            elif "blacklist" in kwargs:
+                kwargs["blacklist"] = default_blacklist + kwargs["blacklist"]
             else:
-                if "blacklist" in kwargs:
-                    kwargs["blacklist"] = default_blacklist + kwargs["blacklist"]
-                else:
-                    params = inspect.signature(func).parameters
-                    if "blacklist" in params:
-                        kwargs["blacklist"] = default_blacklist
+                params = inspect.signature(func).parameters
+                if "blacklist" in params:
+                    kwargs["blacklist"] = default_blacklist
             return func(*args, **kwargs)
 
         # Rebuild the signature to include 'blacklist'

@@ -1,4 +1,4 @@
-#  Copyright (c) 2024. Jet Propulsion Laboratory. All rights reserved.
+#  Copyright (c) 2025. Jet Propulsion Laboratory. All rights reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ from geometry_msgs.msg import Twist
 from langchain.agents import tool
 from std_srvs.srv import Empty
 from turtlesim.msg import Pose
-from turtlesim.srv import Spawn, TeleportAbsolute, TeleportRelative, Kill, SetPen
+from turtlesim.srv import Kill, SetPen, Spawn, TeleportAbsolute, TeleportRelative
 
 cmd_vel_pubs = {}
 
@@ -36,7 +36,7 @@ def remove_cmd_vel_pub(name: str):
 
 
 # Add the default turtle1 publisher on startup
-add_cmd_vel_pub("turtle1", rospy.Publisher(f"/turtle1/cmd_vel", Twist, queue_size=10))
+add_cmd_vel_pub("turtle1", rospy.Publisher("/turtle1/cmd_vel", Twist, queue_size=10))
 
 
 def within_bounds(x: float, y: float) -> tuple:
@@ -358,7 +358,7 @@ def reset_turtlesim():
         global cmd_vel_pubs
         cmd_vel_pubs.clear()
         cmd_vel_pubs["turtle1"] = rospy.Publisher(
-            f"/turtle1/cmd_vel", Twist, queue_size=10
+            "/turtle1/cmd_vel", Twist, queue_size=10
         )
 
         return "Successfully reset the turtlesim environment. Ignore all previous commands, failures, and goals."

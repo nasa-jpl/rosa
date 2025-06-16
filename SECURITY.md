@@ -12,10 +12,10 @@ The following versions currently being supported with security updates.
 
 ## Reporting a Vulnerability
 
-To report a vulnerability, please open an issue in the 
+To report a vulnerability, please open an issue in the
 [Issue Tracker](https://github.com/nasa-jpl/rosa/issues).
 
-If you would prefer to disclose the issue in a discrete manner, please send an email 
+If you would prefer to disclose the issue in a discrete manner, please send an email
 to [Rob.Royce@jpl.nasa.gov](mailto:Rob.Royce@jpl.nasa.gov).
 
 Vulnerability reports will be investigated on a case-by-case basis and either accepted

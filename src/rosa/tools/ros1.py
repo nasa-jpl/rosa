@@ -1,4 +1,4 @@
-#  Copyright (c) 2024. Jet Propulsion Laboratory. All rights reserved.
+#  Copyright (c) 2025. Jet Propulsion Laboratory. All rights reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 import os
 import time
-from typing import Optional, List
+from typing import List, Optional
 
 import regex
 import rosgraph
@@ -366,7 +366,7 @@ def rostopic_echo(
             if delay > 0:
                 time.sleep(delay)
 
-        except (rospy.ROSException, rospy.ROSInterruptException) as e:
+        except (rospy.ROSException, rospy.ROSInterruptException):
             break
 
     response = dict(topic=topic, requested_count=count, actual_count=len(msgs))
