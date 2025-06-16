@@ -14,7 +14,7 @@
 
 import time
 from math import cos, sin, sqrt
-from typing import List
+from typing import Optional
 
 import rclpy
 from geometry_msgs.msg import Twist
@@ -34,7 +34,7 @@ _latest_poses = {}
 
 def init_ros2_node():
     """Initialize ROS2 node if not already initialized."""
-    global _node
+    global _node  # noqa: PLW0603
     if _node is None:
         if not rclpy.ok():
             rclpy.init()
@@ -44,7 +44,7 @@ def init_ros2_node():
 
 def get_node():
     """Get the global ROS2 node instance."""
-    global _node
+    global _node  # noqa: PLW0603
     if _node is None:
         _node = init_ros2_node()
     return _node
@@ -52,7 +52,6 @@ def get_node():
 
 def get_service_client(service_name: str, service_type):
     """Get or create a service client, reusing existing ones."""
-    global _service_clients
     if service_name not in _service_clients:
         node = get_node()
         _service_clients[service_name] = node.create_client(service_type, service_name)
@@ -61,7 +60,6 @@ def get_service_client(service_name: str, service_type):
 
 def get_pose_subscription(turtle_name: str):
     """Get or create a pose subscription for a turtle, reusing existing ones."""
-    global _subscriptions, _latest_poses
     if turtle_name not in _subscriptions:
         node = get_node()
 
@@ -77,14 +75,12 @@ def get_pose_subscription(turtle_name: str):
 
 def add_cmd_vel_pub(name: str):
     """Add a cmd_vel publisher for a turtle."""
-    global cmd_vel_pubs
     node = get_node()
     cmd_vel_pubs[name] = node.create_publisher(Twist, f"/{name}/cmd_vel", 10)
 
 
 def remove_cmd_vel_pub(name: str):
     """Remove a cmd_vel publisher for a turtle."""
-    global cmd_vel_pubs
     if name in cmd_vel_pubs:
         # Don't explicitly destroy - let node cleanup handle it
         cmd_vel_pubs.pop(name, None)
@@ -106,7 +102,8 @@ def within_bounds(x: float, y: float) -> tuple:
     :param x: The x-coordinate.
     :param y: The y-coordinate.
     """
-    if 0 <= x <= 11 and 0 <= y <= 11:
+    max_coord = 11
+    if 0 <= x <= max_coord and 0 <= y <= max_coord:
         return True, "Coordinates are within bounds."
     else:
         return False, f"({x}, {y}) will be out of bounds. Range is [0, 11] for each."
@@ -133,7 +130,8 @@ def will_be_within_bounds(
     current_theta = pose[name].theta
 
     # Calculate the new position and orientation
-    if abs(angle) < 1e-6:  # Straight line motion
+    angle_epsilon = 1e-6
+    if abs(angle) < angle_epsilon:  # Straight line motion
         new_x = (
             current_x
             + (velocity * cos(current_theta) - lateral * sin(current_theta)) * duration
@@ -216,7 +214,7 @@ def spawn_turtle(name: str, x: float, y: float, theta: float) -> str:
 
 
 @tool
-def kill_turtle(names: List[str]):
+def kill_turtle(names: list[str]):
     """
     Removes a turtle from the turtlesim environment.
 
@@ -275,7 +273,7 @@ def clear_turtlesim():
 
 
 @tool
-def get_turtle_pose(names: List[str]) -> dict:
+def get_turtle_pose(names: list[str]) -> dict:
     """
     Get the pose of one or more turtles.
 
@@ -293,7 +291,6 @@ def get_turtle_pose(names: List[str]) -> dict:
             get_pose_subscription(name)
 
             # Try to get the latest pose from cache first
-            global _latest_poses
             if name in _latest_poses:
                 poses[name] = _latest_poses[name]
                 continue
@@ -383,7 +380,8 @@ def teleport_relative(name: str, linear: float, angular: float):
     """
     # Only check bounds if there's linear movement
     # Pure rotations (linear=0) should always be allowed
-    if abs(linear) > 1e-6:
+    linear_epsilon = 1e-6
+    if abs(linear) > linear_epsilon:
         in_bounds, message = will_be_within_bounds(name, linear, 0.0, angular)
         if not in_bounds:
             return message
@@ -485,11 +483,13 @@ def publish_twist_to_cmd_vel(
                 current_y = intermediate_pose[name].y
 
                 # Detect if turtle hit a wall (position clamped at boundary)
+                boundary_margin = 0.01
+                max_boundary = 10.99
                 if (
-                    current_x <= 0.01
-                    or current_x >= 10.99
-                    or current_y <= 0.01
-                    or current_y >= 10.99
+                    current_x <= boundary_margin
+                    or current_x >= max_boundary
+                    or current_y <= boundary_margin
+                    or current_y >= max_boundary
                 ):
                     return f"Movement stopped at step {step+1}/{steps} - turtle hit boundary at ({current_x:.3f}, {current_y:.3f}). Check bounds before moving."
 
@@ -556,7 +556,6 @@ def reset_turtlesim():
 
         if future.result() is not None:
             # Clear all cached state
-            global cmd_vel_pubs, _latest_poses
             # Don't explicitly destroy publishers - let node cleanup handle it
             cmd_vel_pubs.clear()
             _latest_poses.clear()
@@ -701,11 +700,10 @@ def draw_circle(name: str, radius: float = 2.0, speed: float = 1.0) -> str:
 
         if "not found" in result or "Error" in result:
             return f"Cannot draw circle - turtle '{name}' not found. Make sure turtlesim is running and the turtle exists."
-
-        return f"Drew circle with radius {radius:.2f} and speed {speed:.2f}. {result}"
-
     except Exception as e:
         return f"Failed to draw circle: {e}"
+    else:
+        return f"Drew circle with radius {radius:.2f} and speed {speed:.2f}. {result}"
 
 
 @tool
@@ -811,8 +809,8 @@ def validate_shape_fits(
     name: str,
     shape_type: str,
     size: float,
-    start_x: float = None,
-    start_y: float = None,
+    start_x: Optional[float] = None,
+    start_y: Optional[float] = None,
 ) -> str:
     """
     Pre-validate if a shape will fit within turtlesim bounds before attempting to draw it.
@@ -853,7 +851,6 @@ def validate_shape_fits(
         max_y = current_y + size
 
     elif shape_type.lower() == "circle":
-        # Circle: diameter = 2 * size (size = radius)
         min_x = current_x - size
         max_x = current_x + size
         min_y = current_y - size
@@ -870,8 +867,9 @@ def validate_shape_fits(
         return f"Unknown shape type '{shape_type}'. Supported: hexagon, square, circle, pentagon."
 
     # Check if bounding box fits within turtlesim bounds [0,11] x [0,11]
-    fits_x = (min_x >= 0) and (max_x <= 11)
-    fits_y = (min_y >= 0) and (max_y <= 11)
+    turtlesim_max = 11
+    fits_x = (min_x >= 0) and (max_x <= turtlesim_max)
+    fits_y = (min_y >= 0) and (max_y <= turtlesim_max)
 
     if fits_x and fits_y:
         return f"✓ {shape_type.capitalize()} with size {size} WILL FIT starting at ({current_x:.1f}, {current_y:.1f}). Bounding box: ({min_x:.1f}, {min_y:.1f}) to ({max_x:.1f}, {max_y:.1f})"

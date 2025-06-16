@@ -12,10 +12,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from typing import List
 
-
-def get_help(examples: List[str]) -> str:
+def get_help(examples: list[str]) -> str:
     """Generate a help message for the agent."""
     return f"""
         The user has typed --help. Please provide a CLI-style help message. Use the following

@@ -15,7 +15,7 @@
 
 import asyncio
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 import dotenv
 import pyinputplus as pyip
@@ -25,8 +25,6 @@ from help import get_help
 from langchain.agents import Tool, tool
 from llm import get_llm
 from prompts import get_prompts
-
-# from langchain_ollama import ChatOllama
 from rich.console import Console, Group
 from rich.live import Live
 from rich.markdown import Markdown
@@ -48,13 +46,6 @@ class TurtleAgent(ROSA):
         self.__blacklist = ["master", "docker"]
         self.__prompts = get_prompts()
         self.__llm = get_llm(streaming=streaming)
-
-        # self.__llm = ChatOllama(
-        #     base_url="host.docker.internal:11434",
-        #     model="llama3.1",
-        #     temperature=0,
-        #     num_ctx=8192,
-        # )
 
         self.__streaming = streaming
 
@@ -92,7 +83,7 @@ class TurtleAgent(ROSA):
             "clear": lambda: self.clear(),
         }
 
-    def blast_off(self, input: str):
+    def blast_off(self, _user_input: str):
         return """
         Ok, we're blasting off at the speed of light!
 
@@ -157,15 +148,15 @@ class TurtleAgent(ROSA):
 
         while True:
             console.print(self.greeting)
-            input = self.get_input("> ")
+            user_input = self.get_input("> ")
 
             # Handle special commands
-            if input == "exit":
+            if user_input == "exit":
                 break
-            elif input in self.command_handler:
-                await self.command_handler[input]()
+            elif user_input in self.command_handler:
+                await self.command_handler[user_input]()
             else:
-                await self.submit(input)
+                await self.submit(user_input)
 
     async def submit(self, query: str):
         if self.__streaming:
@@ -219,9 +210,9 @@ class TurtleAgent(ROSA):
 
         with Live(panel, console=console, auto_refresh=False) as live:
             async for event in self.astream(query):
-                event["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[
-                    :-3
-                ]
+                event["timestamp"] = datetime.now(timezone.utc).strftime(
+                    "%Y-%m-%d %H:%M:%S.%f"
+                )[:-3]
                 if event["type"] == "token":
                     content += event["content"]
                     panel.renderable = Markdown(content)

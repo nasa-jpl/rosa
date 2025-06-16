@@ -51,5 +51,6 @@ def get_env_variable(var_name: str) -> str:
     """
     value = os.getenv(var_name)
     if value is None:
-        raise ValueError(f"Environment variable {var_name} is not set.")
+        msg = f"Environment variable {var_name} is not set."
+        raise ValueError(msg)
     return value

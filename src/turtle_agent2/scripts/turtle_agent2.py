@@ -15,7 +15,7 @@
 
 import asyncio
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 import dotenv
 import rclpy
@@ -102,7 +102,7 @@ class TurtleAgent2(ROSA, Node):
             "clear": lambda: self.clear(),
         }
 
-    def blast_off(self, input: str):
+    def blast_off(self, _user_input: str):
         return """
         Ok, we're blasting off at the speed of light!
 
@@ -179,16 +179,16 @@ class TurtleAgent2(ROSA, Node):
 
         while True:
             console.print(self.greeting)
-            input = self.get_input("> ")
+            user_input = self.get_input("> ")
 
             # Handle special commands
-            if input == "exit":
+            if user_input == "exit":
                 print("Goodbye! 🐢")
                 break
-            elif input in self.command_handler:
-                await self.command_handler[input]()
+            elif user_input in self.command_handler:
+                await self.command_handler[user_input]()
             else:
-                await self.submit(input)
+                await self.submit(user_input)
 
     async def submit(self, query: str):
         try:
@@ -244,7 +244,7 @@ class TurtleAgent2(ROSA, Node):
         with Live(panel, console=console, auto_refresh=False) as live:
             try:
                 async for event in self.astream(query):
-                    event["timestamp"] = datetime.now().strftime(
+                    event["timestamp"] = datetime.now(timezone.utc).strftime(
                         "%Y-%m-%d %H:%M:%S.%f"
                     )[:-3]
                     if event["type"] == "token":

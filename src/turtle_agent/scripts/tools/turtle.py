@@ -13,7 +13,6 @@
 #  limitations under the License.
 
 from math import cos, sin, sqrt
-from typing import List
 
 import rospy
 from geometry_msgs.msg import Twist
@@ -26,12 +25,10 @@ cmd_vel_pubs = {}
 
 
 def add_cmd_vel_pub(name: str, publisher: rospy.Publisher):
-    global cmd_vel_pubs
     cmd_vel_pubs[name] = publisher
 
 
 def remove_cmd_vel_pub(name: str):
-    global cmd_vel_pubs
     cmd_vel_pubs.pop(name, None)
 
 
@@ -46,7 +43,8 @@ def within_bounds(x: float, y: float) -> tuple:
     :param x: The x-coordinate.
     :param y: The y-coordinate.
     """
-    if 0 <= x <= 11 and 0 <= y <= 11:
+    max_coord = 11
+    if 0 <= x <= max_coord and 0 <= y <= max_coord:
         return True, "Coordinates are within bounds."
     else:
         return False, f"({x}, {y}) will be out of bounds. Range is [0, 11] for each."
@@ -63,7 +61,8 @@ def will_be_within_bounds(
     current_theta = pose[name].theta
 
     # Calculate the new position and orientation
-    if abs(angle) < 1e-6:  # Straight line motion
+    angle_epsilon = 1e-6
+    if abs(angle) < angle_epsilon:  # Straight line motion
         new_x = (
             current_x
             + (velocity * cos(current_theta) - lateral * sin(current_theta)) * duration
@@ -129,16 +128,15 @@ def spawn_turtle(name: str, x: float, y: float, theta: float) -> str:
         spawn = rospy.ServiceProxy("/spawn", Spawn)
         spawn(x=x, y=y, theta=theta, name=name)
 
-        global cmd_vel_pubs
         cmd_vel_pubs[name] = rospy.Publisher(f"/{name}/cmd_vel", Twist, queue_size=10)
-
-        return f"{name} spawned at x: {x}, y: {y}, theta: {theta}."
     except Exception as e:
         return f"Failed to spawn {name}: {e}"
+    else:
+        return f"{name} spawned at x: {x}, y: {y}, theta: {theta}."
 
 
 @tool
-def kill_turtle(names: List[str]):
+def kill_turtle(names: list[str]):
     """
     Removes a turtle from the turtlesim environment.
 
@@ -148,7 +146,6 @@ def kill_turtle(names: List[str]):
     # Remove any forward slashes from the names
     names = [name.replace("/", "") for name in names]
     response = ""
-    global cmd_vel_pubs
 
     for name in names:
         try:
@@ -179,13 +176,14 @@ def clear_turtlesim():
     try:
         clear = rospy.ServiceProxy("/clear", Empty)
         clear()
-        return "Successfully cleared the turtlesim background."
     except rospy.ServiceException as e:
         return f"Failed to clear the turtlesim background: {e}"
+    else:
+        return "Successfully cleared the turtlesim background."
 
 
 @tool
-def get_turtle_pose(names: List[str]) -> dict:
+def get_turtle_pose(names: list[str]) -> dict:
     """
     Get the pose of one or more turtles.
 
@@ -305,7 +303,6 @@ def publish_twist_to_cmd_vel(
     vel.angular.x, vel.angular.y, vel.angular.z = 0.0, 0.0, angle
 
     try:
-        global cmd_vel_pubs
         pub = cmd_vel_pubs[name]
 
         for _ in range(steps):
@@ -313,14 +310,15 @@ def publish_twist_to_cmd_vel(
             rospy.sleep(1)
     except Exception as e:
         return f"Failed to publish {vel} to /{name}/cmd_vel: {e}"
-    finally:
-        current_pose = get_turtle_pose.invoke({"names": [name]})
-        return (
-            f"New Pose ({name}): x={current_pose[name].x}, y={current_pose[name].y}, "
-            f"theta={current_pose[name].theta} rads, "
-            f"linear_velocity={current_pose[name].linear_velocity}, "
-            f"angular_velocity={current_pose[name].angular_velocity}."
-        )
+
+    # Get and return the current pose after successful movement
+    current_pose = get_turtle_pose.invoke({"names": [name]})
+    return (
+        f"New Pose ({name}): x={current_pose[name].x}, y={current_pose[name].y}, "
+        f"theta={current_pose[name].theta} rads, "
+        f"linear_velocity={current_pose[name].linear_velocity}, "
+        f"angular_velocity={current_pose[name].angular_velocity}."
+    )
 
 
 @tool
@@ -355,15 +353,14 @@ def reset_turtlesim():
         reset()
 
         # Clear the cmd_vel publishers
-        global cmd_vel_pubs
         cmd_vel_pubs.clear()
         cmd_vel_pubs["turtle1"] = rospy.Publisher(
             "/turtle1/cmd_vel", Twist, queue_size=10
         )
-
-        return "Successfully reset the turtlesim environment. Ignore all previous commands, failures, and goals."
     except rospy.ServiceException as e:
         return f"Failed to reset the turtlesim environment: {e}"
+    else:
+        return "Successfully reset the turtlesim environment. Ignore all previous commands, failures, and goals."
 
 
 @tool
@@ -388,9 +385,10 @@ def set_pen(name: str, r: int, g: int, b: int, width: int, off: int):
     try:
         set_pen = rospy.ServiceProxy(f"/{name}/set_pen", SetPen)
         set_pen(r=r, g=g, b=b, width=width, off=off)
-        return f"Successfully set the pen color for the turtle: {name}."
     except rospy.ServiceException as e:
         return f"Failed to set the pen color for the turtle: {e}"
+    else:
+        return f"Successfully set the pen color for the turtle: {name}."
 
 
 @tool
