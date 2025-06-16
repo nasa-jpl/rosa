@@ -16,7 +16,7 @@
 
 import logging
 import sys
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
@@ -57,7 +57,7 @@ class ROSAChatManager:
         """
         self._max_history_length = max_history_length
         self._accumulate_chat_history = accumulate_chat_history
-        self._chat_history: List = []
+        self._chat_history: list = []
 
         # Set up logger
         if logger is None:
@@ -65,7 +65,7 @@ class ROSAChatManager:
         else:
             self._logger = logger
 
-    def get_chat_history(self) -> List:
+    def get_chat_history(self) -> list:
         """Get the current chat history.
 
         Returns:
@@ -126,15 +126,15 @@ class ROSAChatManager:
                 # Update history with trimmed version
                 self._chat_history = trimmed_history
 
-            return True
-
         except Exception as e:
             self._logger.error(
                 f"Error occurred while recording chat history: {e}", exc_info=True
             )
             return False
+        else:
+            return True
 
-    def trim_chat_history(self, chat_history: List) -> List:
+    def trim_chat_history(self, chat_history: list) -> list:
         """Trim chat history to keep only the most recent messages within the limit.
 
         Preserves conversation context by keeping Human/AI message pairs intact.
@@ -170,11 +170,18 @@ class ROSAChatManager:
             remaining_slots = target_length - 1  # Reserve 1 slot for incomplete message
 
             # Each pair takes 2 messages, so keep the most recent pairs
-            if remaining_slots >= 2 and len(complete_pairs_section) >= 2:
+            messages_per_pair = 2
+            if (
+                remaining_slots >= messages_per_pair
+                and len(complete_pairs_section) >= messages_per_pair
+            ):
                 num_pairs_to_keep = min(
-                    remaining_slots // 2, len(complete_pairs_section) // 2
+                    remaining_slots // messages_per_pair,
+                    len(complete_pairs_section) // messages_per_pair,
                 )
-                start_index = len(complete_pairs_section) - (num_pairs_to_keep * 2)
+                start_index = len(complete_pairs_section) - (
+                    num_pairs_to_keep * messages_per_pair
+                )
                 kept_pairs = complete_pairs_section[start_index:]
                 return kept_pairs + incomplete_message
             else:
@@ -214,7 +221,8 @@ class ROSAChatManager:
             ValueError: If max_length is not a positive integer.
         """
         if not isinstance(max_length, int) or max_length <= 0:
-            raise ValueError("max_length must be a positive integer")
+            msg = "max_length must be a positive integer"
+            raise ValueError(msg)
 
         # Temporarily set the max length to perform trimming
         original_max_length = self._max_history_length
@@ -226,7 +234,7 @@ class ROSAChatManager:
             # Restore original max length setting
             self._max_history_length = original_max_length
 
-    def get_history_usage(self) -> Dict[str, Any]:
+    def get_history_usage(self) -> dict[str, Any]:
         """Get information about chat history memory usage and token estimation.
 
         Returns:

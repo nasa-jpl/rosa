@@ -15,7 +15,7 @@
 """Component builder for ROSA agent initialization."""
 
 from contextlib import contextmanager
-from typing import List, Literal, Optional
+from typing import Literal, Optional
 
 from langchain.agents import AgentExecutor
 from langchain.agents.format_scratchpad.openai_tools import (
@@ -68,9 +68,9 @@ class ROSAComponentBuilder:
 
     def get_tools(
         self,
-        packages: Optional[List[str]] = None,
-        tools: Optional[List] = None,
-        blacklist: Optional[List[str]] = None,
+        packages: Optional[list[str]] = None,
+        tools: Optional[list] = None,
+        blacklist: Optional[list[str]] = None,
     ) -> ROSATools:
         """Create a ROSA tools object with the specified configuration.
 
@@ -86,7 +86,7 @@ class ROSAComponentBuilder:
         if tools:
             rosa_tools.add_tools(tools)
         if packages:
-            rosa_tools.add_packages(packages, blacklist=blacklist)
+            rosa_tools.add_packages(packages)
         return rosa_tools
 
     def get_prompts(
@@ -108,8 +108,8 @@ class ROSAComponentBuilder:
             prompts.append(robot_prompts.as_message())
 
         template = ChatPromptTemplate.from_messages(
-            prompts
-            + [
+            [
+                *prompts,
                 MessagesPlaceholder(variable_name=self.MEMORY_KEY),
                 ("user", "{input}"),
                 MessagesPlaceholder(variable_name=self.SCRATCHPAD_KEY),

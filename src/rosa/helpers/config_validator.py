@@ -47,9 +47,8 @@ class ROSAConfigValidator:
             ROSAConfigurationError: If ros_version is invalid.
         """
         if ros_version not in (1, 2):
-            raise ROSAConfigurationError(
-                f"Invalid ROS version: {ros_version}. Must be 1 or 2."
-            )
+            msg = f"Invalid ROS version: {ros_version}. Must be 1 or 2."
+            raise ROSAConfigurationError(msg)
 
     def validate_llm(self, llm: Any) -> None:
         """Validate language model parameter.
@@ -61,9 +60,8 @@ class ROSAConfigValidator:
             ROSAConfigurationError: If llm is invalid.
         """
         if not isinstance(llm, BaseChatModel):
-            raise ROSAConfigurationError(
-                f"Invalid LLM type: {type(llm)}. Must be a LangChain BaseChatModel instance."
-            )
+            msg = f"Invalid LLM type: {type(llm)}. Must be a LangChain BaseChatModel instance."
+            raise ROSAConfigurationError(msg)
 
     def validate_max_history_length(self, max_history_length: Any) -> None:
         """Validate maximum history length parameter.
@@ -77,9 +75,8 @@ class ROSAConfigValidator:
         if max_history_length is not None and (
             not isinstance(max_history_length, int) or max_history_length <= 0
         ):
-            raise ROSAConfigurationError(
-                f"Invalid max_history_length: {max_history_length}. Must be a positive integer or None."
-            )
+            msg = f"Invalid max_history_length: {max_history_length}. Must be a positive integer or None."
+            raise ROSAConfigurationError(msg)
 
     def validate_boolean_parameter(self, value: Any, parameter_name: str) -> None:
         """Validate a boolean parameter.
@@ -92,9 +89,8 @@ class ROSAConfigValidator:
             ROSAConfigurationError: If value is not a boolean.
         """
         if not isinstance(value, bool):
-            raise ROSAConfigurationError(
-                f"{parameter_name} must be a boolean, got {type(value).__name__}: {value}"
-            )
+            msg = f"{parameter_name} must be a boolean, got {type(value).__name__}: {value}"
+            raise ROSAConfigurationError(msg)
 
     def validate_optional_list_parameter(self, value: Any, parameter_name: str) -> None:
         """Validate an optional list parameter.
@@ -107,9 +103,8 @@ class ROSAConfigValidator:
             ROSAConfigurationError: If value is not a list or None.
         """
         if value is not None and not isinstance(value, list):
-            raise ROSAConfigurationError(
-                f"{parameter_name} must be a list or None, got {type(value).__name__}: {value}"
-            )
+            msg = f"{parameter_name} must be a list or None, got {type(value).__name__}: {value}"
+            raise ROSAConfigurationError(msg)
 
     def validate_prompts_parameter(self, prompts: Any) -> None:
         """Validate prompts parameter.
@@ -123,9 +118,8 @@ class ROSAConfigValidator:
         from ..prompts import RobotSystemPrompts
 
         if prompts is not None and not isinstance(prompts, RobotSystemPrompts):
-            raise ROSAConfigurationError(
-                f"prompts must be a RobotSystemPrompts instance or None, got {type(prompts).__name__}: {prompts}"
-            )
+            msg = f"prompts must be a RobotSystemPrompts instance or None, got {type(prompts).__name__}: {prompts}"
+            raise ROSAConfigurationError(msg)
 
     def validate_all_inputs(
         self, ros_version: Any, llm: Any, max_history_length: Any
