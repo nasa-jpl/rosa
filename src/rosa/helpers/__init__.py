@@ -12,15 +12,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from .exceptions import ROSAConfigurationError, ROSAError, ROSAExecutionError
-from .prompts import RobotSystemPrompts
-from .rosa import ROSA, ChatModel
+"""Helper classes for ROSA functionality."""
 
-__all__ = [
-    "ROSA",
-    "ChatModel",
-    "ROSAConfigurationError",
-    "ROSAError",
-    "ROSAExecutionError",
-    "RobotSystemPrompts",
-]
+from .chat_manager import ROSAChatManager
+from .component_builder import ROSAComponentBuilder
+from .config_validator import ROSAConfigValidator
+
+__all__ = ["ROSAChatManager", "ROSAComponentBuilder", "ROSAConfigValidator"]

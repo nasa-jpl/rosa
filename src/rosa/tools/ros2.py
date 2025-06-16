@@ -1,4 +1,4 @@
-#  Copyright (c) 2024. Jet Propulsion Laboratory. All rights reserved.
+#  Copyright (c) 2025. Jet Propulsion Laboratory. All rights reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -89,7 +89,9 @@ def get_entities(
 
 
 @tool
-def ros2_node_list(pattern: Optional[str] = None, blacklist: Optional[List[str]] = None) -> dict:
+def ros2_node_list(
+    pattern: Optional[str] = None, blacklist: Optional[List[str]] = None
+) -> dict:
     """
     Get a list of ROS2 nodes running on the system.
 
@@ -101,7 +103,9 @@ def ros2_node_list(pattern: Optional[str] = None, blacklist: Optional[List[str]]
 
 
 @tool
-def ros2_topic_list(pattern: Optional[str] = None, blacklist: Optional[List[str]] = None) -> dict:
+def ros2_topic_list(
+    pattern: Optional[str] = None, blacklist: Optional[List[str]] = None
+) -> dict:
     """
     Get a list of ROS2 topics.
 
@@ -180,7 +184,6 @@ def ros2_node_info(nodes: List[str]) -> dict:
     data = {}
 
     for node_name in nodes:
-
         cmd = f"ros2 node info {node_name}"
         success, output = execute_ros_command(cmd)
         if not success:
@@ -240,7 +243,7 @@ def ros2_param_list(
             ]
         return {node_name: params}
     else:
-        cmd = f"ros2 param list"
+        cmd = "ros2 param list"
         success, output = execute_ros_command(cmd)
 
         if not success:
@@ -374,17 +377,22 @@ def roslog_list(min_size: int = 2048, blacklist: Optional[List[str]] = None) -> 
     log_dirs = ros2_log_directories()
 
     for _, log_dir in log_dirs.items():
-        if not log_dir:
+        if not log_dir or not os.path.exists(log_dir):
+            print(f"Log directory does not exist: {log_dir}")
             continue
 
-        # Get all .log files in the directory
-        log_files = [
-            os.path.join(log_dir, f)
-            for f in os.listdir(log_dir)
-            if os.path.isfile(os.path.join(log_dir, f)) and f.endswith(".log")
-        ]
+        try:
+            # Get all .log files in the directory
+            log_files = [
+                os.path.join(log_dir, f)
+                for f in os.listdir(log_dir)
+                if os.path.isfile(os.path.join(log_dir, f)) and f.endswith(".log")
+            ]
 
-        print(f"Log files: {log_files}")
+            print(f"Found {len(log_files)} log files in {log_dir}")
+        except OSError as e:
+            print(f"Error accessing log directory {log_dir}: {e}")
+            continue
 
         # Filter out blacklisted files
         if blacklist:
@@ -403,7 +411,7 @@ def roslog_list(min_size: int = 2048, blacklist: Optional[List[str]] = None) -> 
         # Get the size of each log file in KB or MB if it's larger than 1 MB
         log_files = [
             {
-                f.replace(log_dir, ""): (
+                os.path.basename(f): (
                     f"{round(os.path.getsize(f) / 1024, 2)} KB"
                     if os.path.getsize(f) < 1024 * 1024
                     else f"{round(os.path.getsize(f) / (1024 * 1024), 2)} MB"

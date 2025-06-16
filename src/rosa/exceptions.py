@@ -12,15 +12,16 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from .exceptions import ROSAConfigurationError, ROSAError, ROSAExecutionError
-from .prompts import RobotSystemPrompts
-from .rosa import ROSA, ChatModel
+"""ROSA exception classes."""
 
-__all__ = [
-    "ROSA",
-    "ChatModel",
-    "ROSAConfigurationError",
-    "ROSAError",
-    "ROSAExecutionError",
-    "RobotSystemPrompts",
-]
+
+class ROSAError(Exception):
+    """Base exception class for ROSA-related errors."""
+
+
+class ROSAConfigurationError(ROSAError):
+    """Raised when ROSA is configured incorrectly."""
+
+
+class ROSAExecutionError(ROSAError):
+    """Raised when ROSA encounters an error during execution."""
