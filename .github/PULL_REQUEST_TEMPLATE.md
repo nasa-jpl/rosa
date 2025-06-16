@@ -12,6 +12,6 @@
 - Example: issue-XYZ
 
 ## Testing
-- Provide some proof you've tested your changes 
+- Provide some proof you've tested your changes
 - Example: test results available at ...
 - Example: tested on operating system ...

@@ -29,6 +29,6 @@ Ex. I'm frustrated when [...] happens as documented in issue-XYZ
 
 **Describe the feature request**
 
-> A clear and concise description of your request. 
+> A clear and concise description of your request.
 
 Ex. I need or want [...]
