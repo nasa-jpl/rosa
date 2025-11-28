@@ -213,13 +213,14 @@ def teleport_absolute(
     name: str, x: float, y: float, theta: float, hide_pen: bool = True
 ):
     """
-    Teleport a turtle to the given x, y, and theta coordinates.
+    Teleport a turtle to exact coordinates with a specific heading angle.
+    Use this to position the turtle precisely before drawing.
 
-    :param name: name of the turtle
-    :param x: The x-coordinate, range: [0, 11]
-    :param y: The y-coordinate, range: [0, 11]
-    :param theta: angle
-    :param hide_pen: True to hide the pen (do not show movement trace on screen), False to show the pen
+    :param name: name of the turtle (without forward slash, e.g., 'turtle1')
+    :param x: The x-coordinate, range: [0, 11]. 0 is left edge, 11 is right edge.
+    :param y: The y-coordinate, range: [0, 11]. 0 is bottom edge, 11 is top edge.
+    :param theta: Heading angle in RADIANS. 0=right, π/2≈1.57=up, π≈3.14=left, 3π/2≈4.71=down
+    :param hide_pen: If True (default), pen is turned off during teleport so no line is drawn
     """
     in_bounds, message = within_bounds(x, y)
     if not in_bounds:
@@ -249,11 +250,12 @@ def teleport_absolute(
 @tool
 def teleport_relative(name: str, linear: float, angular: float):
     """
-    Teleport a turtle relative to its current position.
+    Teleport a turtle relative to its current position and orientation.
+    Use this to adjust heading without drawing, or to move without precise positioning.
 
-    :param name: name of the turtle
-    :param linear: linear distance
-    :param angular: angular distance
+    :param name: name of the turtle (without forward slash, e.g., 'turtle1')
+    :param linear: distance to move forward (positive) or backward (negative)
+    :param angular: angle to rotate in RADIANS. Positive = counterclockwise, negative = clockwise
     """
     in_bounds, message = will_be_within_bounds(name, linear, 0.0, angular)
     if not in_bounds:
@@ -281,14 +283,18 @@ def publish_twist_to_cmd_vel(
     steps: int = 1,
 ):
     """
-    Publish a Twist message to the /{name}/cmd_vel topic to move a turtle robot.
-    Use a combination of linear and angular velocities to move the turtle in the desired direction.
+    Publish a Twist message to move the turtle. This DRAWS a line as the turtle moves.
+    Each step represents 1 second of movement. Distance traveled = velocity × steps.
+    
+    For STRAIGHT lines: set angle=0 and use velocity for distance.
+    For CURVED lines: combine velocity and angle (creates an arc).
+    For ROTATION only: set velocity=0 and use angle.
 
-    :param name: name of the turtle (do not include the forward slash)
-    :param velocity: linear velocity, where positive is forward and negative is backward
-    :param lateral: lateral velocity, where positive is left and negative is right
-    :param angle: angular velocity, where positive is counterclockwise and negative is clockwise
-    :param steps: Number of times to publish the twist message
+    :param name: name of the turtle (without forward slash, e.g., 'turtle1')
+    :param velocity: linear velocity in units/second. Positive=forward, negative=backward. Distance = velocity × steps.
+    :param lateral: lateral velocity (strafe). Positive=left, negative=right. Usually 0 for standard movement.
+    :param angle: angular velocity in radians/second. Positive=counterclockwise, negative=clockwise. Usually 0 for straight lines.
+    :param steps: Number of seconds to publish this command. Total distance = velocity × steps.
     """
     # Remove any forward slashes from the name
     name = name.replace("/", "")
@@ -370,14 +376,16 @@ def reset_turtlesim():
 @tool
 def set_pen(name: str, r: int, g: int, b: int, width: int, off: int):
     """
-    Set the pen color and width for the turtle. The pen is used to draw lines on the turtlesim canvas.
+    Control the turtle's pen for drawing lines.
+    Turn pen OFF before teleporting to reposition without drawing.
+    Turn pen ON before using publish_twist_to_cmd_vel to draw lines.
 
-    :param name: name of the turtle
-    :param r: red value
-    :param g: green value
-    :param b: blue value
-    :param width: width of the pen.
-    :param off: 0=on, 1=off
+    :param name: name of the turtle (without forward slash, e.g., 'turtle1')
+    :param r: red value (0-255)
+    :param g: green value (0-255)
+    :param b: blue value (0-255)
+    :param width: width of the pen line (1-5 recommended)
+    :param off: 0 = pen ON (will draw), 1 = pen OFF (will not draw)
     """
     # Remove any forward slashes from the name
     name = name.replace("/", "")

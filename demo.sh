@@ -81,7 +81,7 @@ docker build $PLATFORM_ARG --build-arg DEVELOPMENT=$DEVELOPMENT -t $CONTAINER_NA
 echo "Running the Docker container..."
 if [ "$(uname)" = "Darwin" ]; then
     # macOS: Use host.docker.internal for X11
-    docker run -it --rm --name $CONTAINER_NAME \
+    docker run -it --rm --init --name $CONTAINER_NAME \
         $PLATFORM_ARG \
         -e DISPLAY=host.docker.internal:0 \
         -e HEADLESS=$HEADLESS \
@@ -91,7 +91,7 @@ if [ "$(uname)" = "Darwin" ]; then
         $CONTAINER_NAME
 else
     # Linux/WSL: Use unix socket
-    docker run -it --rm --name $CONTAINER_NAME \
+    docker run -it --rm --init --name $CONTAINER_NAME \
         -e DISPLAY=$DISPLAY \
         -e HEADLESS=$HEADLESS \
         -e DEVELOPMENT=$DEVELOPMENT \

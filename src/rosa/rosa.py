@@ -13,6 +13,7 @@
 #  limitations under the License.
 
 from typing import Any, AsyncIterable, Dict, Literal, Optional, Union
+import signal
 
 from langchain.agents import AgentExecutor
 from langchain.agents.format_scratchpad.openai_tools import (
@@ -47,6 +48,7 @@ class ROSA:
         accumulate_chat_history (bool): Whether to accumulate chat history. Defaults to True.
         show_token_usage (bool): Whether to show token usage. Does not work when streaming is enabled. Defaults to False.
         streaming (bool): Whether to stream the output of the agent. Defaults to True.
+        max_iterations (int): Maximum number of iterations for the agent executor. Defaults to 100.
 
     Attributes:
         chat_history (list): A list of messages representing the chat history.
@@ -75,6 +77,7 @@ class ROSA:
         accumulate_chat_history: bool = True,
         show_token_usage: bool = False,
         streaming: bool = True,
+        max_iterations: int = 100,
     ):
         self.__chat_history = []
         self.__ros_version = ros_version
@@ -84,6 +87,7 @@ class ROSA:
         self.__blacklist = blacklist if blacklist else []
         self.__accumulate_chat_history = accumulate_chat_history
         self.__streaming = streaming
+        self.__max_iterations = max_iterations
         self.__tools = self._get_tools(
             ros_version, packages=tool_packages, tools=tools, blacklist=self.__blacklist
         )
@@ -129,6 +133,9 @@ class ROSA:
                     {"input": query, "chat_history": self.__chat_history}
                 )
                 self._print_usage(cb)
+        except KeyboardInterrupt:
+            # Re-raise KeyboardInterrupt so it can be handled upstream
+            raise
         except Exception as e:
             return f"An error occurred: {str(e)}"
 
@@ -215,6 +222,10 @@ class ROSA:
 
             if final_output:
                 self._record_chat_history(query, final_output)
+        except KeyboardInterrupt:
+            # Re-raise KeyboardInterrupt so it can be handled upstream
+            yield {"type": "error", "content": "Operation interrupted by user"}
+            raise
         except Exception as e:
             yield {"type": "error", "content": f"An error occurred: {e}"}
 
@@ -225,6 +236,9 @@ class ROSA:
             tools=self.__tools.get_tools(),
             stream_runnable=self.__streaming,
             verbose=verbose,
+            max_iterations=self.__max_iterations,
+            handle_parsing_errors=True,  # Better error handling
+            return_intermediate_steps=True,  # Set to false to reduce overhead
         )
         return executor
 
