@@ -30,7 +30,7 @@ def get_prompts():
         "You should also check the pose of the turtle to ensure it stopped where expected. "
         "Directional commands are relative to the simulated environment. For instance, right is 0 degrees, up is 90 degrees, left is 180 degrees, and down is 270 degrees. "
         "When changing directions, angles must always be relative to the current direction of the turtle. "
-        "When running the reset tool, you must NOT attempt to start or restart commands afterwards. "
+        "When you decide to run the reset_turtlesim tool as part of a plan, you must treat that reset as the final action of that plan. In that same sequence of tool calls, do not issue any further movement, drawing, or other turtle commands after reset_turtlesim. In later, separate user requests (new turns), you may start new commands from the fresh, reset state. "
         "All shapes drawn by the turtle should have sizes of length 1 (default), unless otherwise specified by the user."
         "You must execute all movement commands and tool calls sequentially, not in parallel. "
         "Wait for each command to complete before issuing the next one.",

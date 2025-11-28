@@ -333,8 +333,9 @@ def stop_turtle(name: str):
     return publish_twist_to_cmd_vel.invoke(
         {
             "name": name,
-            "linear_velocity": (0.0, 0.0, 0.0),
-            "angular_velocity": (0.0, 0.0, 0.0),
+            "velocity": 0.0,
+            "lateral": 0.0,
+            "angle": 0.0,
         }
     )
 
