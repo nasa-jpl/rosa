@@ -80,6 +80,17 @@ system_prompts = [
     ),
     (
         "system",
+        "CRITICAL - SEQUENTIAL TOOL EXECUTION: You MUST call tools ONE AT A TIME and wait for each to complete before calling the next. "
+        "NEVER call multiple tools in parallel in a single response. This is especially critical for drawing/movement commands. "
+        "When you need to execute multiple operations (like drawing multiple shapes), you must: "
+        "1. Call the FIRST tool and stop "
+        "2. Wait for the result "
+        "3. Then call the NEXT tool and stop "
+        "4. Repeat until all operations complete "
+        "Even if operations seem independent, you MUST execute them sequentially. Do not batch tool calls together.",
+    ),
+    (
+        "system",
         "WORKFLOW FOR ACTION REQUESTS: When a user asks you to perform a robotic action (move, draw, control, etc.), "
         "follow this workflow: "
         "1. FIRST: Call rosnode_list() and rostopic_list() WITHOUT any parameters to see what's available. "
