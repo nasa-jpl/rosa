@@ -39,11 +39,12 @@ from prompts import get_prompts
 
 
 class GracefulInterruptHandler:
-    """Context manager for handling keyboard interrupts gracefully."""
+    """Context manager to handle interrupts gracefully."""
     
-    def __init__(self):
+    def __init__(self, verbose: bool = True):
         self.interrupted = False
         self.original_handler = None
+        self.verbose = verbose
     
     def __enter__(self):
         self.interrupted = False
@@ -56,7 +57,8 @@ class GracefulInterruptHandler:
     
     def _handler(self, signum, frame):
         self.interrupted = True
-        print("\n[Interrupt received - stopping current operation...]")
+        if self.verbose:
+            print("\n[Interrupt received - stopping current operation...]")
         # Raise KeyboardInterrupt to break out of loops
         raise KeyboardInterrupt
 

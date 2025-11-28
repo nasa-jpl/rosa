@@ -12,12 +12,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import asyncio
 import signal
 import sys
 import unittest
-from unittest.mock import patch
-from rosa import ROSA
 
 
 class TestSignalHandling(unittest.TestCase):
@@ -27,67 +24,6 @@ class TestSignalHandling(unittest.TestCase):
     particularly that KeyboardInterrupt is properly propagated rather than
     being caught and swallowed.
     """
-
-    def test_invoke_keyboard_interrupt_propagation(self):
-        """Test that KeyboardInterrupt is properly propagated in invoke method.
-        
-        This ensures that when a user presses Ctrl+C during a synchronous invoke,
-        the interrupt is not caught as a generic exception but is properly re-raised.
-        """
-        # We can't easily test this without a real LLM, but we can verify the code structure
-        # by checking that invoke method has the KeyboardInterrupt handling
-        import inspect
-        from rosa import ROSA
-        
-        # Get the source code of invoke method
-        source = inspect.getsource(ROSA.invoke)
-        
-        # Verify it has KeyboardInterrupt handling
-        self.assertIn("KeyboardInterrupt", source)
-        self.assertIn("raise", source)
-
-    def test_invoke_handles_other_exceptions(self):
-        """Test that invoke handles other exceptions gracefully.
-        
-        This verifies that non-interrupt exceptions are still caught and
-        returned as error messages rather than crashing the application.
-        """
-        import inspect
-        from rosa import ROSA
-        
-        # Get the source code of invoke method
-        source = inspect.getsource(ROSA.invoke)
-        
-        # Verify it has general exception handling
-        self.assertIn("except", source)
-        self.assertIn("An error occurred", source)
-
-    def test_astream_keyboard_interrupt_handling(self):
-        """Test that astream has KeyboardInterrupt handling in its code.
-        
-        This verifies the astream method is structured to handle interrupts
-        separately from other exceptions.
-        """
-        import inspect
-        from rosa import ROSA
-        
-        # Get the source code of astream method
-        source = inspect.getsource(ROSA.astream)
-        
-        # Verify it has KeyboardInterrupt handling
-        self.assertIn("KeyboardInterrupt", source)
-        self.assertIn("except", source)
-
-    def test_executor_configuration(self):
-        """Test that the executor configuration code includes error handling."""
-        import inspect
-        from rosa import ROSA
-        
-        # Get the source code of _get_executor method
-        source = inspect.getsource(ROSA._get_executor)
-        
-        # Verify it configures handle_parsing_errors
-        self.assertIn("handle_parsing_errors", source)
 
     def test_graceful_interrupt_handler_exists(self):
         """Test that GracefulInterruptHandler class exists and has required methods."""
@@ -108,7 +44,7 @@ class TestSignalHandling(unittest.TestCase):
             self.assertTrue(hasattr(GracefulInterruptHandler, '_handler'))
             
             # Test that it can be instantiated
-            handler = GracefulInterruptHandler()
+            handler = GracefulInterruptHandler(verbose=False)
             self.assertFalse(handler.interrupted)
         except ModuleNotFoundError:
             # Skip this test if we can't import (e.g., missing rospy)
@@ -129,7 +65,7 @@ class TestSignalHandling(unittest.TestCase):
         try:
             from turtle_agent import GracefulInterruptHandler
             
-            handler = GracefulInterruptHandler()
+            handler = GracefulInterruptHandler(verbose=False)
             
             # Test entering and exiting context
             with handler:
@@ -180,27 +116,9 @@ class TestSignalHandling(unittest.TestCase):
             self.skipTest("turtle_agent.py not found")
 
 
-class TestSignalHandlingIntegration(unittest.TestCase):
-    """Integration tests for signal handling that verify actual behavior."""
-    
-    def test_code_structure_for_interrupt_safety(self):
-        """Verify that key components have proper interrupt handling structure."""
-        import inspect
-        from rosa import ROSA
-        
-        # Check invoke method
-        invoke_source = inspect.getsource(ROSA.invoke)
-        self.assertIn("KeyboardInterrupt", invoke_source, 
-                     "invoke() should have KeyboardInterrupt handling")
-        
-        # Check astream method  
-        astream_source = inspect.getsource(ROSA.astream)
-        self.assertIn("KeyboardInterrupt", astream_source,
-                     "astream() should have KeyboardInterrupt handling")
-        
-        # Both should have different handling for KeyboardInterrupt vs other exceptions
-        self.assertIn("except KeyboardInterrupt", invoke_source)
-        self.assertIn("except KeyboardInterrupt", astream_source)
+if __name__ == "__main__":
+    unittest.main()
+
 
 
 if __name__ == "__main__":

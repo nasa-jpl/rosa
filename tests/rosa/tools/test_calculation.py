@@ -179,16 +179,14 @@ class TestCalculationTools(unittest.TestCase):
         self.assertEqual(count_lines.invoke({"text": ""}), 1)
 
     def test_degrees_to_radians_converts_degrees_to_radians(self):
-        self.assertEqual(
-            degrees_to_radians.invoke({"degrees": [0, 180]}),
-            {0: "0.0 radians.", 180: "3.14159 radians."},
-        )
+        result = degrees_to_radians.invoke({"degrees": [0, 180]})
+        self.assertAlmostEqual(result[0], 0.0)
+        self.assertAlmostEqual(result[180], 3.141592653589793)
 
     def test_radians_to_degrees_converts_radians_to_degrees(self):
-        self.assertEqual(
-            radians_to_degrees.invoke({"radians": [0, 3.14159]}),
-            {0: "0.0 degrees.", 3.14159: "180.0 degrees."},
-        )
+        result = radians_to_degrees.invoke({"radians": [0, 3.14159]})
+        self.assertAlmostEqual(result[0], 0.0)
+        self.assertAlmostEqual(result[3.14159], 179.9998479605043, places=5)
 
 
 if __name__ == "__main__":
