@@ -26,13 +26,13 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libc6 libc6-dev
-          sudo apt-get install -y python3.9
-          sudo apt-get install -y python3-pip curl build-essential
+          apt-get update
+          apt-get install -y libc6 libc6-dev
+          apt-get install -y python3.9 python3.9-distutils curl build-essential
+          curl -sS https://bootstrap.pypa.io/get-pip.py | python3.9
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           source "$HOME/.cargo/env"
-          python3.9 -m pip install --user -e .
+          python3.9 -m pip install -e .
         shell: bash
 
       - name: Run tests
@@ -58,11 +58,12 @@ jobs:
 
       - name: Install dependencies
         run: |
-          DEBIAN_FRONTEND=noninteractive sudo apt-get update
-          DEBIAN_FRONTEND=noninteractive sudo apt-get install -y python3.10 python3-pip curl build-essential
+          DEBIAN_FRONTEND=noninteractive apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y python3.10 python3.10-distutils curl build-essential
+          curl -sS https://bootstrap.pypa.io/get-pip.py | python3.10
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           source "$HOME/.cargo/env"
-          python3.10 -m pip install --user -e .
+          python3.10 -m pip install -e .
         shell: bash
 
       - name: Run tests
