@@ -30,7 +30,7 @@ echo "Enabling X11 forwarding..."
 case "$(uname)" in
     Linux*)
         export DISPLAY=${DISPLAY:-:0}
-        xhost + &>/dev/null || echo "Warning: xhost command failed"
+        xhost +local:docker &>/dev/null || echo "Warning: xhost command failed"
         # Verify X11 is working
         if ! xset q &>/dev/null; then
             echo "Error: X11 forwarding is not working. Please check your X11 server."
@@ -40,7 +40,7 @@ case "$(uname)" in
     Darwin*)
         # Keep XQuartz's DISPLAY or default to :0
         export DISPLAY=${DISPLAY:-:0}
-        xhost + &>/dev/null || true
+        xhost +local:docker &>/dev/null || true
         
         # Check if XQuartz is running and properly configured
         if ! pgrep -xq "Xquartz" && ! pgrep -xq "X11"; then
@@ -82,7 +82,6 @@ echo "Running the Docker container..."
 if [ "$(uname)" = "Darwin" ]; then
     # macOS: Use host.docker.internal for X11
     docker run -it --rm --init --name $CONTAINER_NAME \
-        $PLATFORM_ARG \
         -e DISPLAY=host.docker.internal:0 \
         -e HEADLESS=$HEADLESS \
         -e DEVELOPMENT=$DEVELOPMENT \
@@ -103,6 +102,6 @@ else
 fi
 
 # Disable X11 forwarding
-xhost - &>/dev/null || true
+xhost -local:docker &>/dev/null || true
 
 exit 0

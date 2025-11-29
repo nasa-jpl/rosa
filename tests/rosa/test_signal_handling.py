@@ -73,6 +73,7 @@ class TestSignalHandling(unittest.TestCase):
                 try:
                     handler._handler(signal.SIGINT, None)
                 except KeyboardInterrupt:
+                    # Expected exception when simulating SIGINT; ignore to check handler state
                     pass
                 self.assertTrue(handler.interrupted)
         except ModuleNotFoundError:

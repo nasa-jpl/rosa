@@ -19,6 +19,7 @@ RUN apt-get update && apt-get install -y \
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 
+# Cleanup disabled for development builds
 # RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 # Upgrade pip first, then install packages
 RUN python3.9 -m pip install --upgrade pip

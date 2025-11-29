@@ -364,7 +364,7 @@ def sqrt(x_values: List[float]) -> List[dict]:
 
 
 @tool
-def atan2(y_x_pairs: List[tuple]) -> List[dict]:
+def atan2(pairs: List[tuple]) -> List[dict]:
     """
     Calculate the angle (in radians) from the positive x-axis to the point (x, y).
     This is the MOST IMPORTANT tool for calculating angles between two points.
@@ -374,10 +374,10 @@ def atan2(y_x_pairs: List[tuple]) -> List[dict]:
     
     Example: angle from (1, 1) to (3, 4) = atan2(4-1, 3-1) = atan2(3, 2) ≈ 0.98 radians
 
-    :arg y_x_pairs: A list of tuples containing (y, x) values - NOTE: y comes FIRST, then x
+    :arg pairs: A list of tuples containing (y, x) values in that order, e.g., [(y1, x1), (y2, x2), ...]
     """
     results = []
-    for y, x in y_x_pairs:
+    for y, x in pairs:
         result = {f"atan2({y}, {x})": math.atan2(y, x)}
         results.append(result)
     return results

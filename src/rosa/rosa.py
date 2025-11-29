@@ -228,7 +228,6 @@ class ROSA:
         except KeyboardInterrupt:
             # Re-raise KeyboardInterrupt so it can be handled upstream
             yield {"type": "error", "content": "Operation interrupted by user"}
-            raise
         except Exception as e:
             yield {"type": "error", "content": f"An error occurred: {e}"}
 
