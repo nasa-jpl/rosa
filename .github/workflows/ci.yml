@@ -37,8 +37,8 @@ jobs:
       - name: Run tests
         run: |
           . /opt/ros/noetic/setup.bash
-          cd /tmp
-          python3.9 -m unittest discover -s $GITHUB_WORKSPACE/tests --verbose
+          export PYTHONPATH=/usr/local/lib/python3.9/dist-packages:$PYTHONPATH
+          python3.9 -m unittest discover -s tests --verbose
         shell: bash
         env:
           ROS_VERSION: 1
@@ -69,8 +69,8 @@ jobs:
       - name: Run tests
         run: |
           . /opt/ros/humble/setup.bash
-          cd /tmp
-          python3.10 -m unittest discover -s $GITHUB_WORKSPACE/tests --verbose
+          export PYTHONPATH=/usr/local/lib/python3.10/dist-packages:$PYTHONPATH
+          python3.10 -m unittest discover -s tests --verbose
         shell: bash
         env:
           ROS_VERSION: 2
