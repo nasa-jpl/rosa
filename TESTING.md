@@ -22,12 +22,12 @@ The following test categories are included in our testing setup. Further details
 
 #### Calculation Tools
 
-- **Location:** `./tests/rosa/tools/test_calculation.py`
+- **Location:** `./tests/test_rosa/tools/test_calculation.py`
 - **Purpose:** To ensure the mathematical functions and calculations in ROSA perform correctly across various edge cases and inputs.
 - **Running Tests:**
   - **Manually:**
     1. Navigate to the project root directory in the command line.
-    2. Execute `pytest ./tests/rosa/tools/test_calculation.py`.
+    2. Execute `pytest ./tests/test_rosa/tools/test_calculation.py`.
     3. View results: Results will appear in the command-line output or can be formatted into a report using the `pytest-html` plugin.
   - **Automatically:**
     - **Frequency:**
@@ -42,12 +42,12 @@ The following test categories are included in our testing setup. Further details
 
 #### Log Tools
 
-- **Location:** `./tests/rosa/tools/test_log.py`
+- **Location:** `./tests/test_rosa/tools/test_log.py`
 - **Purpose:** To verify the functionality of log reading and handling operations in ROSA, including error handling and filtering.
 - **Running Tests:**
   - **Manually:**
     1. Navigate to the project root directory in the command line.
-    2. Execute `pytest ./tests/rosa/tools/test_log.py`.
+    2. Execute `pytest ./tests/test_rosa/tools/test_log.py`.
     3. View results: Results will appear in the command-line output or can be formatted into a report using the `pytest-html` plugin.
   - **Automatically:**
     - **Frequency:**
@@ -62,12 +62,12 @@ The following test categories are included in our testing setup. Further details
 
 #### ROS1 Tools
 
-- **Location:** `./tests/rosa/tools/test_ros1.py`
+- **Location:** `./tests/test_rosa/tools/test_ros1.py`
 - **Purpose:** To validate the integration and functionality of ROS1 tools within ROSA, ensuring correct interactions with the ROS1 environment.
 - **Running Tests:**
   - **Manually:**
     1. Ensure that ROS1 is set up and running in your environment.
-    2. Execute `pytest ./tests/rosa/tools/test_ros1.py`.
+    2. Execute `pytest ./tests/test_rosa/tools/test_ros1.py`.
     3. View results: Results will appear in the command-line output or can be formatted into a report using the `pytest-html` plugin.
   - **Automatically:**
     - **Frequency:**
@@ -82,12 +82,12 @@ The following test categories are included in our testing setup. Further details
 
 #### ROS2 Tools
 
-- **Location:** `./tests/rosa/tools/test_ros2.py`
+- **Location:** `./tests/test_rosa/tools/test_ros2.py`
 - **Purpose:** To validate the integration and functionality of ROS2 tools within ROSA, ensuring correct interactions with the ROS2 environment.
 - **Running Tests:**
   - **Manually:**
     1. Ensure that ROS2 is set up and running in your environment.
-    2. Execute `pytest ./tests/rosa/tools/test_ros2.py`.
+    2. Execute `pytest ./tests/test_rosa/tools/test_ros2.py`.
     3. View results: Results will appear in the command-line output or can be formatted into a report using the `pytest-html` plugin.
   - **Automatically:**
     - **Frequency:**
@@ -102,12 +102,12 @@ The following test categories are included in our testing setup. Further details
 
 #### ROSA Tools
 
-- **Location:** `./tests/rosa/tools/test_rosa_tools.py`
+- **Location:** `./tests/test_rosa/tools/test_rosa_tools.py`
 - **Purpose:** To test the general ROSA tools and their integration, including utility functions and framework-specific features.
 - **Running Tests:**
   - **Manually:**
     1. Navigate to the project root directory in the command line.
-    2. Execute `pytest ./tests/rosa/tools/test_rosa_tools.py`.
+    2. Execute `pytest ./tests/test_rosa/tools/test_rosa_tools.py`.
     3. View results: Results will appear in the command-line output or can be formatted into a report using the `pytest-html` plugin.
   - **Automatically:**
     - **Frequency:**
@@ -122,12 +122,12 @@ The following test categories are included in our testing setup. Further details
 
 #### System Tools
 
-- **Location:** `./tests/rosa/tools/test_system.py`
+- **Location:** `./tests/test_rosa/tools/test_system.py`
 - **Purpose:** To verify the system-related functionalities within ROSA, such as verbosity settings, debugging, and system wait functions.
 - **Running Tests:**
   - **Manually:**
     1. Navigate to the project root directory in the command line.
-    2. Execute `pytest ./tests/rosa/tools/test_system.py`.
+    2. Execute `pytest ./tests/test_rosa/tools/test_system.py`.
     3. View results: Results will appear in the command-line output or can be formatted into a report using the `pytest-html` plugin.
   - **Automatically:**
     - **Frequency:**
