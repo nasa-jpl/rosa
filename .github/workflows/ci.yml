@@ -37,7 +37,8 @@ jobs:
       - name: Run tests
         run: |
           . /opt/ros/noetic/setup.bash
-          python3.9 -m unittest discover -s tests --verbose
+          cd /tmp
+          python3.9 -m unittest discover -s $GITHUB_WORKSPACE/tests --verbose
         shell: bash
         env:
           ROS_VERSION: 1
@@ -68,7 +69,8 @@ jobs:
       - name: Run tests
         run: |
           . /opt/ros/humble/setup.bash
-          python3.10 -m unittest discover -s tests --verbose
+          cd /tmp
+          python3.10 -m unittest discover -s $GITHUB_WORKSPACE/tests --verbose
         shell: bash
         env:
           ROS_VERSION: 2
