@@ -13,7 +13,6 @@
 #  limitations under the License.
 
 import signal
-import sys
 import unittest
 
 
@@ -81,44 +80,6 @@ class TestSignalHandling(unittest.TestCase):
         finally:
             if turtle_agent_path in sys.path:
                 sys.path.remove(turtle_agent_path)
-
-    def test_demo_script_has_init_flag(self):
-        """Test that demo.sh includes the --init flag for proper signal handling."""
-        import os
-        
-        demo_script_path = os.path.join(os.path.dirname(__file__), '..', '..', 'demo.sh')
-        
-        if os.path.exists(demo_script_path):
-            with open(demo_script_path, 'r') as f:
-                content = f.read()
-            
-            # Verify --init flag is present in docker run commands
-            self.assertIn('--init', content, "demo.sh should include --init flag for Docker")
-        else:
-            self.skipTest("demo.sh not found")
-
-    def test_main_function_has_signal_handlers(self):
-        """Test that main() function in turtle_agent sets up signal handlers."""
-        import sys
-        import os
-        
-        turtle_agent_path = os.path.join(os.path.dirname(__file__), '..', '..', 'src', 'turtle_agent', 'scripts')
-        turtle_agent_file = os.path.join(turtle_agent_path, 'turtle_agent.py')
-        
-        if os.path.exists(turtle_agent_file):
-            with open(turtle_agent_file, 'r') as f:
-                content = f.read()
-            
-            # Verify signal handling is set up in main
-            self.assertIn('signal.signal(signal.SIGINT', content)
-            self.assertIn('signal.signal(signal.SIGTERM', content)
-        else:
-            self.skipTest("turtle_agent.py not found")
-
-
-if __name__ == "__main__":
-    unittest.main()
-
 
 
 if __name__ == "__main__":

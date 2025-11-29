@@ -351,14 +351,6 @@ def main():
     streaming = rospy.get_param("~streaming", False)
     turtle_agent = TurtleAgent(verbose=False, streaming=streaming)
 
-    # Set up signal handling for clean shutdown
-    def signal_handler(sig, frame):
-        print("\n[Shutting down gracefully...]")
-        sys.exit(0)
-    
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
-
     try:
         asyncio.run(turtle_agent.run())
     except KeyboardInterrupt:

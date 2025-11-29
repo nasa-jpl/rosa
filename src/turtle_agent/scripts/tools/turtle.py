@@ -219,7 +219,7 @@ def teleport_absolute(
     :param name: name of the turtle (without forward slash, e.g., 'turtle1')
     :param x: The x-coordinate, range: [0, 11]. 0 is left edge, 11 is right edge.
     :param y: The y-coordinate, range: [0, 11]. 0 is bottom edge, 11 is top edge.
-    :param theta: Heading angle in RADIANS. 0=right, π/2≈1.57=up, π≈3.14=left, 3π/2≈4.71=down
+    :param theta: Heading angle in radians. 0=right, π/2≈1.57=up, π≈3.14=left, 3π/2≈4.71=down
     :param hide_pen: If True (default), pen is turned off during teleport so no line is drawn
     """
     in_bounds, message = within_bounds(x, y)
@@ -428,7 +428,7 @@ def has_moved_to_expected_coordinates(
 
 
 @tool
-def draw_line_segment(name: str, x1: float, y1: float, x2: float, y2: float):
+def draw_line_segment(name: str, x1: float, y1: float, x2: float, y2: float) -> str:
     """
     Draw a single straight line from point (x1,y1) to point (x2,y2).
     
@@ -489,7 +489,7 @@ def draw_line_segment(name: str, x1: float, y1: float, x2: float, y2: float):
 @tool
 def draw_rectangle(
     name: str, x: float, y: float, width: float, height: float, filled: bool = False
-):
+) -> str:
     """
     Draw a perfect rectangle with exact corners and no angle drift.
     
@@ -561,7 +561,7 @@ def draw_rectangle(
 
 
 @tool
-def draw_polyline(name: str, points: List[tuple], closed: bool = False):
+def draw_polyline(name: str, points: List[tuple], closed: bool = False) -> str:
     """
     Draw a series of connected straight line segments through multiple points.
     
@@ -702,7 +702,7 @@ def check_rectangles_overlap(rect1: tuple, rect2: tuple) -> dict:
 
 
 @tool
-def draw_circle(name: str, center_x: float, center_y: float, radius: float, segments: int = 36):
+def draw_circle(name: str, center_x: float, center_y: float, radius: float, segments: int = 36) -> str:
     """
     Draw a circle by approximating it with multiple small arc segments.
     
@@ -721,9 +721,12 @@ def draw_circle(name: str, center_x: float, center_y: float, radius: float, segm
     """
     from math import pi, cos, sin
     
-    # Check if circle fits in bounds
+    # Validate parameters
     if radius <= 0:
         return f"Radius must be positive, got {radius}"
+    
+    if segments <= 0:
+        return f"Segments must be positive, got {segments}"
     
     # Check corners of bounding box
     for point_name, x, y in [
@@ -783,7 +786,7 @@ def draw_arc(
     start_angle: float,
     arc_angle: float,
     segments: int = 18
-):
+) -> str:
     """
     Draw an arc (part of a circle) from start_angle for arc_angle radians.
     
@@ -806,8 +809,12 @@ def draw_arc(
     """
     from math import pi, cos, sin, fabs
     
+    # Validate parameters
     if radius <= 0:
         return f"Radius must be positive, got {radius}"
+    
+    if segments <= 0:
+        return f"Segments must be positive, got {segments}"
     
     if fabs(arc_angle) < 0.01:
         return f"Arc angle too small: {arc_angle} radians"

@@ -13,7 +13,6 @@
 #  limitations under the License.
 
 from typing import Any, AsyncIterable, Dict, Literal, Optional, Union
-import signal
 
 from langchain.agents import AgentExecutor
 from langchain.agents.format_scratchpad.openai_tools import (
@@ -49,6 +48,8 @@ class ROSA:
         show_token_usage (bool): Whether to show token usage. Does not work when streaming is enabled. Defaults to False.
         streaming (bool): Whether to stream the output of the agent. Defaults to True.
         max_iterations (int): Maximum number of iterations for the agent executor. Defaults to 100.
+        return_intermediate_steps (bool): Whether to return intermediate steps in the agent's execution. 
+            Setting to True increases memory usage but provides detailed execution traces. Defaults to False.
 
     Attributes:
         chat_history (list): A list of messages representing the chat history.
@@ -78,6 +79,7 @@ class ROSA:
         show_token_usage: bool = False,
         streaming: bool = True,
         max_iterations: int = 100,
+        return_intermediate_steps: bool = False,
     ):
         self.__chat_history = []
         self.__ros_version = ros_version
@@ -88,6 +90,7 @@ class ROSA:
         self.__accumulate_chat_history = accumulate_chat_history
         self.__streaming = streaming
         self.__max_iterations = max_iterations
+        self.__return_intermediate_steps = return_intermediate_steps
         self.__tools = self._get_tools(
             ros_version, packages=tool_packages, tools=tools, blacklist=self.__blacklist
         )
@@ -237,8 +240,8 @@ class ROSA:
             stream_runnable=self.__streaming,
             verbose=verbose,
             max_iterations=self.__max_iterations,
-            handle_parsing_errors=True,  # Better error handling
-            return_intermediate_steps=True,  # Set to false to reduce overhead
+            handle_parsing_errors=True,
+            return_intermediate_steps=self.__return_intermediate_steps,
         )
         return executor
 
