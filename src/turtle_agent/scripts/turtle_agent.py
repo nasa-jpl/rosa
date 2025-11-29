@@ -15,6 +15,8 @@
 
 import asyncio
 import os
+import signal
+import sys
 from datetime import datetime
 
 import dotenv
@@ -34,6 +36,31 @@ import tools.turtle as turtle_tools
 from help import get_help
 from llm import get_llm
 from prompts import get_prompts
+
+
+class GracefulInterruptHandler:
+    """Context manager to handle interrupts gracefully."""
+    
+    def __init__(self, verbose: bool = True):
+        self.interrupted = False
+        self.original_handler = None
+        self.verbose = verbose
+    
+    def __enter__(self):
+        self.interrupted = False
+        self.original_handler = signal.signal(signal.SIGINT, self._handler)
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        signal.signal(signal.SIGINT, self.original_handler)
+        return False
+    
+    def _handler(self, signum, frame):
+        self.interrupted = True
+        if self.verbose:
+            print("\n[Interrupt received - stopping current operation...]")
+        # Raise KeyboardInterrupt to break out of loops
+        raise KeyboardInterrupt
 
 
 # Typical method for defining tools in ROSA
@@ -157,16 +184,24 @@ class TurtleAgent(ROSA):
         console = Console()
 
         while True:
-            console.print(self.greeting)
-            input = self.get_input("> ")
+            try:
+                console.print(self.greeting)
+                input = self.get_input("> ")
 
-            # Handle special commands
-            if input == "exit":
-                break
-            elif input in self.command_handler:
-                await self.command_handler[input]()
-            else:
-                await self.submit(input)
+                # Handle special commands
+                if input == "exit":
+                    break
+                elif input in self.command_handler:
+                    await self.command_handler[input]()
+                else:
+                    await self.submit(input)
+            except KeyboardInterrupt:
+                console.print("\n[yellow]Operation interrupted. Type 'exit' to quit or continue with a new query.[/yellow]")
+                # Clear any partial state
+                continue
+            except Exception as e:
+                console.print(f"[red]Error: {e}[/red]")
+                continue
 
     async def submit(self, query: str):
         if self.__streaming:
@@ -184,17 +219,22 @@ class TurtleAgent(ROSA):
         Returns:
             None
         """
-        response = self.invoke(query)
         console = Console()
         content_panel = None
 
-        with Live(
-            console=console, auto_refresh=True, vertical_overflow="visible"
-        ) as live:
-            content_panel = Panel(
-                Markdown(response), title="Final Response", border_style="green"
-            )
-            live.update(content_panel, refresh=True)
+        try:
+            with GracefulInterruptHandler():
+                response = self.invoke(query)
+                with Live(
+                    console=console, auto_refresh=True, vertical_overflow="visible"
+                ) as live:
+                    content_panel = Panel(
+                        Markdown(response), title="Final Response", border_style="green"
+                    )
+                    live.update(content_panel, refresh=True)
+        except KeyboardInterrupt:
+            console.print("\n[yellow]Response interrupted.[/yellow]")
+            raise
 
     async def stream_response(self, query: str):
         """
@@ -218,33 +258,41 @@ class TurtleAgent(ROSA):
 
         panel = Panel("", title="Streaming Response", border_style="green")
 
-        with Live(panel, console=console, auto_refresh=False) as live:
-            async for event in self.astream(query):
-                event["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[
-                    :-3
-                ]
-                if event["type"] == "token":
-                    content += event["content"]
-                    panel.renderable = Markdown(content)
-                    live.refresh()
-                elif event["type"] in ["tool_start", "tool_end", "error"]:
-                    self.last_events.append(event)
-                elif event["type"] == "final":
-                    content = event["content"]
-                    if self.last_events:
-                        panel.renderable = Markdown(
-                            content
-                            + "\n\nType 'info' for details on how I got my answer."
-                        )
-                    else:
-                        panel.renderable = Markdown(content)
-                    panel.title = "Final Response"
-                    live.refresh()
+        try:
+            with GracefulInterruptHandler() as handler:
+                with Live(panel, console=console, auto_refresh=False) as live:
+                    async for event in self.astream(query):
+                        if handler.interrupted:
+                            break
+                        
+                        event["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[
+                            :-3
+                        ]
+                        if event["type"] == "token":
+                            content += event["content"]
+                            panel.renderable = Markdown(content)
+                            live.refresh()
+                        elif event["type"] in ["tool_start", "tool_end", "error"]:
+                            self.last_events.append(event)
+                        elif event["type"] == "final":
+                            content = event["content"]
+                            if self.last_events:
+                                panel.renderable = Markdown(
+                                    content
+                                    + "\n\nType 'info' for details on how I got my answer."
+                                )
+                            else:
+                                panel.renderable = Markdown(content)
+                            panel.title = "Final Response"
+                            live.refresh()
 
-        if self.last_events:
-            self.command_handler["info"] = self.show_event_details
-        else:
-            self.command_handler.pop("info", None)
+                if self.last_events:
+                    self.command_handler["info"] = self.show_event_details
+                else:
+                    self.command_handler.pop("info", None)
+        except KeyboardInterrupt:
+            console.print("\n[yellow]Response interrupted.[/yellow]")
+            raise
 
     async def show_event_details(self):
         """
@@ -303,7 +351,13 @@ def main():
     streaming = rospy.get_param("~streaming", False)
     turtle_agent = TurtleAgent(verbose=False, streaming=streaming)
 
-    asyncio.run(turtle_agent.run())
+    try:
+        asyncio.run(turtle_agent.run())
+    except KeyboardInterrupt:
+        print("\n[Shutdown complete]")
+    except Exception as e:
+        print(f"\n[Error: {e}]")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

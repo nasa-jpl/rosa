@@ -47,7 +47,14 @@ def get_entities(
     total = len(entities)
 
     if namespace:
-        entities = list(filter(lambda x: x.startswith(namespace + "/"), entities))
+        # Handle root namespace specially - topics like /turtle1/cmd_vel are in root namespace
+        if namespace == "/":
+            # All topics starting with / are in root namespace
+            # Don't filter, they're all in root namespace already
+            pass
+        else:
+            # For non-root namespaces, filter for topics that start with namespace/
+            entities = list(filter(lambda x: x.startswith(namespace + "/"), entities))
     in_namespace = len(entities)
 
     if pattern:
@@ -205,9 +212,11 @@ def rostopic_list(
     blacklist: List[str] = None,
 ) -> dict:
     """Returns a list of available ROS topics.
+    
+    By default, returns ALL topics in the system. Most users should NOT specify namespace.
 
-    :param pattern: (optional) A Python regex pattern to filter the list of topics.
-    :param namespace: (optional) ROS namespace to scope return values by. Namespace must already be resolved.
+    :param pattern: (optional) A Python regex pattern to filter the list of topics. Use ".*" or leave empty to see all topics.
+    :param namespace: (optional) ROS namespace to scope return values by. Leave empty for root namespace (most common). Only use this if you need topics from a specific sub-namespace like "/my_robot".
     """
     try:
         total, in_namespace, match_pattern, topics = get_entities(
@@ -241,9 +250,11 @@ def rosnode_list(
     blacklist: List[str] = None,
 ) -> dict:
     """Returns a dictionary containing a list of running ROS nodes and other metadata.
+    
+    By default, returns ALL nodes in the system. Most users should NOT specify namespace.
 
-    :param pattern: (optional) A Python regex pattern to filter the list of nodes.
-    :param namespace: (optional) ROS namespace to scope return values by. Namespace must already be resolved.
+    :param pattern: (optional) A Python regex pattern to filter the list of nodes. Use ".*" or leave empty to see all nodes.
+    :param namespace: (optional) ROS namespace to scope return values by. Leave empty for root namespace (most common). Only use this if you need nodes from a specific sub-namespace.
     """
     try:
         total, in_namespace, match_pattern, nodes = get_entities(

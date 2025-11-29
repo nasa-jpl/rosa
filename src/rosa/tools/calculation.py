@@ -238,7 +238,13 @@ def acos(x_values: List[float]) -> List[dict]:
 
 @tool
 def atan(x_values: List[float]) -> List[dict]:
-    """Performs arctangent on the input values x.
+    """
+    Calculate arctangent (inverse tangent) of input values. Returns angle in radians.
+    Use this to find an angle from a slope (rise/run).
+    
+    For finding angle from point A to point B, use atan2 instead (it's better).
+    
+    Example: atan(1) = π/4 ≈ 0.785 radians = 45 degrees
 
     :arg x_values: A list of values x (e.g. [x1, x2, ...])
     """
@@ -317,24 +323,111 @@ def count_lines(text: str) -> int:
 @tool
 def degrees_to_radians(degrees: List[float]):
     """
-    Convert degrees to radians.
+    Convert degrees to radians. Use this for angle conversions.
 
     :param degrees: A list of one or more degrees to convert to radians.
     """
     rads = {}
     for degree in degrees:
-        rads[degree] = f"{degree * (3.14159 / 180)} radians."
+        rads[degree] = degree * (math.pi / 180)
     return rads
 
 
 @tool
 def radians_to_degrees(radians: List[float]):
     """
-    Convert radians to degrees.
+    Convert radians to degrees. Use this for angle conversions.
 
     :param radians: A list of one or more radians to convert to degrees.
     """
     degs = {}
     for radian in radians:
-        degs[radian] = f"{radian * (180 / 3.14159)} degrees."
+        degs[radian] = radian * (180 / math.pi)
     return degs
+
+
+@tool
+def sqrt(x_values: List[float]) -> List[dict]:
+    """
+    Calculate the square root of input values. Essential for distance calculations.
+
+    :arg x_values: A list of values x (e.g. [x1, x2, ...])
+    """
+    results = []
+    for x in x_values:
+        if x < 0:
+            result = {f"sqrt({x})": "undefined (negative number)"}
+        else:
+            result = {f"sqrt({x})": math.sqrt(x)}
+        results.append(result)
+    return results
+
+
+@tool
+def atan2(pairs: List[tuple]) -> List[dict]:
+    """
+    Calculate the angle (in radians) from the positive x-axis to the point (x, y).
+    This is the MOST IMPORTANT tool for calculating angles between two points.
+    
+    To find the angle from point (x1, y1) to point (x2, y2):
+    Use atan2(y2-y1, x2-x1)
+    
+    Example: angle from (1, 1) to (3, 4) = atan2(4-1, 3-1) = atan2(3, 2) ≈ 0.98 radians
+
+    :arg pairs: A list of tuples containing (y, x) values in that order, e.g., [(y1, x1), (y2, x2), ...]
+    """
+    results = []
+    for y, x in pairs:
+        result = {f"atan2({y}, {x})": math.atan2(y, x)}
+        results.append(result)
+    return results
+
+
+@tool
+def distance_between_points(point_pairs: List[tuple]) -> List[dict]:
+    """
+    Calculate the straight-line distance between two points using the Pythagorean theorem.
+    Formula: sqrt((x2-x1)^2 + (y2-y1)^2)
+    
+    This is essential for determining how far the turtle needs to move.
+
+    :arg point_pairs: A list of tuples, each containing ((x1, y1), (x2, y2))
+    Example: [((0, 0), (3, 4))] calculates distance from (0,0) to (3,4) = 5.0
+    """
+    results = []
+    for (x1, y1), (x2, y2) in point_pairs:
+        dx = x2 - x1
+        dy = y2 - y1
+        dist = math.sqrt(dx**2 + dy**2)
+        result = {f"distance from ({x1},{y1}) to ({x2},{y2})": dist}
+        results.append(result)
+    return results
+
+
+@tool
+def calculate_line_angle_and_distance(point_pairs: List[tuple]) -> List[dict]:
+    """
+    Calculate BOTH the angle (in radians) and distance needed to draw a line from point A to point B.
+    This is a high-level helper that combines atan2 and distance calculations.
+    
+    Use this when planning to draw a line between two specific coordinates.
+    The angle returned is relative to the positive x-axis (right = 0, up = π/2).
+
+    :arg point_pairs: A list of tuples, each containing ((x1, y1), (x2, y2))
+    Example: [((2, 3), (5, 7))] returns angle and distance from (2,3) to (5,7)
+    """
+    results = []
+    for (x1, y1), (x2, y2) in point_pairs:
+        dx = x2 - x1
+        dy = y2 - y1
+        angle = math.atan2(dy, dx)
+        distance = math.sqrt(dx**2 + dy**2)
+        result = {
+            f"line from ({x1},{y1}) to ({x2},{y2})": {
+                "angle_radians": angle,
+                "angle_degrees": angle * (180 / math.pi),
+                "distance": distance,
+            }
+        }
+        results.append(result)
+    return results

@@ -26,19 +26,35 @@ HEADLESS=${HEADLESS:-false}
 DEVELOPMENT=${DEVELOPMENT:-false}
 
 # Enable X11 forwarding based on OS
+echo "Enabling X11 forwarding..."
 case "$(uname)" in
-    Linux*|Darwin*)
-        echo "Enabling X11 forwarding..."
-        # If running under WSL, use :0 for DISPLAY
-        if grep -q "WSL" /proc/version; then
-            export DISPLAY=:0
-        else
-            export DISPLAY=host.docker.internal:0
+    Linux*)
+        export DISPLAY=${DISPLAY:-:0}
+        xhost +local:docker &>/dev/null || echo "Warning: xhost command failed"
+        # Verify X11 is working
+        if ! xset q &>/dev/null; then
+            echo "Error: X11 forwarding is not working. Please check your X11 server."
+            exit 1
         fi
-        xhost +
+        ;;
+    Darwin*)
+        # Keep XQuartz's DISPLAY or default to :0
+        export DISPLAY=${DISPLAY:-:0}
+        xhost +local:docker &>/dev/null || true
+        
+        # Check if XQuartz is running and properly configured
+        if ! pgrep -xq "Xquartz" && ! pgrep -xq "X11"; then
+            echo "Error: XQuartz is not running. Please start XQuartz and try again."
+            exit 1
+        fi
+        
+        # Warn if network connections are disabled
+        if ! defaults read org.xquartz.X11 nolisten_tcp 2>/dev/null | grep -q 0; then
+            echo "Warning: XQuartz may not allow network connections."
+            echo "Enable in: XQuartz Preferences > Security > 'Allow connections from network clients'"
+        fi
         ;;
     MINGW*|CYGWIN*|MSYS*)
-        echo "Enabling X11 forwarding for Windows..."
         export DISPLAY=host.docker.internal:0
         ;;
     *)
@@ -47,29 +63,45 @@ case "$(uname)" in
         ;;
 esac
 
-# Check if X11 forwarding is working
-if ! xset q &>/dev/null; then
-    echo "Error: X11 forwarding is not working. Please check your X11 server and try again."
-    exit 1
-fi
-
 # Build and run the Docker container
 CONTAINER_NAME="rosa-turtlesim-demo"
+
+# Detect platform for Apple Silicon
+PLATFORM_ARG=""
+if [ "$(uname -m)" = "arm64" ]; then
+    PLATFORM_ARG="--platform linux/amd64"
+fi
+
 echo "Building the $CONTAINER_NAME Docker image..."
-docker build --build-arg DEVELOPMENT=$DEVELOPMENT -t $CONTAINER_NAME -f Dockerfile . || { echo "Error: Docker build failed"; exit 1; }
+docker build $PLATFORM_ARG --build-arg DEVELOPMENT=$DEVELOPMENT -t $CONTAINER_NAME -f Dockerfile . || {
+    echo "Error: Docker build failed"
+    exit 1
+}
 
 echo "Running the Docker container..."
-docker run -it --rm --name $CONTAINER_NAME \
-    -e DISPLAY=$DISPLAY \
-    -e HEADLESS=$HEADLESS \
-    -e DEVELOPMENT=$DEVELOPMENT \
-    -v /tmp/.X11-unix:/tmp/.X11-unix \
-    -v "$PWD/src":/app/src \
-    -v "$PWD/tests":/app/tests \
-    --network host \
-    $CONTAINER_NAME
+if [ "$(uname)" = "Darwin" ]; then
+    # macOS: Use host.docker.internal for X11
+    docker run -it --rm --init --name $CONTAINER_NAME \
+        -e DISPLAY=host.docker.internal:0 \
+        -e HEADLESS=$HEADLESS \
+        -e DEVELOPMENT=$DEVELOPMENT \
+        -v "$PWD/src":/app/src \
+        -v "$PWD/tests":/app/tests \
+        $CONTAINER_NAME
+else
+    # Linux/WSL: Use unix socket
+    docker run -it --rm --init --name $CONTAINER_NAME \
+        -e DISPLAY=$DISPLAY \
+        -e HEADLESS=$HEADLESS \
+        -e DEVELOPMENT=$DEVELOPMENT \
+        -v /tmp/.X11-unix:/tmp/.X11-unix \
+        -v "$PWD/src":/app/src \
+        -v "$PWD/tests":/app/tests \
+        --network host \
+        $CONTAINER_NAME
+fi
 
 # Disable X11 forwarding
-xhost -
+xhost -local:docker &>/dev/null || true
 
 exit 0

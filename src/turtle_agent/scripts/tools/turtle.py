@@ -213,13 +213,14 @@ def teleport_absolute(
     name: str, x: float, y: float, theta: float, hide_pen: bool = True
 ):
     """
-    Teleport a turtle to the given x, y, and theta coordinates.
+    Teleport a turtle to exact coordinates with a specific heading angle.
+    Use this to position the turtle precisely before drawing.
 
-    :param name: name of the turtle
-    :param x: The x-coordinate, range: [0, 11]
-    :param y: The y-coordinate, range: [0, 11]
-    :param theta: angle
-    :param hide_pen: True to hide the pen (do not show movement trace on screen), False to show the pen
+    :param name: name of the turtle (without forward slash, e.g., 'turtle1')
+    :param x: The x-coordinate, range: [0, 11]. 0 is left edge, 11 is right edge.
+    :param y: The y-coordinate, range: [0, 11]. 0 is bottom edge, 11 is top edge.
+    :param theta: Heading angle in radians. 0=right, π/2≈1.57=up, π≈3.14=left, 3π/2≈4.71=down
+    :param hide_pen: If True (default), pen is turned off during teleport so no line is drawn
     """
     in_bounds, message = within_bounds(x, y)
     if not in_bounds:
@@ -249,11 +250,12 @@ def teleport_absolute(
 @tool
 def teleport_relative(name: str, linear: float, angular: float):
     """
-    Teleport a turtle relative to its current position.
+    Teleport a turtle relative to its current position and orientation.
+    Use this to adjust heading without drawing, or to move without precise positioning.
 
-    :param name: name of the turtle
-    :param linear: linear distance
-    :param angular: angular distance
+    :param name: name of the turtle (without forward slash, e.g., 'turtle1')
+    :param linear: distance to move forward (positive) or backward (negative)
+    :param angular: angle to rotate in RADIANS. Positive = counterclockwise, negative = clockwise
     """
     in_bounds, message = will_be_within_bounds(name, linear, 0.0, angular)
     if not in_bounds:
@@ -281,14 +283,18 @@ def publish_twist_to_cmd_vel(
     steps: int = 1,
 ):
     """
-    Publish a Twist message to the /{name}/cmd_vel topic to move a turtle robot.
-    Use a combination of linear and angular velocities to move the turtle in the desired direction.
+    Publish a Twist message to move the turtle. This DRAWS a line as the turtle moves.
+    Each step represents 1 second of movement. Distance traveled = velocity × steps.
+    
+    For STRAIGHT lines: set angle=0 and use velocity for distance.
+    For CURVED lines: combine velocity and angle (creates an arc).
+    For ROTATION only: set velocity=0 and use angle.
 
-    :param name: name of the turtle (do not include the forward slash)
-    :param velocity: linear velocity, where positive is forward and negative is backward
-    :param lateral: lateral velocity, where positive is left and negative is right
-    :param angle: angular velocity, where positive is counterclockwise and negative is clockwise
-    :param steps: Number of times to publish the twist message
+    :param name: name of the turtle (without forward slash, e.g., 'turtle1')
+    :param velocity: linear velocity in units/second. Positive=forward, negative=backward. Distance = velocity × steps.
+    :param lateral: lateral velocity (strafe). Positive=left, negative=right. Usually 0 for standard movement.
+    :param angle: angular velocity in radians/second. Positive=counterclockwise, negative=clockwise. Usually 0 for straight lines.
+    :param steps: Number of seconds to publish this command. Total distance = velocity × steps.
     """
     # Remove any forward slashes from the name
     name = name.replace("/", "")
@@ -333,8 +339,9 @@ def stop_turtle(name: str):
     return publish_twist_to_cmd_vel.invoke(
         {
             "name": name,
-            "linear_velocity": (0.0, 0.0, 0.0),
-            "angular_velocity": (0.0, 0.0, 0.0),
+            "velocity": 0.0,
+            "lateral": 0.0,
+            "angle": 0.0,
         }
     )
 
@@ -369,14 +376,16 @@ def reset_turtlesim():
 @tool
 def set_pen(name: str, r: int, g: int, b: int, width: int, off: int):
     """
-    Set the pen color and width for the turtle. The pen is used to draw lines on the turtlesim canvas.
+    Control the turtle's pen for drawing lines.
+    Turn pen OFF before teleporting to reposition without drawing.
+    Turn pen ON before using publish_twist_to_cmd_vel to draw lines.
 
-    :param name: name of the turtle
-    :param r: red value
-    :param g: green value
-    :param b: blue value
-    :param width: width of the pen.
-    :param off: 0=on, 1=off
+    :param name: name of the turtle (without forward slash, e.g., 'turtle1')
+    :param r: red value (0-255)
+    :param g: green value (0-255)
+    :param b: blue value (0-255)
+    :param width: width of the pen line (1-5 recommended)
+    :param off: 0 = pen ON (will draw), 1 = pen OFF (will not draw)
     """
     # Remove any forward slashes from the name
     name = name.replace("/", "")
@@ -416,3 +425,443 @@ def has_moved_to_expected_coordinates(
         )
     else:
         return f"{name} has NOT moved to the expected position ({expected_x}, {expected_y})."
+
+
+@tool
+def draw_line_segment(name: str, x1: float, y1: float, x2: float, y2: float) -> str:
+    """
+    Draw a single straight line from point (x1,y1) to point (x2,y2).
+    
+    This is a high-level convenience tool that automatically:
+    1. Calculates the angle and distance needed
+    2. Turns off the pen
+    3. Teleports to the starting point with correct heading
+    4. Turns on the pen
+    5. Draws the line
+    
+    Use this instead of manually doing the calculate/teleport/draw sequence.
+
+    :param name: name of the turtle (without forward slash, e.g., 'turtle1')
+    :param x1: starting x coordinate
+    :param y1: starting y coordinate
+    :param x2: ending x coordinate
+    :param y2: ending y coordinate
+    :return: status message with final position
+    """
+    from math import atan2, sqrt
+    
+    # Calculate angle and distance
+    dx = x2 - x1
+    dy = y2 - y1
+    angle = atan2(dy, dx)
+    distance = sqrt(dx**2 + dy**2)
+    
+    # Check bounds
+    in_bounds_start, msg = within_bounds(x1, y1)
+    if not in_bounds_start:
+        return f"Start point {msg}"
+    
+    in_bounds_end, msg = within_bounds(x2, y2)
+    if not in_bounds_end:
+        return f"End point {msg}"
+    
+    # Turn off pen
+    set_pen.invoke({"name": name, "r": 0, "g": 0, "b": 0, "width": 2, "off": 1})
+    
+    # Teleport to start with correct angle
+    teleport_absolute.invoke({"name": name, "x": x1, "y": y1, "theta": angle, "hide_pen": True})
+    
+    # Turn on pen
+    set_pen.invoke({"name": name, "r": 0, "g": 0, "b": 0, "width": 2, "off": 0})
+    
+    # Draw the line (angle=0 because heading is already set)
+    result = publish_twist_to_cmd_vel.invoke({
+        "name": name,
+        "velocity": distance,
+        "lateral": 0,
+        "angle": 0,
+        "steps": 1
+    })
+    
+    return f"Line drawn from ({x1},{y1}) to ({x2},{y2}). {result}"
+
+
+@tool
+def draw_rectangle(
+    name: str, x: float, y: float, width: float, height: float, filled: bool = False
+) -> str:
+    """
+    Draw a perfect rectangle with exact corners and no angle drift.
+    
+    This tool automatically handles the complex workflow of teleporting to each edge
+    with the exact angle to ensure perfectly straight lines and right angles.
+    
+    The rectangle is drawn counterclockwise starting from the bottom-left corner.
+
+    :param name: name of the turtle (without forward slash, e.g., 'turtle1')
+    :param x: x coordinate of bottom-left corner
+    :param y: y coordinate of bottom-left corner
+    :param width: width of the rectangle (extends to the right)
+    :param height: height of the rectangle (extends upward)
+    :param filled: if True, fills the rectangle with horizontal lines (not just outline)
+    :return: status message with rectangle bounds
+    """
+    from math import pi
+    
+    # Check all corners are in bounds
+    corners = [
+        (x, y, "bottom-left"),
+        (x + width, y, "bottom-right"),
+        (x + width, y + height, "top-right"),
+        (x, y + height, "top-left"),
+    ]
+    
+    for cx, cy, corner_name in corners:
+        in_bounds, msg = within_bounds(cx, cy)
+        if not in_bounds:
+            return f"Rectangle {corner_name} corner {msg}"
+    
+    # Draw the four edges using teleport_absolute for precision
+    # Bottom edge (left to right)
+    set_pen.invoke({"name": name, "r": 0, "g": 0, "b": 0, "width": 2, "off": 1})
+    teleport_absolute.invoke({"name": name, "x": x, "y": y, "theta": 0, "hide_pen": True})
+    set_pen.invoke({"name": name, "r": 0, "g": 0, "b": 0, "width": 2, "off": 0})
+    publish_twist_to_cmd_vel.invoke({"name": name, "velocity": width, "lateral": 0, "angle": 0, "steps": 1})
+    
+    # Right edge (bottom to top)
+    set_pen.invoke({"name": name, "r": 0, "g": 0, "b": 0, "width": 2, "off": 1})
+    teleport_absolute.invoke({"name": name, "x": x + width, "y": y, "theta": pi/2, "hide_pen": True})
+    set_pen.invoke({"name": name, "r": 0, "g": 0, "b": 0, "width": 2, "off": 0})
+    publish_twist_to_cmd_vel.invoke({"name": name, "velocity": height, "lateral": 0, "angle": 0, "steps": 1})
+    
+    # Top edge (right to left)
+    set_pen.invoke({"name": name, "r": 0, "g": 0, "b": 0, "width": 2, "off": 1})
+    teleport_absolute.invoke({"name": name, "x": x + width, "y": y + height, "theta": pi, "hide_pen": True})
+    set_pen.invoke({"name": name, "r": 0, "g": 0, "b": 0, "width": 2, "off": 0})
+    publish_twist_to_cmd_vel.invoke({"name": name, "velocity": width, "lateral": 0, "angle": 0, "steps": 1})
+    
+    # Left edge (top to bottom)
+    set_pen.invoke({"name": name, "r": 0, "g": 0, "b": 0, "width": 2, "off": 1})
+    teleport_absolute.invoke({"name": name, "x": x, "y": y + height, "theta": 3*pi/2, "hide_pen": True})
+    set_pen.invoke({"name": name, "r": 0, "g": 0, "b": 0, "width": 2, "off": 0})
+    publish_twist_to_cmd_vel.invoke({"name": name, "velocity": height, "lateral": 0, "angle": 0, "steps": 1})
+    
+    # Fill if requested
+    if filled:
+        fill_step = 0.1  # Distance between fill lines
+        y_current = y + fill_step
+        while y_current < y + height:
+            set_pen.invoke({"name": name, "r": 0, "g": 0, "b": 0, "width": 1, "off": 1})
+            teleport_absolute.invoke({"name": name, "x": x, "y": y_current, "theta": 0, "hide_pen": True})
+            set_pen.invoke({"name": name, "r": 0, "g": 0, "b": 0, "width": 1, "off": 0})
+            publish_twist_to_cmd_vel.invoke({"name": name, "velocity": width, "lateral": 0, "angle": 0, "steps": 1})
+            y_current += fill_step
+    
+    return f"Rectangle drawn: bottom-left=({x},{y}), width={width}, height={height}, filled={filled}"
+
+
+@tool
+def draw_polyline(name: str, points: List[tuple], closed: bool = False) -> str:
+    """
+    Draw a series of connected straight line segments through multiple points.
+    
+    This tool automatically calculates angles and distances for each segment
+    and uses the proper teleport technique to ensure clean, precise lines.
+    
+    Example: draw_polyline('turtle1', [(2,2), (5,2), (5,5), (2,5)], closed=True)
+    draws a square from (2,2) to (5,2) to (5,5) to (2,5) and back to (2,2).
+
+    :param name: name of the turtle (without forward slash, e.g., 'turtle1')
+    :param points: list of (x, y) coordinate tuples to connect, e.g., [(1,1), (3,4), (5,2)]
+    :param closed: if True, draws a final line segment back to the first point
+    :return: status message with number of segments drawn
+    """
+    if len(points) < 2:
+        return "Error: Need at least 2 points to draw a polyline"
+    
+    # Check all points are in bounds
+    for i, (x, y) in enumerate(points):
+        in_bounds, msg = within_bounds(x, y)
+        if not in_bounds:
+            return f"Point {i} at ({x},{y}) {msg}"
+    
+    # Draw each segment
+    segments_drawn = 0
+    for i in range(len(points) - 1):
+        x1, y1 = points[i]
+        x2, y2 = points[i + 1]
+        draw_line_segment.invoke({"name": name, "x1": x1, "y1": y1, "x2": x2, "y2": y2})
+        segments_drawn += 1
+    
+    # Close the shape if requested
+    if closed and len(points) > 2:
+        x1, y1 = points[-1]
+        x2, y2 = points[0]
+        draw_line_segment.invoke({"name": name, "x1": x1, "y1": y1, "x2": x2, "y2": y2})
+        segments_drawn += 1
+    
+    return f"Polyline drawn with {segments_drawn} segments through {len(points)} points. Closed: {closed}"
+
+
+@tool
+def calculate_rectangle_bounds(x: float, y: float, width: float, height: float) -> dict:
+    """
+    Calculate all four corner coordinates of a rectangle.
+    
+    This is useful for planning layouts and checking for overlaps before drawing.
+    Returns a dictionary with clearly labeled corner positions.
+
+    :param x: x coordinate of bottom-left corner
+    :param y: y coordinate of bottom-left corner
+    :param width: width of the rectangle
+    :param height: height of the rectangle
+    :return: dict with 'bottom_left', 'bottom_right', 'top_left', 'top_right', 'center', and ranges
+    """
+    return {
+        "bottom_left": (x, y),
+        "bottom_right": (x + width, y),
+        "top_right": (x + width, y + height),
+        "top_left": (x, y + height),
+        "center": (x + width/2, y + height/2),
+        "x_range": (x, x + width),
+        "y_range": (y, y + height),
+        "width": width,
+        "height": height,
+    }
+
+
+@tool
+def check_rectangles_overlap(rect1: tuple, rect2: tuple) -> dict:
+    """
+    Check if two rectangles overlap or intersect.
+    
+    Essential for validating that doors, windows, and other components don't
+    conflict with each other before drawing.
+    
+    Each rectangle is specified as (x, y, width, height) where (x,y) is the
+    bottom-left corner.
+
+    :param rect1: tuple of (x, y, width, height) for first rectangle
+    :param rect2: tuple of (x, y, width, height) for second rectangle
+    :return: dict with 'overlap' (bool), 'message', and 'details' about the overlap
+    """
+    x1, y1, w1, h1 = rect1
+    x2, y2, w2, h2 = rect2
+    
+    # Calculate bounds
+    r1_left = x1
+    r1_right = x1 + w1
+    r1_bottom = y1
+    r1_top = y1 + h1
+    
+    r2_left = x2
+    r2_right = x2 + w2
+    r2_bottom = y2
+    r2_top = y2 + h2
+    
+    # Check for overlap
+    # Rectangles overlap if they overlap in both x and y dimensions
+    x_overlap = not (r1_right <= r2_left or r2_right <= r1_left)
+    y_overlap = not (r1_top <= r2_bottom or r2_top <= r1_bottom)
+    
+    overlap = x_overlap and y_overlap
+    
+    if overlap:
+        # Calculate overlap region
+        overlap_left = max(r1_left, r2_left)
+        overlap_right = min(r1_right, r2_right)
+        overlap_bottom = max(r1_bottom, r2_bottom)
+        overlap_top = min(r1_top, r2_top)
+        
+        overlap_width = overlap_right - overlap_left
+        overlap_height = overlap_top - overlap_bottom
+        
+        return {
+            "overlap": True,
+            "message": f"Rectangles overlap! Overlap region: ({overlap_left:.2f},{overlap_bottom:.2f}) to ({overlap_right:.2f},{overlap_top:.2f})",
+            "details": {
+                "overlap_region": {
+                    "x": overlap_left,
+                    "y": overlap_bottom,
+                    "width": overlap_width,
+                    "height": overlap_height,
+                },
+                "rect1_bounds": f"x:[{r1_left:.2f},{r1_right:.2f}] y:[{r1_bottom:.2f},{r1_top:.2f}]",
+                "rect2_bounds": f"x:[{r2_left:.2f},{r2_right:.2f}] y:[{r2_bottom:.2f},{r2_top:.2f}]",
+            }
+        }
+    else:
+        return {
+            "overlap": False,
+            "message": "Rectangles do not overlap. Safe to draw both.",
+            "details": {
+                "rect1_bounds": f"x:[{r1_left:.2f},{r1_right:.2f}] y:[{r1_bottom:.2f},{r1_top:.2f}]",
+                "rect2_bounds": f"x:[{r2_left:.2f},{r2_right:.2f}] y:[{r2_bottom:.2f},{r2_top:.2f}]",
+            }
+        }
+
+
+@tool
+def draw_circle(name: str, center_x: float, center_y: float, radius: float, segments: int = 36) -> str:
+    """
+    Draw a circle by approximating it with multiple small arc segments.
+    
+    The circle is drawn by moving the turtle in a circular path while the pen is down.
+    More segments = smoother circle, but slower to draw. 36 segments usually looks good.
+    
+    Technical details: This uses the turtle's curved motion capability (velocity + angular velocity)
+    to draw smooth circular arcs. The circle is drawn counterclockwise starting from the rightmost point.
+
+    :param name: name of the turtle (without forward slash, e.g., 'turtle1')
+    :param center_x: x coordinate of circle center
+    :param center_y: y coordinate of circle center
+    :param radius: radius of the circle
+    :param segments: number of segments to approximate the circle (default 36, more = smoother)
+    :return: status message
+    """
+    from math import pi, cos, sin
+    
+    # Validate parameters
+    if radius <= 0:
+        return f"Radius must be positive, got {radius}"
+    
+    if segments <= 0:
+        return f"Segments must be positive, got {segments}"
+    
+    # Check corners of bounding box
+    for point_name, x, y in [
+        ("center", center_x, center_y),
+        ("rightmost", center_x + radius, center_y),
+        ("leftmost", center_x - radius, center_y),
+        ("topmost", center_x, center_y + radius),
+        ("bottommost", center_x, center_y - radius),
+    ]:
+        in_bounds, msg = within_bounds(x, y)
+        if not in_bounds:
+            return f"Circle {point_name} point {msg}"
+    
+    # Calculate arc parameters
+    # We'll draw the circle as small arcs
+    # Arc length per segment = 2*pi*radius / segments
+    # Angular velocity = 2*pi / total_time
+    # Linear velocity = arc_length / time_per_segment
+    
+    angle_per_segment = 2 * pi / segments  # radians per segment
+    arc_length_per_segment = 2 * pi * radius / segments
+    time_per_segment = 1.0  # 1 second per segment
+    
+    linear_velocity = arc_length_per_segment / time_per_segment
+    angular_velocity = angle_per_segment / time_per_segment
+    
+    # Start at rightmost point of circle (center_x + radius, center_y)
+    # Heading should be tangent to circle = pi/2 (pointing up)
+    start_x = center_x + radius
+    start_y = center_y
+    start_theta = pi / 2  # pointing up (tangent to circle at right side)
+    
+    # Move to start position
+    set_pen.invoke({"name": name, "r": 0, "g": 0, "b": 0, "width": 2, "off": 1})
+    teleport_absolute.invoke({"name": name, "x": start_x, "y": start_y, "theta": start_theta, "hide_pen": True})
+    set_pen.invoke({"name": name, "r": 0, "g": 0, "b": 0, "width": 2, "off": 0})
+    
+    # Draw each segment
+    for i in range(segments):
+        publish_twist_to_cmd_vel.invoke({
+            "name": name,
+            "velocity": linear_velocity,
+            "lateral": 0,
+            "angle": angular_velocity,
+            "steps": 1
+        })
+    
+    return f"Circle drawn: center=({center_x},{center_y}), radius={radius}, segments={segments}"
+
+
+@tool
+def draw_arc(
+    name: str,
+    center_x: float,
+    center_y: float,
+    radius: float,
+    start_angle: float,
+    arc_angle: float,
+    segments: int = 18
+) -> str:
+    """
+    Draw an arc (part of a circle) from start_angle for arc_angle radians.
+    
+    This is perfect for drawing curved shapes like clouds, rainbows, or semicircles.
+    The arc is drawn counterclockwise if arc_angle is positive, clockwise if negative.
+    
+    Examples:
+    - Semicircle (top half): start_angle=0, arc_angle=π (3.14159)
+    - Quarter circle: start_angle=0, arc_angle=π/2 (1.5708)
+    - Cloud bump: start_angle=0, arc_angle=π (half circle)
+
+    :param name: name of the turtle (without forward slash, e.g., 'turtle1')
+    :param center_x: x coordinate of arc center
+    :param center_y: y coordinate of arc center
+    :param radius: radius of the arc
+    :param start_angle: starting angle in radians (0=right, π/2=up, π=left, 3π/2=down)
+    :param arc_angle: how many radians to sweep (positive=counterclockwise, negative=clockwise)
+    :param segments: number of segments to approximate the arc (default 18)
+    :return: status message
+    """
+    from math import pi, cos, sin, fabs
+    
+    # Validate parameters
+    if radius <= 0:
+        return f"Radius must be positive, got {radius}"
+    
+    if segments <= 0:
+        return f"Segments must be positive, got {segments}"
+    
+    if fabs(arc_angle) < 0.01:
+        return f"Arc angle too small: {arc_angle} radians"
+    
+    # Calculate start position on the arc
+    start_x = center_x + radius * cos(start_angle)
+    start_y = center_y + radius * sin(start_angle)
+    
+    # Check if start point is in bounds
+    in_bounds, msg = within_bounds(start_x, start_y)
+    if not in_bounds:
+        return f"Arc start point {msg}"
+    
+    # Calculate end position to check bounds
+    end_angle = start_angle + arc_angle
+    end_x = center_x + radius * cos(end_angle)
+    end_y = center_y + radius * sin(end_angle)
+    
+    in_bounds, msg = within_bounds(end_x, end_y)
+    if not in_bounds:
+        return f"Arc end point {msg}"
+    
+    # Calculate motion parameters
+    angle_per_segment = arc_angle / segments
+    arc_length_per_segment = fabs(arc_angle) * radius / segments
+    time_per_segment = 1.0
+    
+    linear_velocity = arc_length_per_segment / time_per_segment
+    angular_velocity = angle_per_segment / time_per_segment
+    
+    # Start heading should be tangent to the circle
+    # Tangent is perpendicular to radius, so add π/2 to start_angle
+    start_theta = start_angle + (pi / 2 if arc_angle > 0 else -pi / 2)
+    
+    # Move to start position
+    set_pen.invoke({"name": name, "r": 0, "g": 0, "b": 0, "width": 2, "off": 1})
+    teleport_absolute.invoke({"name": name, "x": start_x, "y": start_y, "theta": start_theta, "hide_pen": True})
+    set_pen.invoke({"name": name, "r": 0, "g": 0, "b": 0, "width": 2, "off": 0})
+    
+    # Draw each segment
+    for i in range(segments):
+        publish_twist_to_cmd_vel.invoke({
+            "name": name,
+            "velocity": linear_velocity,
+            "lateral": 0,
+            "angle": angular_velocity,
+            "steps": 1
+        })
+    
+    return f"Arc drawn: center=({center_x},{center_y}), radius={radius}, start={start_angle:.2f}rad, sweep={arc_angle:.2f}rad"

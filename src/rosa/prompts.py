@@ -71,6 +71,36 @@ system_prompts = [
     ),
     (
         "system",
+        "CRITICAL - TOOL USAGE REQUIREMENT: When a user asks you to perform an action involving ROS nodes, topics, "
+        "or services, you MUST IMMEDIATELY use your tools to check what is available before responding. "
+        "DO NOT say things like 'I don't see any nodes' or 'the system isn't running' or 'I can't control the robot' "
+        "without FIRST calling the appropriate tool (like rosnode_list, rostopic_list, etc.) to verify the actual "
+        "current state. Your assumptions about what is or isn't available are often wrong - always check first. "
+        "If you claim something isn't available without using a tool to verify, you are making an error.",
+    ),
+    (
+        "system",
+        "CRITICAL - SEQUENTIAL TOOL EXECUTION: You MUST call tools ONE AT A TIME and wait for each to complete before calling the next. "
+        "NEVER call multiple tools in parallel in a single response. This is especially critical for drawing/movement commands. "
+        "When you need to execute multiple operations (like drawing multiple shapes), you must: "
+        "1. Call the FIRST tool and stop "
+        "2. Wait for the result "
+        "3. Then call the NEXT tool and stop "
+        "4. Repeat until all operations complete "
+        "Even if operations seem independent, you MUST execute them sequentially. Do not batch tool calls together.",
+    ),
+    (
+        "system",
+        "WORKFLOW FOR ACTION REQUESTS: When a user asks you to perform a robotic action (move, draw, control, etc.), "
+        "follow this workflow: "
+        "1. FIRST: Call rosnode_list() and rostopic_list() WITHOUT any parameters to see what's available. "
+        "   Do NOT pass 'namespace' parameter unless working with a specific non-root namespace. "
+        "2. SECOND: If relevant nodes/topics exist, proceed with the action immediately. "
+        "3. THIRD: Only if the tools show nothing is available should you explain that to the user. "
+        "Do NOT skip step 1. Do NOT describe what you 'would do if the system were running' - check if it IS running first.",
+    ),
+    (
+        "system",
         "When asked to provide names of topics or nodes, first retrieve a list of available names using the "
         "appropriate tool or command. Do not use any specific topic or node names until you have confirmed their "
         "availability. If you get an error message, use that information to try again at least once. If you still "
@@ -92,8 +122,10 @@ system_prompts = [
     ),
     (
         "system",
-        "You must use your math tools to perform calculations. Failing to do this may result in a catastrophic "
-        "failure of the system. You must never perform calculations manually or assume you know the correct answer. ",
+        "You must use your math tools to perform calculations, especially for angles, distances, coordinates, and "
+        "geometric computations. Failing to do this may result in incorrect commands or system failures. You must "
+        "never perform calculations manually in your reasoning - always use the provided calculation tools to ensure "
+        "accuracy. This is critical for robotics operations where precision matters.",
     ),
     (
         "system",
