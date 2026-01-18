@@ -1,0 +1,76 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 100  # Hz
+    
+    scaled_joint_trajectory_controller:
+      type: ur_controllers/ScaledJointTrajectoryController
+      
+    gripper_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+      
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+scaled_joint_trajectory_controller:
+  ros__parameters:
+    joints:
+      - shoulder_pan_joint
+      - shoulder_lift_joint
+      - elbow_joint
+      - wrist_1_joint
+      - wrist_2_joint
+      - wrist_3_joint
+    command_interfaces:
+      - position
+    state_interfaces:
+      - position
+      - velocity
+    state_publish_rate: 50.0
+    action_monitor_rate: 20.0
+    allow_partial_joints_goal: false
+    open_loop_control: false
+    allow_integration_in_goal_trajectories: true
+    # Enforce minimum time between trajectory points
+    constraints:
+      stopped_velocity_tolerance: 0.01
+      goal_time: 0.6
+      # Tighter tolerances for better accuracy (in radians)
+      # trajectory: max deviation during motion, goal: max deviation at end
+      shoulder_pan_joint: {trajectory: 0.05, goal: 0.01}      # ~2.8° during, ~0.57° at goal
+      shoulder_lift_joint: {trajectory: 0.05, goal: 0.01}
+      elbow_joint: {trajectory: 0.05, goal: 0.01}
+      wrist_1_joint: {trajectory: 0.05, goal: 0.01}
+      wrist_2_joint: {trajectory: 0.05, goal: 0.01}
+      wrist_3_joint: {trajectory: 0.05, goal: 0.01}
+
+joint_state_broadcaster:
+  ros__parameters:
+    joints:
+      - shoulder_pan_joint
+      - shoulder_lift_joint
+      - elbow_joint
+      - wrist_1_joint
+      - wrist_2_joint
+      - wrist_3_joint
+      - robotiq_hande_left_finger_joint
+    interfaces:
+      - position
+      - velocity
+    use_local_topics: false
+
+gripper_controller:
+  ros__parameters:
+    joints:
+      - robotiq_hande_left_finger_joint
+    command_interfaces:
+      - position
+    state_interfaces:
+      - position
+      - velocity
+    state_publish_rate: 50.0
+    action_monitor_rate: 20.0
+    allow_partial_joints_goal: false
+    constraints:
+      stopped_velocity_tolerance: 0.01
+      goal_time: 0.6
+      robotiq_hande_left_finger_joint: {trajectory: 0.01, goal: 0.005}

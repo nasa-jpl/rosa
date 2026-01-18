@@ -1,0 +1,6 @@
+# Request
+int32 cylinder_id  # ID of the cylinder to pick (1-7)
+---
+# Response
+bool success       # True if task completed successfully
+string message     # Status message

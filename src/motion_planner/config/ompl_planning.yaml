@@ -1,0 +1,101 @@
+/**:
+  ros__parameters:
+    # Safety net (prevents CHOMP auto-selection)
+    move_group.planning_plugin: ompl_interface/OMPLPlanner
+    planning_plugin: ompl_interface/OMPLPlanner
+
+# -------------------- move_group node --------------------
+move_group:
+  ros__parameters:
+    planning_plugin: ompl_interface/OMPLPlanner
+
+    request_adapters: >-
+      default_planner_request_adapters/AddTimeOptimalParameterization
+      default_planner_request_adapters/FixStartStateBounds
+      default_planner_request_adapters/FixStartStateCollision
+
+    workspace_parameters:
+      min_corner: [-10.0, -10.0, -10.0]
+      max_corner: [ 10.0,  10.0,  10.0]
+
+    planner_configs:
+      RRTstarkConfigDefault:
+        type: geometric::RRTstar
+        range: 0.2
+        goal_bias: 0.05
+        delay_collision_checking: 1
+        rewire_factor: 1.2
+
+      InformedRRTstarkConfigDefault:
+        type: geometric::InformedRRTstar
+        range: 0.2
+        goal_bias: 0.05
+        rewire_factor: 1.2
+        pruning: 1
+        sample_rejection: 1
+
+      RRTConnectkConfigDefault:
+        type: geometric::RRTConnect
+        range: 0.1
+
+    ur_manipulator:
+      default_planner_config: RRTConnectkConfigDefault
+      planner_configs: [RRTConnectkConfigDefault, RRTstarkConfigDefault, InformedRRTstarkConfigDefault]
+      planning_time: 5.0
+      num_planning_attempts: 3
+      simplify_solutions: true
+      longest_valid_segment_fraction: 0.01
+
+
+
+
+
+# -------------------- mtc_main (NOTE THE move_group. PREFIX) --------------------
+mtc_main:
+  ros__parameters:
+    move_group.planning_plugin: ompl_interface/OMPLPlanner
+    move_group.path_tolerance: 0.1
+    move_group.resample_dt: 0.2
+    move_group.min_angle_change: 0.01
+
+    move_group.start_state_max_bounds_error: 0.1
+    move_group.start_state_max_dt: 0.5
+
+    move_group.jiggle_fraction: 0.02
+    move_group.max_sampling_attempts: 50
+    move_group.request_adapters: >-
+      default_planner_request_adapters/AddTimeOptimalParameterization
+      default_planner_request_adapters/FixStartStateBounds
+      default_planner_request_adapters/FixStartStateCollision
+
+    move_group.workspace_parameters:
+      min_corner: [-10.0, -10.0, -10.0]
+      max_corner: [ 10.0,  10.0,  10.0]
+
+    move_group.planner_configs:
+      RRTstarkConfigDefault:
+        type: geometric::RRTstar
+        range: 0.2
+        goal_bias: 0.05
+        delay_collision_checking: 1
+        rewire_factor: 1.2
+
+      InformedRRTstarkConfigDefault:
+        type: geometric::InformedRRTstar
+        range: 0.2
+        goal_bias: 0.05
+        rewire_factor: 1.2
+        pruning: 1
+        sample_rejection: 1
+
+      RRTConnectkConfigDefault:
+        type: geometric::RRTConnect
+        range: 0.1
+
+    move_group.ur_manipulator:
+      default_planner_config: RRTConnectkConfigDefault
+      planner_configs: [RRTConnectkConfigDefault, RRTstarkConfigDefault, InformedRRTstarkConfigDefault]
+      planning_time: 5.0
+      num_planning_attempts: 3
+      simplify_solutions: true
+      longest_valid_segment_fraction: 0.01

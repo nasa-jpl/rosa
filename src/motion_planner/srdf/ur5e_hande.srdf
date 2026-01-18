@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot name="ur5e_hande">
+    <!-- Planning groups -->
+    <group name="ur_manipulator">
+        <chain base_link="base_link" tip_link="tool0"/>
+    </group>
+    
+    <group name="gripper">
+        <joint name="robotiq_hande_left_finger_joint"/>
+        <joint name="robotiq_hande_right_finger_joint"/>
+    </group>
+    
+    <group name="ur_manipulator_with_gripper">
+        <group name="ur_manipulator"/>
+        <group name="gripper"/>
+    </group>
+    
+    <!-- End effector -->
+    <end_effector name="gripper" parent_link="tool0" group="gripper"/>
+    
+    <!-- Group states -->
+    <group_state name="gripper_open" group="gripper">
+        <joint name="robotiq_hande_left_finger_joint" value="0.025"/>
+    </group_state>
+    
+    <group_state name="gripper_closed" group="gripper">
+        <joint name="robotiq_hande_left_finger_joint" value="0.0"/>
+    </group_state>
+    
+    <!-- Disable collision checking between these link pairs -->
+    <disable_collisions link1="base_link" link2="base_link_inertia" reason="Adjacent"/>
+    <disable_collisions link1="base_link" link2="shoulder_link" reason="Adjacent"/>
+    <disable_collisions link1="base_link_inertia" link2="shoulder_link" reason="Never"/>
+    <disable_collisions link1="forearm_link" link2="upper_arm_link" reason="Adjacent"/>
+    <disable_collisions link1="forearm_link" link2="wrist_1_link" reason="Adjacent"/>
+    <disable_collisions link1="shoulder_link" link2="upper_arm_link" reason="Adjacent"/>
+    <disable_collisions link1="wrist_1_link" link2="wrist_2_link" reason="Adjacent"/>
+    <disable_collisions link1="wrist_1_link" link2="wrist_3_link" reason="Never"/>
+    <disable_collisions link1="wrist_2_link" link2="wrist_3_link" reason="Adjacent"/>
+    
+    <!-- Disable collisions between robot and gripper -->
+    <disable_collisions link1="wrist_3_link" link2="robotiq_hande_coupler" reason="Adjacent"/>
+    <disable_collisions link1="wrist_3_link" link2="robotiq_hande_link" reason="Never"/>
+    <disable_collisions link1="tool0" link2="robotiq_hande_coupler" reason="Adjacent"/>
+    <disable_collisions link1="tool0" link2="robotiq_hande_link" reason="Never"/>
+    <disable_collisions link1="forearm_link" link2="robotiq_hande_link" reason="Never"/>
+    <disable_collisions link1="forearm_link" link2="robotiq_hande_coupler" reason="Never"/>
+    
+    <!-- Disable collisions within gripper -->
+    <disable_collisions link1="robotiq_hande_coupler" link2="robotiq_hande_link" reason="Adjacent"/>
+    <disable_collisions link1="robotiq_hande_link" link2="robotiq_hande_left_finger" reason="Adjacent"/>
+    <disable_collisions link1="robotiq_hande_link" link2="robotiq_hande_right_finger" reason="Adjacent"/>
+    <disable_collisions link1="robotiq_hande_left_finger" link2="robotiq_hande_right_finger" reason="Default"/>
+    <disable_collisions link1="robotiq_hande_coupler" link2="robotiq_hande_left_finger" reason="Never"/>
+    <disable_collisions link1="robotiq_hande_coupler" link2="robotiq_hande_right_finger" reason="Never"/>
+    
+    <!-- Passive joints (mimic joints) -->
+    <passive_joint name="robotiq_hande_right_finger_joint"/>
+    
+</robot>

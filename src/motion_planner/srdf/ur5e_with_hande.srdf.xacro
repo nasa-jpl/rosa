@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot xmlns:xacro="http://wiki.ros.org/xacro" name="$(arg name)">
+
+  <!-- robot name parameter -->
+  <xacro:arg name="name" default="ur"/>
+  <!-- parameters -->
+  <xacro:arg name="prefix" default="" />
+
+  <!-- Include base UR SRDF macro -->
+  <xacro:include filename="$(find ur_moveit_config)/srdf/ur_macro.srdf.xacro"/>
+
+  <!-- Instantiate base UR SRDF -->
+  <xacro:ur_srdf name="$(arg name)" prefix="$(arg prefix)"/>
+
+  <!-- Add Robotiq Hand-E gripper planning groups -->
+  <group name="gripper">
+    <joint name="$(arg prefix)robotiq_hande_left_finger_joint"/>
+    <joint name="$(arg prefix)robotiq_hande_right_finger_joint"/>
+  </group>
+  
+  <group name="ur_manipulator_with_gripper">
+    <group name="ur_manipulator"/>
+    <group name="gripper"/>
+  </group>
+  
+  <!-- End effector -->
+  <end_effector name="gripper" parent_link="$(arg prefix)tool0" group="gripper"/>
+  
+  <!-- Group states -->
+  <group_state name="gripper_open" group="gripper">
+    <joint name="$(arg prefix)robotiq_hande_left_finger_joint" value="0.025"/>
+  </group_state>
+  
+  <group_state name="gripper_closed" group="gripper">
+    <joint name="$(arg prefix)robotiq_hande_left_finger_joint" value="0.0"/>
+  </group_state>
+  
+  <!-- Disable collisions between robot and gripper -->
+  <disable_collisions link1="$(arg prefix)wrist_3_link" link2="$(arg prefix)robotiq_hande_coupler" reason="Adjacent"/>
+  <disable_collisions link1="$(arg prefix)wrist_3_link" link2="$(arg prefix)robotiq_hande_link" reason="Never"/>
+  <disable_collisions link1="$(arg prefix)tool0" link2="$(arg prefix)robotiq_hande_coupler" reason="Adjacent"/>
+  <disable_collisions link1="$(arg prefix)tool0" link2="$(arg prefix)robotiq_hande_link" reason="Never"/>
+  <disable_collisions link1="$(arg prefix)forearm_link" link2="$(arg prefix)robotiq_hande_link" reason="Never"/>
+  <disable_collisions link1="$(arg prefix)forearm_link" link2="$(arg prefix)robotiq_hande_coupler" reason="Never"/>
+  
+  <!-- Disable collisions within gripper (CRITICAL: prevents orange jaws in RViz) -->
+  <disable_collisions link1="$(arg prefix)robotiq_hande_coupler" link2="$(arg prefix)robotiq_hande_link" reason="Adjacent"/>
+  <disable_collisions link1="$(arg prefix)robotiq_hande_link" link2="$(arg prefix)robotiq_hande_left_finger" reason="Adjacent"/>
+  <disable_collisions link1="$(arg prefix)robotiq_hande_link" link2="$(arg prefix)robotiq_hande_right_finger" reason="Adjacent"/>
+  <!-- Most important: disable collision between the two fingers -->
+  <disable_collisions link1="$(arg prefix)robotiq_hande_left_finger" link2="$(arg prefix)robotiq_hande_right_finger" reason="Default"/>
+  <disable_collisions link1="$(arg prefix)robotiq_hande_coupler" link2="$(arg prefix)robotiq_hande_left_finger" reason="Never"/>
+  <disable_collisions link1="$(arg prefix)robotiq_hande_coupler" link2="$(arg prefix)robotiq_hande_right_finger" reason="Never"/>
+  
+  <!-- Disable collisions between gripper fingers and arm links (for safety) -->
+  <disable_collisions link1="$(arg prefix)robotiq_hande_left_finger" link2="$(arg prefix)wrist_1_link" reason="Never"/>
+  <disable_collisions link1="$(arg prefix)robotiq_hande_left_finger" link2="$(arg prefix)wrist_2_link" reason="Never"/>
+  <disable_collisions link1="$(arg prefix)robotiq_hande_left_finger" link2="$(arg prefix)wrist_3_link" reason="Never"/>
+  <disable_collisions link1="$(arg prefix)robotiq_hande_right_finger" link2="$(arg prefix)wrist_1_link" reason="Never"/>
+  <disable_collisions link1="$(arg prefix)robotiq_hande_right_finger" link2="$(arg prefix)wrist_2_link" reason="Never"/>
+  <disable_collisions link1="$(arg prefix)robotiq_hande_right_finger" link2="$(arg prefix)wrist_3_link" reason="Never"/>
+  
+  <!-- Passive joints (mimic joints) -->
+  <passive_joint name="$(arg prefix)robotiq_hande_right_finger_joint"/>
+
+</robot>

@@ -1,0 +1,4 @@
+---
+# Response
+bool success       # True if all tasks completed successfully
+string message     # Status message

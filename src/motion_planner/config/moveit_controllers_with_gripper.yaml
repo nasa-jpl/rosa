@@ -1,0 +1,29 @@
+# MoveIt controllers configuration for UR5e with Robotiq Hand-E
+
+# Simulation execution parameters  
+trajectory_execution:
+  allowed_execution_duration_scaling: 1.2
+  allowed_goal_duration_margin: 0.5
+  allowed_start_tolerance: 0.01
+
+moveit_controller_manager: moveit_simple_controller_manager/MoveItSimpleControllerManager
+
+moveit_simple_controller_manager:
+  controller_names:
+    - scaled_joint_trajectory_controller
+    - robotiq_gripper_controller
+
+  scaled_joint_trajectory_controller:
+    type: FollowJointTrajectory
+    joints:
+      - shoulder_pan_joint
+      - shoulder_lift_joint
+      - elbow_joint  
+      - wrist_1_joint
+      - wrist_2_joint
+      - wrist_3_joint
+
+  robotiq_gripper_controller:
+    type: GripperCommand
+    joints:
+      - robotiq_hand_e_joint

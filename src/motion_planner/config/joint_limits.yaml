@@ -1,0 +1,37 @@
+joint_limits:
+  shoulder_pan_joint:
+    has_acceleration_limits: true
+    max_acceleration: 3.15  # rad/s^2 (UR5e typical limit)
+    has_effort_limits: false
+    has_position_limits: false
+    has_velocity_limits: false
+  shoulder_lift_joint:
+    has_acceleration_limits: true
+    max_acceleration: 3.15  # rad/s^2
+    has_effort_limits: false
+    has_position_limits: false
+    has_velocity_limits: false
+  elbow_joint:
+    has_acceleration_limits: true
+    max_acceleration: 3.15  # rad/s^2
+    has_effort_limits: false
+    has_position_limits: false
+    has_velocity_limits: false
+  wrist_1_joint:
+    has_acceleration_limits: true
+    max_acceleration: 3.2  # rad/s^2
+    has_effort_limits: false
+    has_position_limits: false
+    has_velocity_limits: false
+  wrist_2_joint:
+    has_acceleration_limits: true
+    max_acceleration: 3.2  # rad/s^2
+    has_effort_limits: false
+    has_position_limits: false
+    has_velocity_limits: false
+  wrist_3_joint:
+    has_acceleration_limits: true
+    max_acceleration: 3.2  # rad/s^2
+    has_effort_limits: false
+    has_position_limits: false
+    has_velocity_limits: false

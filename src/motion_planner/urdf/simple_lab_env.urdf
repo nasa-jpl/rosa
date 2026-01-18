@@ -1,0 +1,154 @@
+<?xml version="1.0"?>
+<robot name="simple_lab_env">
+
+  <!-- Root / world -->
+  <link name="world"/>
+
+  <!-- ===================== -->
+  <!-- WALL (a big thin box) -->
+  <!-- ===================== -->
+  <link name="wall">
+    <visual>
+      <!-- place wall centered at x=2.0, height ~1.2 -->
+      <origin xyz="2.0 0.0 1.2" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.1 4.0 2.4"/>
+      </geometry>
+      <material name="light_grey">
+        <color rgba="0.85 0.85 0.85 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="world_to_wall" type="fixed">
+    <parent link="world"/>
+    <child link="wall"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ===================== -->
+  <!-- TABLE (top + 4 legs)   -->
+  <!-- ===================== -->
+  <link name="table_top">
+    <visual>
+      <origin xyz="0.6 0.6 0.5" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.6 0.4 0.03"/>
+      </geometry>
+      <material name="wood">
+        <color rgba="0.55 0.35 0.2 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="world_to_table_top" type="fixed">
+    <parent link="world"/>
+    <child link="table_top"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Table legs (cylinders) -->
+  <!-- front-left -->
+  <link name="table_leg_fl">
+    <visual>
+      <origin xyz="0.15 0.3 0.25" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.02" length="0.5"/>
+      </geometry>
+      <material name="dark_wood">
+        <color rgba="0.35 0.22 0.15 1.0"/>
+      </material>
+    </visual>
+  </link>
+  <joint name="world_to_table_leg_fl" type="fixed">
+    <parent link="world"/>
+    <child link="table_leg_fl"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- front-right -->
+  <link name="table_leg_fr">
+    <visual>
+      <origin xyz="0.15 0.9 0.25" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.02" length="0.5"/>
+      </geometry>
+      <material name="dark_wood"/>
+    </visual>
+  </link>
+  <joint name="world_to_table_leg_fr" type="fixed">
+    <parent link="world"/>
+    <child link="table_leg_fr"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- back-left -->
+  <link name="table_leg_bl">
+    <visual>
+      <origin xyz="1.05 0.3 0.25" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.02" length="0.5"/>
+      </geometry>
+      <material name="dark_wood"/>
+    </visual>
+  </link>
+  <joint name="world_to_table_leg_bl" type="fixed">
+    <parent link="world"/>
+    <child link="table_leg_bl"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- back-right -->
+  <link name="table_leg_br">
+    <visual>
+      <origin xyz="1.05 0.9 0.25" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.02" length="0.5"/>
+      </geometry>
+      <material name="dark_wood"/>
+    </visual>
+  </link>
+  <joint name="world_to_table_leg_br" type="fixed">
+    <parent link="world"/>
+    <child link="table_leg_br"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ===================== -->
+  <!-- CHAIR (seat + back)   -->
+  <!-- ===================== -->
+  <link name="chair_seat">
+    <visual>
+      <origin xyz="-0.8 0.6 0.3" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.25 0.25 0.03"/>
+      </geometry>
+      <material name="chair_dark">
+        <color rgba="0.2 0.2 0.2 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="world_to_chair_seat" type="fixed">
+    <parent link="world"/>
+    <child link="chair_seat"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <link name="chair_back">
+    <visual>
+      <origin xyz="-0.9 0.6 0.5" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.03 0.25 0.4"/>
+      </geometry>
+      <material name="chair_dark"/>
+    </visual>
+  </link>
+
+  <joint name="world_to_chair_back" type="fixed">
+    <parent link="world"/>
+    <child link="chair_back"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+</robot>

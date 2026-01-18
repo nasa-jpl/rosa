@@ -1,0 +1,14 @@
+/**:
+  ros__parameters:
+    robot_description_kinematics:
+      ur_manipulator:
+        # Use KDL kinematics solver (widely available)
+        kinematics_solver: kdl_kinematics_plugin/KDLKinematicsPlugin
+        
+        # Improved accuracy settings
+        kinematics_solver_search_resolution: 0.001  # Smaller = more accurate (was 0.005)
+        kinematics_solver_timeout: 0.1  # Longer timeout for better solutions (was 0.005)
+        kinematics_solver_attempts: 10  # More attempts (was 3)
+        
+        # Additional parameters for better performance
+        position_only_ik: false  # Consider orientation too
