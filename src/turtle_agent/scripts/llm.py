@@ -19,14 +19,43 @@ from langchain_openai import ChatOpenAI
 
 
 def get_llm(streaming: bool = False):
-    """A helper function to get the LLM instance."""
+    """A helper function to get the LLM instance.
+
+    Supports OpenAI (default), Anthropic and Ollama models.
+    Set the LLM_PROVIDER env variable to switch between providers:
+      - "openai" (default): uses OPENAI_API_KEY
+      - "anthropic": uses ANTHROPIC_API_KEY
+      - "ollama": uses local Ollama instance
+    """
     dotenv.load_dotenv(dotenv.find_dotenv())
 
-    llm = ChatOpenAI(
-        api_key=get_env_variable("OPENAI_API_KEY"),
-        model="gpt-5.1",
-        streaming=streaming,
-    )
+    provider = os.getenv("LLM_PROVIDER", "openai").lower()
+
+    if provider == "anthropic":
+        try:
+            from langchain_anthropic import ChatAnthropic
+        except ImportError:
+            raise ImportError(
+                "langchain-anthropic is required for Anthropic support. "
+                "Install it with: pip install langchain-anthropic"
+            )
+        llm = ChatAnthropic(
+            api_key=get_env_variable("ANTHROPIC_API_KEY"),
+            model=os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-20250514"),
+            streaming=streaming,
+        )
+    elif provider == "ollama":
+        from langchain_ollama import ChatOllama
+        llm = ChatOllama(
+            model=os.getenv("OLLAMA_MODEL", "llama3"),
+            base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
+        )
+    else:
+        llm = ChatOpenAI(
+            api_key=get_env_variable("OPENAI_API_KEY"),
+            model=os.getenv("OPENAI_MODEL", "gpt-4o"),
+            streaming=streaming,
+        )
 
     return llm
 

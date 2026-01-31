@@ -30,6 +30,7 @@ dependencies = [
     "langchain-core~=0.3.52",
     "langchain-openai~=0.3.14",
     "langchain-ollama~=0.3.2",
+    "langchain-anthropic~=0.3.12",
     "pydantic",
     "pyinputplus",
     "azure-identity",
