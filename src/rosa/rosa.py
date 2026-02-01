@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import logging
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any, AsyncIterable, Dict, Literal, Optional, Union
+from typing import TYPE_CHECKING, Any, AsyncIterable, Dict, Literal, Optional
 
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain.prompts import MessagesPlaceholder
@@ -24,14 +24,10 @@ from langchain_community.callbacks import get_openai_callback
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_ollama import ChatOllama
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
 
 if TYPE_CHECKING:
-    try:
-        from langchain_anthropic import ChatAnthropic
-    except ImportError:
-        pass
+    from langchain_anthropic import ChatAnthropic
 
 from .prompts import RobotSystemPrompts, system_prompts
 from .tools import ROSATools
@@ -50,7 +46,8 @@ class ROSA:
     Args:
         ros_version (Literal[1, 2]): The version of ROS that the agent will interact with.
         llm (BaseChatModel): Any langchain chat model that supports tool calling. Tested with
-            ChatOpenAI, AzureChatOpenAI, ChatOllama, and ChatAnthropic.
+            ChatOpenAI, AzureChatOpenAI, ChatOllama, and ChatAnthropic. Note: token usage
+            tracking only works with ChatOpenAI and AzureChatOpenAI.
         tools (Optional[list]): A list of additional LangChain tool functions to use with the agent.
         tool_packages (Optional[list]): A list of Python packages containing LangChain tool functions to use.
         prompts (Optional[RobotSystemPrompts]): Custom prompts to use with the agent.
@@ -148,6 +145,7 @@ class ROSA:
                 )
                 self._print_usage(cb)
         except KeyboardInterrupt:
+            # Re-raise KeyboardInterrupt so it can be handled upstream
             raise
         except Exception as e:
             return f"An error occurred: {str(e)}"
@@ -314,6 +312,8 @@ class ROSA:
             with get_openai_callback() as cb:
                 yield cb
         else:
+            if self.__show_token_usage:
+                logger.warning("Token usage tracking is only supported for OpenAI and Azure models.")
             yield None
 
     def _print_usage(self, cb):

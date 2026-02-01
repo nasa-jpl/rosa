@@ -31,7 +31,13 @@ def get_llm(streaming: bool = False):
 
     provider = os.getenv("LLM_PROVIDER", "openai").lower()
 
-    if provider == "anthropic":
+    if provider == "openai":
+        llm = ChatOpenAI(
+            api_key=get_env_variable("OPENAI_API_KEY"),
+            model=get_env_variable("OPENAI_MODEL"),
+            streaming=streaming,
+        )
+    elif provider == "anthropic":
         try:
             from langchain_anthropic import ChatAnthropic
         except ImportError:
@@ -41,20 +47,26 @@ def get_llm(streaming: bool = False):
             )
         llm = ChatAnthropic(
             api_key=get_env_variable("ANTHROPIC_API_KEY"),
-            model=os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-20250514"),
+            model=get_env_variable("ANTHROPIC_MODEL"),
             streaming=streaming,
         )
     elif provider == "ollama":
-        from langchain_ollama import ChatOllama
+        try:
+            from langchain_ollama import ChatOllama
+        except ImportError:
+            raise ImportError(
+                "langchain-ollama is required for Ollama support. "
+                "Install it with: pip install langchain-ollama"
+            )
         llm = ChatOllama(
             model=os.getenv("OLLAMA_MODEL", "llama3"),
             base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
+            streaming=streaming,
         )
     else:
-        llm = ChatOpenAI(
-            api_key=get_env_variable("OPENAI_API_KEY"),
-            model=os.getenv("OPENAI_MODEL", "gpt-4o"),
-            streaming=streaming,
+        raise ValueError(
+            f"Unknown LLM provider: '{provider}'. "
+            "Supported providers are: 'openai', 'anthropic', 'ollama'."
         )
 
     return llm
