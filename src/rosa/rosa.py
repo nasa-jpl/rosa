@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import logging
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any, AsyncIterable, Dict, Literal, Optional
+from typing import TYPE_CHECKING, Any, AsyncIterable, Dict, Literal, Optional, Union
 
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain.prompts import MessagesPlaceholder
@@ -28,15 +28,18 @@ from langchain_openai import AzureChatOpenAI, ChatOpenAI
 
 if TYPE_CHECKING:
     from langchain_anthropic import ChatAnthropic
+    from langchain_ollama import ChatOllama
 
 from .prompts import RobotSystemPrompts, system_prompts
 from .tools import ROSATools
 
 logger = logging.getLogger(__name__)
 
-# Runtime-safe type alias: accepts any BaseChatModel, covering OpenAI, Azure,
-# Anthropic, Ollama and any future langchain provider that implements tool calling.
-ChatModel = BaseChatModel
+# Tested providers for static analysis; BaseChatModel accepted at runtime.
+if TYPE_CHECKING:
+    ChatModel = Union[ChatOpenAI, AzureChatOpenAI, ChatAnthropic, ChatOllama]
+else:
+    ChatModel = BaseChatModel
 
 
 class ROSA:
@@ -45,9 +48,10 @@ class ROSA:
 
     Args:
         ros_version (Literal[1, 2]): The version of ROS that the agent will interact with.
-        llm (BaseChatModel): Any langchain chat model that supports tool calling. Tested with
-            ChatOpenAI, AzureChatOpenAI, ChatOllama, and ChatAnthropic. Note: token usage
-            tracking only works with ChatOpenAI and AzureChatOpenAI.
+        llm (ChatModel): The language model to use for generating responses. Tested providers:
+            ChatOpenAI, AzureChatOpenAI, ChatAnthropic, and ChatOllama. Other BaseChatModel
+            subclasses that support tool calling may work but are not officially tested.
+            Note: token usage tracking is only supported for ChatOpenAI and AzureChatOpenAI.
         tools (Optional[list]): A list of additional LangChain tool functions to use with the agent.
         tool_packages (Optional[list]): A list of Python packages containing LangChain tool functions to use.
         prompts (Optional[RobotSystemPrompts]): Custom prompts to use with the agent.
@@ -107,6 +111,15 @@ class ROSA:
         self.__agent = self._get_agent()
         self.__executor = self._get_executor(verbose=verbose)
         self.__show_token_usage = show_token_usage if not streaming else False
+        self.__token_usage_warned = False
+
+        if self.__show_token_usage and not isinstance(llm, (ChatOpenAI, AzureChatOpenAI)):
+            logger.warning(
+                "Token usage tracking is not supported for %s. "
+                "Only ChatOpenAI and AzureChatOpenAI are supported.",
+                type(llm).__name__,
+            )
+            self.__token_usage_warned = True
 
     @property
     def chat_history(self):
@@ -253,11 +266,7 @@ class ROSA:
         return executor
 
     def _get_agent(self):
-        """Create and return an agent for processing user inputs and generating responses.
-
-        Uses create_tool_calling_agent which is provider-agnostic and works with
-        any LLM that supports tool calling (OpenAI, Anthropic, Ollama, etc).
-        """
+        """Create and return an agent for processing user inputs and generating responses."""
         agent = create_tool_calling_agent(
             llm=self.__llm,
             tools=self.__tools.get_tools(),
@@ -312,8 +321,6 @@ class ROSA:
             with get_openai_callback() as cb:
                 yield cb
         else:
-            if self.__show_token_usage:
-                logger.warning("Token usage tracking is only supported for OpenAI and Azure models.")
             yield None
 
     def _print_usage(self, cb):
