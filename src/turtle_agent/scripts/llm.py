@@ -29,12 +29,17 @@ def get_llm(streaming: bool = False):
     """
     dotenv.load_dotenv(dotenv.find_dotenv())
 
-    provider = os.getenv("LLM_PROVIDER", "openai").lower()
+    provider = os.getenv("LLM_PROVIDER", "openai").lower().strip()
+    supported = ("openai", "anthropic", "ollama")
+    if provider not in supported:
+        raise ValueError(
+            f"Unknown LLM_PROVIDER: '{provider}'. Must be one of: {', '.join(supported)}"
+        )
 
     if provider == "openai":
         llm = ChatOpenAI(
             api_key=get_env_variable("OPENAI_API_KEY"),
-            model=get_env_variable("OPENAI_MODEL"),
+            model=os.getenv("OPENAI_MODEL", "gpt-4o"),
             streaming=streaming,
         )
     elif provider == "anthropic":
@@ -47,7 +52,7 @@ def get_llm(streaming: bool = False):
             )
         llm = ChatAnthropic(
             api_key=get_env_variable("ANTHROPIC_API_KEY"),
-            model=get_env_variable("ANTHROPIC_MODEL"),
+            model=os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-5"),
             streaming=streaming,
         )
     elif provider == "ollama":
@@ -62,11 +67,6 @@ def get_llm(streaming: bool = False):
             model=os.getenv("OLLAMA_MODEL", "llama3"),
             base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
             streaming=streaming,
-        )
-    else:
-        raise ValueError(
-            f"Unknown LLM provider: '{provider}'. "
-            "Supported providers are: 'openai', 'anthropic', 'ollama'."
         )
 
     return llm

@@ -110,16 +110,17 @@ class ROSA:
         self.__prompts = self._get_prompts(prompts)
         self.__agent = self._get_agent()
         self.__executor = self._get_executor(verbose=verbose)
+        # cache this check - no need to do isinstance on every invoke
+        self.__supports_token_tracking = isinstance(llm, (ChatOpenAI, AzureChatOpenAI))
         self.__show_token_usage = show_token_usage if not streaming else False
-        self.__token_usage_warned = False
 
-        if self.__show_token_usage and not isinstance(llm, (ChatOpenAI, AzureChatOpenAI)):
+        if self.__show_token_usage and not self.__supports_token_tracking:
             logger.warning(
-                "Token usage tracking is not supported for %s. "
-                "Only ChatOpenAI and AzureChatOpenAI are supported.",
+                "Token usage tracking only works with OpenAI/Azure models, not %s. "
+                "Disabling.",
                 type(llm).__name__,
             )
-            self.__token_usage_warned = True
+            self.__show_token_usage = False
 
     @property
     def chat_history(self):
@@ -317,7 +318,7 @@ class ROSA:
         Uses the OpenAI callback when the LLM is an OpenAI-based model,
         otherwise yields None so the rest of the flow is unaffected.
         """
-        if isinstance(self.__llm, (ChatOpenAI, AzureChatOpenAI)):
+        if self.__supports_token_tracking:
             with get_openai_callback() as cb:
                 yield cb
         else:
