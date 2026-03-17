@@ -29,7 +29,6 @@ dependencies = [
     "langchain-community~=0.3.21",
     "langchain-core~=0.3.52",
     "langchain-openai~=0.3.14",
-    "langchain-ollama~=0.3.2",
     "pydantic",
     "pyinputplus",
     "azure-identity",
@@ -38,6 +37,11 @@ dependencies = [
     "pillow>=10.4.0",
     "numpy>=1.26.4",
 ]
+
+[project.optional-dependencies]
+anthropic = ["langchain-anthropic~=0.3.12"]
+ollama = ["langchain-ollama~=0.3.2"]
+all = ["langchain-anthropic~=0.3.12", "langchain-ollama~=0.3.2"]
 
 [project.urls]
 "Homepage" = "https://github.com/nasa-jpl/rosa"

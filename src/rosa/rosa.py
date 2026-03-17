@@ -12,24 +12,34 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from typing import Any, AsyncIterable, Dict, Literal, Optional, Union
+from __future__ import annotations
 
-from langchain.agents import AgentExecutor
-from langchain.agents.format_scratchpad.openai_tools import (
-    format_to_openai_tool_messages,
-)
-from langchain.agents.output_parsers.openai_tools import OpenAIToolsAgentOutputParser
+import logging
+from contextlib import contextmanager
+from typing import TYPE_CHECKING, Any, AsyncIterable, Dict, Literal, Optional, Union
+
+from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain.prompts import MessagesPlaceholder
 from langchain_community.callbacks import get_openai_callback
+from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_ollama import ChatOllama
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
+
+if TYPE_CHECKING:
+    from langchain_anthropic import ChatAnthropic
+    from langchain_ollama import ChatOllama
 
 from .prompts import RobotSystemPrompts, system_prompts
 from .tools import ROSATools
 
-ChatModel = Union[ChatOpenAI, AzureChatOpenAI, ChatOllama]
+logger = logging.getLogger(__name__)
+
+# Tested providers for static analysis; BaseChatModel accepted at runtime.
+if TYPE_CHECKING:
+    ChatModel = Union[ChatOpenAI, AzureChatOpenAI, ChatAnthropic, ChatOllama]
+else:
+    ChatModel = BaseChatModel
 
 
 class ROSA:
@@ -38,7 +48,10 @@ class ROSA:
 
     Args:
         ros_version (Literal[1, 2]): The version of ROS that the agent will interact with.
-        llm (Union[AzureChatOpenAI, ChatOpenAI, ChatOllama]): The language model to use for generating responses.
+        llm (ChatModel): The language model to use for generating responses. Tested providers:
+            ChatOpenAI, AzureChatOpenAI, ChatAnthropic, and ChatOllama. Other BaseChatModel
+            subclasses that support tool calling may work but are not officially tested.
+            Note: token usage tracking is only supported for ChatOpenAI and AzureChatOpenAI.
         tools (Optional[list]): A list of additional LangChain tool functions to use with the agent.
         tool_packages (Optional[list]): A list of Python packages containing LangChain tool functions to use.
         prompts (Optional[RobotSystemPrompts]): Custom prompts to use with the agent.
@@ -95,10 +108,19 @@ class ROSA:
             ros_version, packages=tool_packages, tools=tools, blacklist=self.__blacklist
         )
         self.__prompts = self._get_prompts(prompts)
-        self.__llm_with_tools = self.__llm.bind_tools(self.__tools.get_tools())
         self.__agent = self._get_agent()
         self.__executor = self._get_executor(verbose=verbose)
+        # cache this check - no need to do isinstance on every invoke
+        self.__supports_token_tracking = isinstance(llm, (ChatOpenAI, AzureChatOpenAI))
         self.__show_token_usage = show_token_usage if not streaming else False
+
+        if self.__show_token_usage and not self.__supports_token_tracking:
+            logger.warning(
+                "Token usage tracking only works with OpenAI/Azure models, not %s. "
+                "Disabling.",
+                type(llm).__name__,
+            )
+            self.__show_token_usage = False
 
     @property
     def chat_history(self):
@@ -131,7 +153,7 @@ class ROSA:
             - Token usage is printed if the show_token_usage flag is set.
         """
         try:
-            with get_openai_callback() as cb:
+            with self._token_callback() as cb:
                 result = self.__executor.invoke(
                     {"input": query, "chat_history": self.__chat_history}
                 )
@@ -246,17 +268,10 @@ class ROSA:
 
     def _get_agent(self):
         """Create and return an agent for processing user inputs and generating responses."""
-        agent = (
-            {
-                "input": lambda x: x["input"],
-                "agent_scratchpad": lambda x: format_to_openai_tool_messages(
-                    x["intermediate_steps"]
-                ),
-                "chat_history": lambda x: x["chat_history"],
-            }
-            | self.__prompts
-            | self.__llm_with_tools
-            | OpenAIToolsAgentOutputParser()
+        agent = create_tool_calling_agent(
+            llm=self.__llm,
+            tools=self.__tools.get_tools(),
+            prompt=self.__prompts,
         )
         return agent
 
@@ -296,12 +311,26 @@ class ROSA:
         )
         return template
 
+    @contextmanager
+    def _token_callback(self):
+        """Context manager for token usage tracking.
+
+        Uses the OpenAI callback when the LLM is an OpenAI-based model,
+        otherwise yields None so the rest of the flow is unaffected.
+        """
+        if self.__supports_token_tracking:
+            with get_openai_callback() as cb:
+                yield cb
+        else:
+            yield None
+
     def _print_usage(self, cb):
         """Print the token usage if show_token_usage is enabled."""
-        if cb and self.__show_token_usage:
-            print(f"[bold]Prompt Tokens:[/bold] {cb.prompt_tokens}")
-            print(f"[bold]Completion Tokens:[/bold] {cb.completion_tokens}")
-            print(f"[bold]Total Cost (USD):[/bold] ${cb.total_cost}")
+        if cb is None or not self.__show_token_usage:
+            return
+        print(f"[bold]Prompt Tokens:[/bold] {cb.prompt_tokens}")
+        print(f"[bold]Completion Tokens:[/bold] {cb.completion_tokens}")
+        print(f"[bold]Total Cost (USD):[/bold] ${cb.total_cost}")
 
     def _record_chat_history(self, query: str, response: str):
         """Record the chat history if accumulation is enabled."""
