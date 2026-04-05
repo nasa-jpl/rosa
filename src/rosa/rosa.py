@@ -15,6 +15,8 @@
 from __future__ import annotations
 
 import logging
+
+from rich.console import Console
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any, AsyncIterable, Dict, Literal, Optional, Union
 
@@ -216,7 +218,7 @@ class ROSA:
                     # Extract the content from the event and yield it
                     content = event["data"]["chunk"].content
                     if content:
-                        final_output += f" {content}"
+                        final_output += content
                         yield {"type": "token", "content": content}
 
                 # Handle tool start events
@@ -328,9 +330,10 @@ class ROSA:
         """Print the token usage if show_token_usage is enabled."""
         if cb is None or not self.__show_token_usage:
             return
-        print(f"[bold]Prompt Tokens:[/bold] {cb.prompt_tokens}")
-        print(f"[bold]Completion Tokens:[/bold] {cb.completion_tokens}")
-        print(f"[bold]Total Cost (USD):[/bold] ${cb.total_cost}")
+        console = Console()
+        console.print(f"[bold]Prompt Tokens:[/bold] {cb.prompt_tokens}")
+        console.print(f"[bold]Completion Tokens:[/bold] {cb.completion_tokens}")
+        console.print(f"[bold]Total Cost (USD):[/bold] ${cb.total_cost}")
 
     def _record_chat_history(self, query: str, response: str):
         """Record the chat history if accumulation is enabled."""
