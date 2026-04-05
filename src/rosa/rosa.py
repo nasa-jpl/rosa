@@ -15,8 +15,6 @@
 from __future__ import annotations
 
 import logging
-
-from rich.console import Console
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any, AsyncIterable, Dict, Literal, Optional, Union
 
@@ -27,6 +25,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
+from rich.console import Console
 
 if TYPE_CHECKING:
     from langchain_anthropic import ChatAnthropic
