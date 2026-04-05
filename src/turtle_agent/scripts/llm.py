@@ -66,7 +66,7 @@ def get_llm(streaming: bool = False):
             )
         llm = ChatNVIDIA(
             api_key=get_env_variable("NVIDIA_API_KEY"),
-            model=os.getenv("NVIDIA_MODEL", "nvidia/llama-3.3-nemotron-super-49b-v1"),
+            model=os.getenv("NVIDIA_MODEL", "nvidia/llama-3.1-nemotron-ultra-253b-v1"),
             base_url=os.getenv("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1"),
             streaming=streaming,
         )
