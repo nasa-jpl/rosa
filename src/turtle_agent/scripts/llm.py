@@ -62,7 +62,7 @@ def get_llm(streaming: bool = False):
         except ImportError:
             raise ImportError(
                 "langchain-nvidia-ai-endpoints is required for NVIDIA NIM support. "
-                "Install it with: pip install langchain-nvidia-ai-endpoints"
+                "Install the project's NVIDIA extra with: pip install '.[nvidia]'"
             )
         llm = ChatNVIDIA(
             api_key=get_env_variable("NVIDIA_API_KEY"),
@@ -106,7 +106,7 @@ def get_env_variable(var_name: str) -> str:
     raise a ValueError, making it easier to debug configuration issues.
     """
     value = os.getenv(var_name)
-    if value is None:
+    if not value or not value.strip():
         msg = f"Environment variable {var_name} is not set."
         raise ValueError(msg)
     return value
