@@ -40,8 +40,9 @@ dependencies = [
 
 [project.optional-dependencies]
 anthropic = ["langchain-anthropic~=0.3.12"]
+nvidia = ["langchain-nvidia-ai-endpoints~=0.3.9"]
 ollama = ["langchain-ollama~=0.3.2"]
-all = ["langchain-anthropic~=0.3.12", "langchain-ollama~=0.3.2"]
+all = ["langchain-anthropic~=0.3.12", "langchain-nvidia-ai-endpoints~=0.3.9", "langchain-ollama~=0.3.2"]
 
 [project.urls]
 "Homepage" = "https://github.com/nasa-jpl/rosa"
