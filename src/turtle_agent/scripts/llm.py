@@ -59,11 +59,10 @@ def get_llm(streaming: bool = False):
     elif provider == "nvidia":
         try:
             from langchain_nvidia_ai_endpoints import ChatNVIDIA
-        except ImportError:
+        except ImportError as e:
             raise ImportError(
-                "langchain-nvidia-ai-endpoints is required for NVIDIA NIM support. "
-                "Install the project's NVIDIA extra with: pip install '.[nvidia]'"
-            )
+                "Install the project's NVIDIA extra with: pip install 'jpl-rosa[nvidia]'"
+            ) from e
         llm = ChatNVIDIA(
             api_key=get_env_variable("NVIDIA_API_KEY"),
             model=os.getenv("NVIDIA_MODEL", "nvidia/nemotron-3-super-120b-a12b"),
@@ -109,4 +108,4 @@ def get_env_variable(var_name: str) -> str:
     if not value or not value.strip():
         msg = f"Environment variable {var_name} is not set."
         raise ValueError(msg)
-    return value
+    return value.strip()
