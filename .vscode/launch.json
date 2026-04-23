@@ -10,6 +10,31 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal"
+        },
+        {
+            // 3단계: 컨테이너에서 ROSA_DEBUGPY=1 로 ./demo.sh 후 `start` 실행 →
+            // "[ROSA_DEBUGPY] listening..." 에서 대기하는 동안 이 구성으로 Attach.
+            // 포트는 demo.sh / ROSA_DEBUGPY_PORT 와 동일해야 함 (기본 5678).
+            // 대화형 에이전트: redirectOutput 끔 — 켜면 출력은 디버그 콘솔로 가고
+            // 터미널의 `>` 와 입력이 갈라져 디버그 콘솔에 자연어를 넣다 오류가 난다.
+            "name": "Python: Docker debugpy (attach)",
+            "type": "debugpy",
+            "request": "attach",
+            "connect": {
+                "host": "127.0.0.1",
+                "port": 5678
+            },
+            "pathMappings": [
+                {
+                    "localRoot": "${workspaceFolder}/src",
+                    "remoteRoot": "/app/src"
+                },
+                {
+                    "localRoot": "${workspaceFolder}/src/turtle_agent/scripts",
+                    "remoteRoot": "/app/devel/lib/turtle_agent"
+                }
+            ],
+            "justMyCode": false
         }
     ]
 }

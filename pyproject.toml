@@ -36,6 +36,7 @@ dependencies = [
     "rich",
     "pillow>=10.4.0",
     "numpy>=1.26.4",
+    "debugpy>=1.8.20",
 ]
 
 [project.optional-dependencies]
