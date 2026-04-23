@@ -17,6 +17,7 @@ import asyncio
 import os
 import signal
 import sys
+import threading
 from datetime import datetime
 
 import dotenv
@@ -35,6 +36,7 @@ from rosa import ROSA
 
 import tools.turtle as turtle_tools
 from help import get_help
+from pose_logger import PoseLogger
 from llm import get_llm
 from prompts import get_prompts
 
@@ -391,4 +393,19 @@ def main():
 if __name__ == "__main__":
     _maybe_attach_debugpy()
     rospy.init_node("rosa", log_level=rospy.INFO)
-    main()
+
+    # rospy.AsyncSpinner is missing in some stacks; a daemon spin thread is portable.
+    def _ros_spin() -> None:
+        rospy.spin()
+
+    spin_thread = threading.Thread(target=_ros_spin, name="rospy_spin", daemon=True)
+    spin_thread.start()
+
+    pose_logger = PoseLogger()
+    pose_logger.start()
+    try:
+        main()
+    finally:
+        pose_logger.stop()
+        rospy.signal_shutdown("turtle_agent exiting")
+        spin_thread.join(timeout=5.0)
