@@ -79,21 +79,28 @@ docker build $PLATFORM_ARG --build-arg DEVELOPMENT=$DEVELOPMENT -t $CONTAINER_NA
 }
 
 echo "Running the Docker container..."
+# Remote debug: export ROSA_DEBUGPY=1 before running; macOS publishes debugpy port to the host.
+DEBUGPY_PORT="${ROSA_DEBUGPY_PORT:-5678}"
 if [ "$(uname)" = "Darwin" ]; then
     # macOS: Use host.docker.internal for X11
     docker run -it --rm --init --name $CONTAINER_NAME \
-        -e DISPLAY=host.docker.internal:0 \
+        -p "${DEBUGPY_PORT}:${DEBUGPY_PORT}" \
+        -e DISPLAY=192.168.38.39:0 \
         -e HEADLESS=$HEADLESS \
         -e DEVELOPMENT=$DEVELOPMENT \
+        -e ROSA_DEBUGPY="${ROSA_DEBUGPY:-}" \
+        -e ROSA_DEBUGPY_PORT="${DEBUGPY_PORT}" \
         -v "$PWD/src":/app/src \
         -v "$PWD/tests":/app/tests \
         $CONTAINER_NAME
 else
-    # Linux/WSL: Use unix socket
+    # Linux/WSL: Use unix socket (--network host: debugpy port is on the host without -p)
     docker run -it --rm --init --name $CONTAINER_NAME \
         -e DISPLAY=$DISPLAY \
         -e HEADLESS=$HEADLESS \
         -e DEVELOPMENT=$DEVELOPMENT \
+        -e ROSA_DEBUGPY="${ROSA_DEBUGPY:-}" \
+        -e ROSA_DEBUGPY_PORT="${DEBUGPY_PORT}" \
         -v /tmp/.X11-unix:/tmp/.X11-unix \
         -v "$PWD/src":/app/src \
         -v "$PWD/tests":/app/tests \
