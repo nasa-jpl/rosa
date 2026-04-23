@@ -1,8 +1,11 @@
 .idea
-.vscode
+.vscode/*
+!.vscode/launch.json
 src/jpl_rosa.egg-info
 build/
 dist/
 __pycache__/
 docs
 .DS_Store
+.env
+logs/

@@ -23,7 +23,7 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 # RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 # Upgrade pip first, then install packages
 RUN python3.9 -m pip install --upgrade pip
-RUN python3.9 -m pip install --break-system-packages python-dotenv catkin_tools
+RUN python3.9 -m pip install --break-system-packages python-dotenv catkin_tools debugpy
 RUN rosdep update && \
     echo "source /opt/ros/noetic/setup.bash" >> /root/.bashrc && \
     echo "alias start='catkin build && source devel/setup.bash && roslaunch turtle_agent agent.launch'" >> /root/.bashrc && \

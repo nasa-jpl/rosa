@@ -17,12 +17,14 @@ import asyncio
 import os
 import signal
 import sys
+import threading
 from datetime import datetime
 
 import dotenv
 import pyinputplus as pyip
 import rospy
 from langchain.agents import tool, Tool
+
 # from langchain_ollama import ChatOllama
 from rich.console import Console
 from rich.console import Group
@@ -34,27 +36,53 @@ from rosa import ROSA
 
 import tools.turtle as turtle_tools
 from help import get_help
+from pose_logger import PoseLogger
 from llm import get_llm
 from prompts import get_prompts
 
 
+def _maybe_attach_debugpy() -> None:
+    """Listen for debugpy when ROSA_DEBUGPY is enabled (Docker + host Cursor attach)."""
+    flag = os.environ.get("ROSA_DEBUGPY", "").strip().lower()
+    if flag not in ("1", "true", "yes"):
+        return
+    try:
+        port = int(os.environ.get("ROSA_DEBUGPY_PORT", "5678").strip())
+    except ValueError:
+        port = 5678
+    try:
+        import debugpy
+    except ImportError:
+        print(
+            "[ROSA_DEBUGPY] debugpy is not installed; rebuild the image or pip install debugpy.",
+            file=sys.stderr,
+        )
+        raise
+    debugpy.listen(("0.0.0.0", port))
+    print(
+        f"[ROSA_DEBUGPY] listening on 0.0.0.0:{port}; attach from host, then execution continues.",
+        flush=True,
+    )
+    debugpy.wait_for_client()
+
+
 class GracefulInterruptHandler:
     """Context manager to handle interrupts gracefully."""
-    
+
     def __init__(self, verbose: bool = True):
         self.interrupted = False
         self.original_handler = None
         self.verbose = verbose
-    
+
     def __enter__(self):
         self.interrupted = False
         self.original_handler = signal.signal(signal.SIGINT, self._handler)
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         signal.signal(signal.SIGINT, self.original_handler)
         return False
-    
+
     def _handler(self, signum, frame):
         self.interrupted = True
         if self.verbose:
@@ -196,7 +224,9 @@ class TurtleAgent(ROSA):
                 else:
                     await self.submit(input)
             except KeyboardInterrupt:
-                console.print("\n[yellow]Operation interrupted. Type 'exit' to quit or continue with a new query.[/yellow]")
+                console.print(
+                    "\n[yellow]Operation interrupted. Type 'exit' to quit or continue with a new query.[/yellow]"
+                )
                 # Clear any partial state
                 continue
             except Exception as e:
@@ -264,10 +294,10 @@ class TurtleAgent(ROSA):
                     async for event in self.astream(query):
                         if handler.interrupted:
                             break
-                        
-                        event["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[
-                            :-3
-                        ]
+
+                        event["timestamp"] = datetime.now().strftime(
+                            "%Y-%m-%d %H:%M:%S.%f"
+                        )[:-3]
                         if event["type"] == "token":
                             content += event["content"]
                             panel.renderable = Markdown(content)
@@ -361,5 +391,21 @@ def main():
 
 
 if __name__ == "__main__":
+    _maybe_attach_debugpy()
     rospy.init_node("rosa", log_level=rospy.INFO)
-    main()
+
+    # rospy.AsyncSpinner is missing in some stacks; a daemon spin thread is portable.
+    def _ros_spin() -> None:
+        rospy.spin()
+
+    spin_thread = threading.Thread(target=_ros_spin, name="rospy_spin", daemon=True)
+    spin_thread.start()
+
+    pose_logger = PoseLogger()
+    pose_logger.start()
+    try:
+        main()
+    finally:
+        pose_logger.stop()
+        rospy.signal_shutdown("turtle_agent exiting")
+        spin_thread.join(timeout=5.0)
