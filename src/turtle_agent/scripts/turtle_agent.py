@@ -19,6 +19,7 @@ import signal
 import sys
 import threading
 from datetime import datetime
+from typing import Optional
 
 import dotenv
 import pyinputplus as pyip
@@ -36,9 +37,11 @@ from rosa import ROSA
 
 import tools.turtle as turtle_tools
 from help import get_help
+from obstacle_store import ObstacleStore
 from pose_logger import PoseLogger
 from llm import get_llm
 from prompts import get_prompts
+from static_map_loader import StaticMapLoadError, load_file
 
 
 def _maybe_attach_debugpy() -> None:
@@ -100,8 +103,14 @@ def cool_turtle_tool():
 
 class TurtleAgent(ROSA):
 
-    def __init__(self, streaming: bool = False, verbose: bool = True):
+    def __init__(
+        self,
+        streaming: bool = False,
+        verbose: bool = True,
+        obstacle_store: Optional[ObstacleStore] = None,
+    ):
         self.__blacklist = ["master", "docker"]
+        self._obstacle_store = obstacle_store
         self.__prompts = get_prompts()
         self.__llm = get_llm(streaming=streaming)
 
@@ -379,7 +388,19 @@ def main():
     dotenv.load_dotenv(dotenv.find_dotenv())
 
     streaming = rospy.get_param("~streaming", False)
-    turtle_agent = TurtleAgent(verbose=False, streaming=streaming)
+    obstacle_store: Optional[ObstacleStore] = None
+    path = str(rospy.get_param("~static_obstacles_file", "")).strip()
+    if path:
+        obstacle_store = ObstacleStore()
+        try:
+            load_file(obstacle_store, path)
+        except StaticMapLoadError as e:
+            rospy.logerr("static obstacles: %s", e)
+            raise
+
+    turtle_agent = TurtleAgent(
+        verbose=False, streaming=streaming, obstacle_store=obstacle_store
+    )
 
     try:
         asyncio.run(turtle_agent.run())

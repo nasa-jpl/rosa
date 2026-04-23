@@ -1,0 +1,27 @@
+# Turtlesim default window: x and y span [0, 11] (inclusive). Walls as four edges
+# for use with circle-vs-segment collision checks (collision_geometry.any_segment_intersects_disc).
+obstacles:
+  - id: wall-south
+    kind: static
+    geometry:
+      type: segments
+      segments:
+        - [ [ 0.0, 0.0 ], [ 11.0, 0.0 ] ]
+  - id: wall-east
+    kind: static
+    geometry:
+      type: segments
+      segments:
+        - [ [ 11.0, 0.0 ], [ 11.0, 11.0 ] ]
+  - id: wall-north
+    kind: static
+    geometry:
+      type: segments
+      segments:
+        - [ [ 11.0, 11.0 ], [ 0.0, 11.0 ] ]
+  - id: wall-west
+    kind: static
+    geometry:
+      type: segments
+      segments:
+        - [ [ 0.0, 11.0 ], [ 0.0, 0.0 ] ]
