@@ -39,7 +39,8 @@ import tools.turtle as turtle_tools
 import tools.obstacle as obstacle_tools
 from help import get_help
 from obstacle_store import ObstacleStore
-from pose_logger import PoseLogger
+from pose_hub import PoseHub
+from pose_logger import POSE_LOG_INTERVAL_SEC, PoseLogConsumer
 from llm import get_llm
 from prompts import get_prompts
 from static_map_loader import StaticMapLoadError, load_file
@@ -432,11 +433,19 @@ if __name__ == "__main__":
     spin_thread = threading.Thread(target=_ros_spin, name="rospy_spin", daemon=True)
     spin_thread.start()
 
-    pose_logger = PoseLogger()
-    pose_logger.start()
+    pose_hub = PoseHub()
+    pose_log_consumer = PoseLogConsumer(
+        period=float(rospy.get_param("~pose_log_interval", POSE_LOG_INTERVAL_SEC))
+    )
+    pose_hub.register_consumer(pose_log_consumer.on_pose)
+    registered_turtles = pose_hub.start_from_ros_graph_once()
+    rospy.loginfo("PoseHub registered turtles: %s", ", ".join(registered_turtles))
+    turtle_tools.configure_turtle_lifecycle_listener(pose_hub)
     try:
         main()
     finally:
-        pose_logger.stop()
+        turtle_tools.configure_turtle_lifecycle_listener(None)
+        pose_hub.stop()
+        pose_log_consumer.close()
         rospy.signal_shutdown("turtle_agent exiting")
         spin_thread.join(timeout=5.0)
