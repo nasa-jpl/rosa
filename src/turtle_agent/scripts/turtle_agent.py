@@ -37,7 +37,10 @@ from rosa import ROSA
 
 import tools.turtle as turtle_tools
 import tools.obstacle as obstacle_tools
+from action_mapper import PlanStep, map_intent_to_plan
+from command_logger import CommandLogger
 from help import get_help
+from intent_parser import IntentParser
 from obstacle_store import ObstacleStore
 from pose_hub import PoseHub
 from pose_logger import POSE_LOG_INTERVAL_SEC, PoseLogConsumer
@@ -111,6 +114,7 @@ class TurtleAgent(ROSA):
         streaming: bool = False,
         verbose: bool = True,
         obstacle_store: Optional[ObstacleStore] = None,
+        command_logger: Optional[CommandLogger] = None,
     ):
         self.__blacklist = ["master", "docker"]
         self._obstacle_store = obstacle_store or ObstacleStore()
@@ -126,6 +130,11 @@ class TurtleAgent(ROSA):
         # )
 
         self.__streaming = streaming
+        self._intent_parser = IntentParser(self.__llm)
+        self._command_logger = command_logger or CommandLogger()
+        self._turtle_id = rospy.get_param(
+            "~turtle_id", os.environ.get("TURTLE_TURTLE_ID", "turtle1")
+        )
 
         # Another method for adding tools
         blast_off = Tool(
@@ -247,10 +256,118 @@ class TurtleAgent(ROSA):
                 continue
 
     async def submit(self, query: str):
+        handled, message = self._run_query_to_action_pipeline(query)
+        if handled:
+            Console().print(Panel(Markdown(message), title="Action Pipeline", border_style="cyan"))
+            return
         if self.__streaming:
             await self.stream_response(query)
         else:
             self.print_response(query)
+
+    def _run_query_to_action_pipeline(self, query: str) -> tuple:
+        intent = self._intent_parser.parse(query)
+        steps = map_intent_to_plan(intent)
+        if not steps:
+            return False, ""
+
+        turtle_id = self._turtle_id
+        self._command_logger.log_intent(turtle_id, intent)
+        results = []
+        for step in steps:
+            status, result, skill_name = self._execute_plan_step(turtle_id, step)
+            step.status = status
+            self._command_logger.log_skill(
+                turtle_id,
+                skill=skill_name,
+                args=step.args,
+                status=status,
+                result=result,
+            )
+            results.append(f"- {step.name}: {status} ({result})")
+
+        return True, "\n".join(
+            [
+                f"Intent parsed: `{intent.get('task_family', 'unknown')}`",
+                "Executed steps:",
+                *results,
+            ]
+        )
+
+    def _execute_plan_step(self, turtle_id: str, step: PlanStep) -> tuple:
+        try:
+            if step.name == "draw_box":
+                result = self._draw_box(
+                    turtle_id=turtle_id,
+                    x=float(step.args.get("x", 2.0)),
+                    y=float(step.args.get("y", 2.0)),
+                    size=float(step.args.get("size", 2.0)),
+                )
+                return "success", result, "draw_box"
+
+            if step.name == "clear_canvas":
+                result = turtle_tools.clear_turtlesim.invoke({})
+                return "success", result, "clear_canvas"
+
+            if step.name == "forward":
+                distance = float(step.args.get("distance", 1.0))
+                result = turtle_tools.publish_twist_to_cmd_vel.invoke(
+                    {
+                        "name": turtle_id,
+                        "velocity": distance,
+                        "lateral": 0.0,
+                        "angle": 0.0,
+                        "steps": 1,
+                    }
+                )
+                return "success", result, "move_forward"
+
+            if step.name == "rotate":
+                degrees = float(step.args.get("degrees", 90.0))
+                direction = str(step.args.get("direction", "left")).lower()
+                angle = 1.0 if direction != "right" else -1.0
+                steps = max(1, int(abs(degrees) / 57.2958))
+                result = turtle_tools.publish_twist_to_cmd_vel.invoke(
+                    {
+                        "name": turtle_id,
+                        "velocity": 0.0,
+                        "lateral": 0.0,
+                        "angle": angle,
+                        "steps": steps,
+                    }
+                )
+                return "success", result, "rotate"
+
+            if step.name == "goto":
+                result = turtle_tools.teleport_absolute.invoke(
+                    {
+                        "name": turtle_id,
+                        "x": float(step.args["x"]),
+                        "y": float(step.args["y"]),
+                        "theta": float(step.args.get("theta", 0.0)),
+                        "hide_pen": True,
+                    }
+                )
+                return "success", result, "goto"
+
+            return "failed", f"unsupported step: {step.name}", step.name
+        except Exception as e:
+            return "failed", str(e), step.name
+
+    def _draw_box(self, *, turtle_id: str, x: float, y: float, size: float) -> str:
+        half = size / 2.0
+        start_x = x - half
+        start_y = y - half
+        return turtle_tools.draw_rectangle.invoke(
+            {
+                "name": turtle_id,
+                "x": start_x,
+                "y": start_y,
+                "width": size,
+                "height": size,
+                "filled": False,
+            }
+        )
 
     def print_response(self, query: str):
         """
@@ -409,8 +526,12 @@ def main():
                 if rospy.get_param("~world_builder_required", True):
                     raise
 
+    command_logger = CommandLogger(session_id=pose_log_consumer.session_id)
     turtle_agent = TurtleAgent(
-        verbose=False, streaming=streaming, obstacle_store=obstacle_store
+        verbose=False,
+        streaming=streaming,
+        obstacle_store=obstacle_store,
+        command_logger=command_logger,
     )
 
     try:
@@ -420,6 +541,8 @@ def main():
     except Exception as e:
         print(f"\n[Error: {e}]")
         sys.exit(1)
+    finally:
+        command_logger.close()
 
 
 if __name__ == "__main__":
