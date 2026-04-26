@@ -25,9 +25,11 @@ sys.path.insert(0, str(_SCRIPTS))
 
 from pose_logger import (  # noqa: E402
     POSE_LOG_INTERVAL_SEC,
+    CollisionJsonlWriter,
     PoseLogConsumer,
-    build_log_dir,
+    build_collision_log_path,
     build_location_log_path,
+    build_log_dir,
     pose_to_record,
     resolve_log_root,
 )
@@ -49,6 +51,35 @@ class TestBuildLogDir(unittest.TestCase):
             p,
             Path("/tmp/logs-root/2026-04-23/sess-1/turtle1/location.jsonl"),
         )
+
+    def test_collision_log_path(self):
+        root = Path("/tmp/logs-root")
+        p = build_collision_log_path(root, "2026-04-23", "sess-1")
+        self.assertEqual(
+            p,
+            (root / "2026-04-23" / "sess-1" / "collision.jsonl").resolve(),
+        )
+
+    def test_pose_log_consumer_collision_log_path(self):
+        c = PoseLogConsumer(
+            log_root=Path("/tmp/lr"), session_id="sid", date_str="2026-01-01"
+        )
+        self.assertEqual(
+            c.collision_log_path(),
+            Path("/tmp/lr/2026-01-01/sid/collision.jsonl").resolve(),
+        )
+
+
+class TestCollisionJsonlWriter(unittest.TestCase):
+    def test_write_and_close(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "collision.jsonl"
+            w = CollisionJsonlWriter(p)
+            w.write_record({"a": 1})
+            w.close()
+            self.assertEqual(p.read_text().strip(), '{"a":1}')
 
 
 class TestPoseToRecord(unittest.TestCase):
