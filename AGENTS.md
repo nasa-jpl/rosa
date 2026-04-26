@@ -103,18 +103,6 @@
 
 ## 로컬 품질 검사
 
-커밋 전 아래 두 단계를 로컬에서 수행한다.
-
-### Ruff (lint + format)
-
-```bash
-uv run ruff check src/    # lint 오류 확인
-uv run ruff format src/   # 포맷 자동 수정
-```
-
-- `ruff check`에서 오류가 없는 상태로 커밋한다.
-- 설정은 `pyproject.toml`의 `[tool.ruff]` 섹션을 따른다.
-
 ### 디버깅 (VS Code)
 
 `.vscode/launch.json`에 두 가지 구성이 있다.
