@@ -25,11 +25,32 @@ obstacles:
       type: segments
       segments:
         - [ [ 0.0, 11.0 ], [ 0.0, 0.0 ] ]
-  - id: pond-center
+  - id: wet
     kind: static
     geometry:
       type: aabb
-      min_x: 4.75
-      min_y: 4.75
-      max_x: 6.25
-      max_y: 6.25
+      min_x: 5.0
+      min_y: 4.0
+      max_x: 7.0
+      max_y: 6.0
+  - id: a-point
+    kind: static
+    geometry:
+      type: circle
+      cx: 1.0
+      cy: 5.0
+      r: 0.25
+  - id: b-point
+    kind: static
+    geometry:
+      type: circle
+      cx: 10.0
+      cy: 5.0
+      r: 0.25
+  - id: c-point
+    kind: static
+    geometry:
+      type: circle
+      cx: 6.0
+      cy: 7.0
+      r: 0.25
