@@ -25,7 +25,9 @@ sys.path.insert(0, str(_SCRIPTS))
 
 from pose_logger import (  # noqa: E402
     POSE_LOG_INTERVAL_SEC,
+    PoseLogConsumer,
     build_log_dir,
+    build_location_log_path,
     pose_to_record,
     resolve_log_root,
 )
@@ -37,7 +39,15 @@ class TestBuildLogDir(unittest.TestCase):
         p = build_log_dir(root, "2026-04-23", "sess-1", "turtle1")
         self.assertEqual(
             p,
-            Path("/tmp/logs-root/2026-04-23/location/sess-1/turtle1"),
+            Path("/tmp/logs-root/2026-04-23/sess-1/turtle1"),
+        )
+
+    def test_location_log_path(self):
+        root = Path("/tmp/logs-root")
+        p = build_location_log_path(root, "2026-04-23", "sess-1", "turtle1")
+        self.assertEqual(
+            p,
+            Path("/tmp/logs-root/2026-04-23/sess-1/turtle1/location.jsonl"),
         )
 
 
@@ -90,6 +100,38 @@ class TestResolveLogRoot(unittest.TestCase):
 class TestPoseLogIntervalConstant(unittest.TestCase):
     def test_default_one_second(self):
         self.assertEqual(POSE_LOG_INTERVAL_SEC, 1.0)
+
+
+class TestPoseLogConsumer(unittest.TestCase):
+    def test_writes_one_file_per_turtle_with_sampling(self):
+        import json
+        import tempfile
+
+        pose = SimpleNamespace(
+            x=1.0,
+            y=2.0,
+            theta=0.5,
+            linear_velocity=0.1,
+            angular_velocity=0.2,
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            consumer = PoseLogConsumer(
+                period=1.0,
+                log_root=Path(tmp),
+                date_str="2026-04-23",
+                session_id="sess-1",
+            )
+            try:
+                consumer.on_pose("turtle1", pose, {"secs": 10, "nsecs": 0})
+                consumer.on_pose("turtle1", pose, {"secs": 10, "nsecs": 500000000})
+                consumer.on_pose("turtle1", pose, {"secs": 11, "nsecs": 0})
+            finally:
+                consumer.close()
+
+            path = Path(tmp) / "2026-04-23" / "sess-1" / "turtle1" / "location.jsonl"
+            rows = [json.loads(line) for line in path.read_text().splitlines()]
+            self.assertEqual(len(rows), 2)
+            self.assertEqual(rows[0]["x"], 1.0)
 
 
 if __name__ == "__main__":

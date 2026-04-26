@@ -19,6 +19,11 @@ import rospy
 from geometry_msgs.msg import Twist
 from langchain.agents import tool
 from std_srvs.srv import Empty
+from turtle_lifecycle import (
+    configure_turtle_lifecycle_listener,
+    notify_turtle_killed,
+    notify_turtle_spawned,
+)
 from turtlesim.msg import Pose
 from turtlesim.srv import Spawn, TeleportAbsolute, TeleportRelative, Kill, SetPen
 
@@ -131,6 +136,7 @@ def spawn_turtle(name: str, x: float, y: float, theta: float) -> str:
 
         global cmd_vel_pubs
         cmd_vel_pubs[name] = rospy.Publisher(f"/{name}/cmd_vel", Twist, queue_size=10)
+        notify_turtle_spawned(name)
 
         return f"{name} spawned at x: {x}, y: {y}, theta: {theta}."
     except Exception as e:
@@ -161,6 +167,7 @@ def kill_turtle(names: List[str]):
             kill()
 
             cmd_vel_pubs.pop(name, None)
+            notify_turtle_killed(name)
 
             response += f"Successfully killed {name}.\n"
         except rospy.ServiceException as e:

@@ -12,13 +12,18 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-"""Periodic turtlesim pose logging to JSONL (ROS 1 / rospy only in PoseLogger)."""
+"""Periodic turtlesim pose logging to JSONL.
+
+The pure helpers and :class:`PoseLogConsumer` are ROS-free at import time. ROS 1
+imports are delayed to runtime wrappers so unit tests can run without turtlesim.
+"""
 
 from __future__ import annotations
 
 import json
 import os
 import threading
+import time
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -38,8 +43,15 @@ def resolve_log_root() -> Path:
 def build_log_dir(
     log_root: Path, date_str: str, session_id: str, turtle_id: str
 ) -> Path:
-    """logs/<date>/location/<session>/<turtle>/"""
-    return log_root / date_str / "location" / session_id / turtle_id
+    """logs/<date>/<session>/<turtle>/"""
+    return log_root / date_str / session_id / turtle_id
+
+
+def build_location_log_path(
+    log_root: Path, date_str: str, session_id: str, turtle_id: str
+) -> Path:
+    """Return ``logs/<date>/<session>/<turtle>/location.jsonl``."""
+    return build_log_dir(log_root, date_str, session_id, turtle_id) / "location.jsonl"
 
 
 def pose_to_record(pose: Any, stamp: Any) -> Dict[str, Any]:
@@ -62,9 +74,100 @@ def pose_to_record(pose: Any, stamp: Any) -> Dict[str, Any]:
     }
 
 
+def _stamp_to_seconds(stamp: Any) -> float:
+    if hasattr(stamp, "secs"):
+        return float(stamp.secs) + float(stamp.nsecs) / 1_000_000_000.0
+    if isinstance(stamp, dict) and "secs" in stamp and "nsecs" in stamp:
+        return float(stamp["secs"]) + float(stamp["nsecs"]) / 1_000_000_000.0
+    return time.monotonic()
+
+
+class PoseLogConsumer:
+    """PoseHub consumer that writes one ``location.jsonl`` file per turtle."""
+
+    def __init__(
+        self,
+        *,
+        period: float = POSE_LOG_INTERVAL_SEC,
+        log_root: Optional[Path] = None,
+        session_id: Optional[str] = None,
+        date_str: Optional[str] = None,
+    ) -> None:
+        self._period = float(period)
+        self._log_root = log_root or resolve_log_root()
+        self._session_id = session_id or str(uuid.uuid4())
+        self._date_str = date_str or datetime.now().strftime("%Y-%m-%d")
+        self._lock = threading.Lock()
+        self._files: Dict[str, TextIO] = {}
+        self._paths: Dict[str, Path] = {}
+        self._last_written_at: Dict[str, float] = {}
+        self._closed = False
+
+    @property
+    def session_id(self) -> str:
+        return self._session_id
+
+    def path_for(self, turtle_id: str) -> Path:
+        turtle_id = str(turtle_id).replace("/", "")
+        return build_location_log_path(
+            self._log_root, self._date_str, self._session_id, turtle_id
+        )
+
+    def on_pose(self, turtle_id: str, pose: Any, stamp: Any) -> None:
+        stamp_seconds = _stamp_to_seconds(stamp)
+        turtle_id = str(turtle_id).replace("/", "")
+        if not turtle_id:
+            return
+
+        with self._lock:
+            if self._closed:
+                return
+            last = self._last_written_at.get(turtle_id)
+            if last is not None and stamp_seconds - last < self._period:
+                return
+
+            fp = self._files.get(turtle_id)
+            if fp is None:
+                path = self.path_for(turtle_id)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                fp = open(path, "a", encoding="utf-8")
+                self._files[turtle_id] = fp
+                self._paths[turtle_id] = path
+
+            line = json.dumps(pose_to_record(pose, stamp), separators=(",", ":")) + "\n"
+            fp.write(line)
+            fp.flush()
+            self._last_written_at[turtle_id] = stamp_seconds
+
+    def __call__(self, turtle_id: str, pose: Any, stamp: Any) -> None:
+        self.on_pose(turtle_id, pose, stamp)
+
+    def close(self) -> None:
+        with self._lock:
+            self._closed = True
+            files = tuple(self._files.values())
+            self._files.clear()
+        for fp in files:
+            try:
+                fp.flush()
+            except OSError:
+                pass
+            try:
+                fp.close()
+            except OSError:
+                pass
+
+    def close_all(self) -> None:
+        self.close()
+
+
 class PoseLogger:
     """
-    Subscribe to /{turtle_id}/pose and append one JSON line per period to pose.jsonl.
+    Subscribe to /{turtle_id}/pose and append one JSON line per period.
+
+    This single-turtle wrapper is kept for compatibility. New multi-turtle code
+    should use :class:`PoseLogConsumer` with ``PoseHub``.
+
     Requires rospy.AsyncSpinner (or similar) so callbacks run while the main thread is busy.
     """
 
@@ -114,7 +217,7 @@ class PoseLogger:
         date_str = datetime.now().strftime("%Y-%m-%d")
         log_dir = build_log_dir(log_root, date_str, session_id, turtle_id)
         log_dir.mkdir(parents=True, exist_ok=True)
-        self._path = log_dir / "pose.jsonl"
+        self._path = log_dir / "location.jsonl"
         self._fp = open(self._path, "a", encoding="utf-8")
 
         self._turtle_id = turtle_id
