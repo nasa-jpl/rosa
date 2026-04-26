@@ -81,6 +81,19 @@ https://github.com/user-attachments/assets/77b97014-6d2e-4123-8d0b-ea0916d93a4e
 
 For detailed instructions on setting up and running the TurtleSim demo, please refer to our [TurtleSim Demo Guide](https://github.com/nasa-jpl/rosa/wiki/Guide:-TurtleSim-Demo) in the Wiki.
 
+### TurtleSim Obstacles
+
+The TurtleSim demo can load static obstacles into an in-process `ObstacleStore`
+before the agent conversation starts. Set `~static_obstacles_file` to a YAML or
+JSON map such as `src/turtle_agent/config/static_obstacles_turtlesim.yaml`.
+
+When `~draw_static_world` is enabled, a startup-only `rospy` world builder reads
+the same store snapshot and draws the static world with a temporary builder
+turtle. Runtime obstacle CRUD is managed through LangChain tools that update the
+same store directly. `static` obstacles remain until removed; `ephemeral`
+obstacles expire after their TTL. No HTTP layer is used for obstacle CRUD or
+initial map injection.
+
 
 ## IsaacSim Extension (Coming Soon)
 

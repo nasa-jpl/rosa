@@ -208,9 +208,12 @@ class TestStaticMapLoader(unittest.TestCase):
         self.assertTrue(sample.is_file(), msg=f"missing {sample}")
         store = ObstacleStore()
         n = load_file(store, sample)
-        self.assertEqual(n, 4)
+        self.assertEqual(n, 5)
         ids = {o.id for o in store.snapshot()}
-        self.assertEqual(ids, {"wall-south", "wall-east", "wall-north", "wall-west"})
+        self.assertEqual(
+            ids,
+            {"wall-south", "wall-east", "wall-north", "wall-west", "pond-center"},
+        )
 
 
 if __name__ == "__main__":

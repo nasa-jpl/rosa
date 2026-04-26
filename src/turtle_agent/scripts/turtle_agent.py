@@ -36,12 +36,14 @@ from rich.text import Text
 from rosa import ROSA
 
 import tools.turtle as turtle_tools
+import tools.obstacle as obstacle_tools
 from help import get_help
 from obstacle_store import ObstacleStore
 from pose_logger import PoseLogger
 from llm import get_llm
 from prompts import get_prompts
 from static_map_loader import StaticMapLoadError, load_file
+from world_builder import draw_static_world
 
 
 def _maybe_attach_debugpy() -> None:
@@ -110,7 +112,8 @@ class TurtleAgent(ROSA):
         obstacle_store: Optional[ObstacleStore] = None,
     ):
         self.__blacklist = ["master", "docker"]
-        self._obstacle_store = obstacle_store
+        self._obstacle_store = obstacle_store or ObstacleStore()
+        obstacle_tools.configure_obstacle_store(self._obstacle_store)
         self.__prompts = get_prompts()
         self.__llm = get_llm(streaming=streaming)
 
@@ -134,7 +137,7 @@ class TurtleAgent(ROSA):
             ros_version=1,
             llm=self.__llm,
             tools=[cool_turtle_tool, blast_off],
-            tool_packages=[turtle_tools],
+            tool_packages=[turtle_tools, obstacle_tools],
             blacklist=self.__blacklist,
             prompts=self.__prompts,
             verbose=verbose,
@@ -388,15 +391,22 @@ def main():
     dotenv.load_dotenv(dotenv.find_dotenv())
 
     streaming = rospy.get_param("~streaming", False)
-    obstacle_store: Optional[ObstacleStore] = None
+    obstacle_store = ObstacleStore()
     path = str(rospy.get_param("~static_obstacles_file", "")).strip()
     if path:
-        obstacle_store = ObstacleStore()
         try:
             load_file(obstacle_store, path)
         except StaticMapLoadError as e:
             rospy.logerr("static obstacles: %s", e)
             raise
+        if rospy.get_param("~draw_static_world", True):
+            try:
+                count = draw_static_world(obstacle_store)
+                rospy.loginfo("static world builder drew %s segments", count)
+            except Exception as e:
+                rospy.logerr("static world builder failed: %s", e)
+                if rospy.get_param("~world_builder_required", True):
+                    raise
 
     turtle_agent = TurtleAgent(
         verbose=False, streaming=streaming, obstacle_store=obstacle_store
