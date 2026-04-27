@@ -7,7 +7,12 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from command_logger import build_command_log_path
-from pose_logger import build_location_log_path, build_log_dir, resolve_log_root
+from pose_logger import (
+    build_collision_log_path,
+    build_location_log_path,
+    build_log_dir,
+    resolve_log_root,
+)
 
 
 def resolve_memory_root() -> Path:
@@ -96,12 +101,64 @@ def _pick_pose_for_time(location_rows: List[Dict[str, Any]], t_ms: int) -> Dict[
     }
 
 
+def _collision_to_unix_ms(collision_row: Dict[str, Any]) -> int:
+    t_ros = collision_row.get("t_ros", {})
+    secs = int(t_ros.get("secs", 0))
+    nsecs = int(t_ros.get("nsecs", 0))
+    return int(secs * 1000 + nsecs / 1_000_000)
+
+
+def _pick_collision_events_for_time(
+    collision_rows: List[Dict[str, Any]],
+    t_ms: int,
+    *,
+    turtle_id: str,
+    window_ms: int = 1500,
+    max_events: int = 3,
+) -> List[Dict[str, Any]]:
+    candidates: List[Tuple[int, Dict[str, Any]]] = []
+    for row in collision_rows:
+        turtles = row.get("turtles", [])
+        if isinstance(turtles, list) and turtles and turtle_id not in turtles:
+            continue
+        event_t_ms = _collision_to_unix_ms(row)
+        delta = abs(event_t_ms - t_ms)
+        if delta > window_ms:
+            continue
+        candidates.append((delta, row))
+
+    if not candidates:
+        return []
+
+    candidates.sort(key=lambda item: item[0])
+    out: List[Dict[str, Any]] = []
+    for delta, row in candidates[:max_events]:
+        out.append(
+            {
+                "type": "collision",
+                "event_type": str(row.get("event_type", "unknown")),
+                "collision_type": str(row.get("collision_type", "unknown")),
+                "obstacle_id": row.get("obstacle_id"),
+                "turtles": row.get("turtles", []),
+                "t_ms": _collision_to_unix_ms(row),
+                "distance_ms": delta,
+                "pose": {
+                    "x": float(row.get("x", 0.0)),
+                    "y": float(row.get("y", 0.0)),
+                    "theta": float(row.get("theta", 0.0)),
+                },
+            }
+        )
+    return out
+
+
 class MemoryConverter:
     """거북이 로그를 단기/장기 기억 스키마로 변환해 저장합니다."""
 
     def __init__(self, memory_root: Optional[Path] = None) -> None:
         """변환기 인스턴스를 초기화합니다."""
         self._memory_root = memory_root or resolve_memory_root()
+        self._default_collision_window_ms = 1500
     def convert_session(
         self,
         *,
@@ -111,6 +168,7 @@ class MemoryConverter:
         test_case_id: Optional[str] = None,
         log_root: Optional[Path] = None,
         write_long_term: bool = False,
+        collision_window_ms: Optional[int] = None,
     ) -> Dict[str, int]:
         """세션 로그를 읽어 단기 기억 파일로 변환 저장합니다."""
         log_root = log_root or resolve_log_root()
@@ -135,14 +193,26 @@ class MemoryConverter:
         if not resolved_session or not resolved_turtle:
             raise ValueError("session_id와 turtle_id를 확인할 수 없습니다.")
 
+        collision_path = build_collision_log_path(
+            log_root=log_root,
+            date_str=date_str,
+            session_id=resolved_session,
+        )
         location_rows = read_jsonl(location_path)
         command_rows = read_jsonl(command_path)
+        collision_rows = read_jsonl(collision_path)
         command_rows = normalize_command_rows(command_rows)
         short_term_records = self._build_short_term_records(
             location_rows=location_rows,
             command_rows=command_rows,
+            collision_rows=collision_rows,
             session_id=resolved_session,
             turtle_id=resolved_turtle,
+            collision_window_ms=(
+                self._default_collision_window_ms
+                if collision_window_ms is None
+                else max(0, int(collision_window_ms))
+            ),
         )
 
         resolved_test_case_id = test_case_id or resolved_session
@@ -184,8 +254,10 @@ class MemoryConverter:
         *,
         location_rows: List[Dict[str, Any]],
         command_rows: List[Dict[str, Any]],
+        collision_rows: List[Dict[str, Any]],
         session_id: str,
         turtle_id: str,
+        collision_window_ms: int,
     ) -> List[Dict[str, Any]]:
         intents = [row for row in command_rows if row.get("type") == "intent"]
         skills = [row for row in command_rows if row.get("type") == "skill"]
@@ -220,7 +292,12 @@ class MemoryConverter:
                                 "result": s.get("result", ""),
                             }
                         ],
-                        "events": [],
+                        "events": _pick_collision_events_for_time(
+                            collision_rows,
+                            step_t_ms,
+                            turtle_id=turtle_id,
+                            window_ms=collision_window_ms,
+                        ),
                     }
                 )
 
@@ -291,11 +368,23 @@ class MemoryConverter:
             if str(short.get("active_goal", {}).get("natural_language", "")).strip()
         ]
         action_trace: List[Dict[str, Any]] = []
+        short_term_collision_events = 0
+        short_term_collision_enter_count = 0
+        collision_obstacles = set()
         for short in short_term_batch:
             steps = short.get("execution_trace", {}).get("steps", [])
             if not steps:
                 continue
             step = steps[-1]
+            for event in step.get("events", []):
+                if str(event.get("type", "")) != "collision":
+                    continue
+                short_term_collision_events += 1
+                if str(event.get("event_type", "")) == "enter":
+                    short_term_collision_enter_count += 1
+                obstacle_id = event.get("obstacle_id")
+                if isinstance(obstacle_id, str) and obstacle_id:
+                    collision_obstacles.add(obstacle_id)
             invocations = step.get("skill_invocations", [])
             if not invocations:
                 continue
@@ -356,6 +445,9 @@ class MemoryConverter:
                         sum(1 for item in action_trace if item.get("status") == "success") / max(1, len(action_trace)),
                         3,
                     ),
+                    "collision_events": short_term_collision_events,
+                    "collision_enter_count": short_term_collision_enter_count,
+                    "collision_obstacles": sorted(collision_obstacles),
                 },
                 "lessons": [
                     "Follow-up references should inherit prior shape context.",

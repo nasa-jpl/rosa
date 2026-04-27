@@ -14,7 +14,7 @@ from memory_converter import (  # noqa: E402
     build_short_term_path,
     parse_context_from_log_path,
 )
-from pose_logger import build_location_log_path  # noqa: E402
+from pose_logger import build_collision_log_path, build_location_log_path  # noqa: E402
 from command_logger import build_command_log_path  # noqa: E402
 
 
@@ -39,6 +39,7 @@ class TestMemoryConverter(unittest.TestCase):
 
         location_path = build_location_log_path(log_root, date_str, session_id, turtle_id)
         command_path = build_command_log_path(log_root, date_str, session_id, turtle_id)
+        collision_path = build_collision_log_path(log_root, date_str, session_id)
         location_path.parent.mkdir(parents=True, exist_ok=True)
 
         # 실제 장애물 월드 실행에서 수집한 location 로그 패턴을 반영한 샘플
@@ -102,6 +103,48 @@ class TestMemoryConverter(unittest.TestCase):
             encoding="utf-8",
         )
         command_path.write_text(json.dumps(command_doc, ensure_ascii=False) + "\n", encoding="utf-8")
+        collision_rows = [
+            {
+                "event_type": "enter",
+                "collision_type": "turtle_obstacle",
+                "turtles": [turtle_id],
+                "obstacle_id": "wet",
+                "t_ros": {"secs": 1777265125, "nsecs": 250000000},
+                "x": 10.88,
+                "y": 5.54,
+                "theta": 0.0,
+                "linear_velocity": 0.55,
+                "angular_velocity": 0.0,
+            },
+            {
+                "event_type": "enter",
+                "collision_type": "turtle_obstacle",
+                "turtles": ["turtle2"],
+                "obstacle_id": "wet-other",
+                "t_ros": {"secs": 1777265125, "nsecs": 495000000},
+                "x": 10.90,
+                "y": 5.54,
+                "theta": 0.0,
+                "linear_velocity": 0.55,
+                "angular_velocity": 0.0,
+            },
+            {
+                "event_type": "stay",
+                "collision_type": "turtle_obstacle",
+                "turtles": [turtle_id],
+                "obstacle_id": "wet-far",
+                "t_ros": {"secs": 1777265124, "nsecs": 100000000},
+                "x": 10.20,
+                "y": 5.54,
+                "theta": 0.0,
+                "linear_velocity": 0.55,
+                "angular_velocity": 0.0,
+            }
+        ]
+        collision_path.write_text(
+            "\n".join(json.dumps(r, ensure_ascii=False) for r in collision_rows) + "\n",
+            encoding="utf-8",
+        )
 
         converter = MemoryConverter(memory_root=memory_root)
         long_path = build_long_term_path(memory_root, session_id)
@@ -114,6 +157,7 @@ class TestMemoryConverter(unittest.TestCase):
             turtle_id=turtle_id,
             test_case_id=test_case_id,
             log_root=log_root,
+            collision_window_ms=300,
         )
 
         self.assertEqual(result["short_term_written"], 2)
@@ -132,6 +176,13 @@ class TestMemoryConverter(unittest.TestCase):
         self.assertEqual(short_rows[0]["active_goal"]["natural_language"], obstacle_run_cmd)
         self.assertNotIn("intent_norm", short_rows[0])
         self.assertEqual(short_rows[1]["plan"]["current_step_idx"], 2)
+        self.assertEqual(short_rows[0]["execution_trace"]["steps"][-1]["events"], [])
+        second_events = short_rows[1]["execution_trace"]["steps"][-1]["events"]
+        self.assertEqual(len(second_events), 1)
+        self.assertEqual(second_events[0]["type"], "collision")
+        self.assertEqual(second_events[0]["event_type"], "enter")
+        self.assertEqual(second_events[0]["collision_type"], "turtle_obstacle")
+        self.assertEqual(second_events[0]["obstacle_id"], "wet")
         self.assertEqual(len(long_rows), before_long_count)
 
     def test_finalize_session_writes_compressed_long_term(self):
@@ -166,6 +217,19 @@ class TestMemoryConverter(unittest.TestCase):
         }
         for idx in range(5):
             rec = dict(base)
+            step = dict(base["execution_trace"]["steps"][0])
+            step["events"] = [
+                {
+                    "type": "collision",
+                    "event_type": "enter",
+                    "collision_type": "turtle_obstacle",
+                    "obstacle_id": "wet",
+                    "t_ms": 1777275300520 + idx,
+                    "distance_ms": idx,
+                    "pose": {"x": 5.5, "y": 5.5, "theta": 1.2},
+                }
+            ]
+            rec["execution_trace"] = {"steps": [step]}
             rec["clock"] = {"unix_ms": 1777275300520 + idx, "map_id": "world"}
             path = session_dir / f"short_testid_tc-{idx}.jsonl"
             path.write_text(json.dumps(rec, ensure_ascii=False) + "\n", encoding="utf-8")
@@ -181,6 +245,12 @@ class TestMemoryConverter(unittest.TestCase):
         self.assertEqual(rows[-1]["record_type"], "compressed_routine")
         self.assertEqual(rows[-1]["turtle_id"], turtle_id)
         self.assertEqual(rows[-1]["payload"]["evidence"]["n_episodes"], 5)
+        self.assertIn("success_rate", rows[-1]["payload"]["evidence"])
+        self.assertEqual(rows[-1]["payload"]["evidence"]["collision_events"], 5)
+        self.assertEqual(rows[-1]["payload"]["evidence"]["collision_enter_count"], 5)
+        self.assertEqual(rows[-1]["payload"]["evidence"]["collision_obstacles"], ["wet"])
+        self.assertIn("routine", rows[-1]["payload"])
+        self.assertIn("meta", rows[-1])
 
 
 if __name__ == "__main__":
