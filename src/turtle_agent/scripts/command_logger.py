@@ -6,7 +6,7 @@ import time
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, Set, TextIO
+from typing import Any, Dict, Optional
 
 from pose_logger import build_log_dir, resolve_log_root
 
@@ -19,7 +19,7 @@ def build_command_log_path(
 
 
 class CommandLogger:
-    """의도/스킬 실행 레코드를 `command.jsonl`에 누적 기록합니다."""
+    """의도/스킬 실행 레코드를 세션 단일 JSON 객체로 기록합니다."""
 
     def __init__(
         self,
@@ -33,8 +33,7 @@ class CommandLogger:
         self._session_id = session_id or str(uuid.uuid4())
         self._date_str = date_str or datetime.now().strftime("%Y-%m-%d")
         self._lock = threading.Lock()
-        self._files: Dict[str, TextIO] = {}
-        self._logged_intent_turtles: Set[str] = set()
+        self._records_by_turtle: Dict[str, Dict[str, Any]] = {}
         self._closed = False
 
     def path_for(self, turtle_id: str) -> Path:
@@ -47,22 +46,39 @@ class CommandLogger:
             turtle_id,
         )
 
+    @property
+    def session_id(self) -> str:
+        """현재 command 로그 세션 ID를 반환합니다."""
+        return self._session_id
+
+    @property
+    def date_str(self) -> str:
+        """현재 command 로그 날짜 키(YYYY-MM-DD)를 반환합니다."""
+        return self._date_str
+
     def log_intent(self, turtle_id: str, intent: Dict[str, Any]) -> None:
-        """세션 시작 의도(intent)를 터틀별로 1회만 기록합니다."""
+        """현재 질의의 의도(intent)를 기록하고 기존 스킬 목록을 초기화합니다."""
         turtle_id = str(turtle_id).replace("/", "")
         if not turtle_id:
             return
         with self._lock:
-            if self._closed or turtle_id in self._logged_intent_turtles:
+            if self._closed:
                 return
+            session_record = self._get_or_create_record_locked(turtle_id)
             rec = {
                 "type": "intent",
                 "t_ms": int(time.time() * 1000),
                 "task_family": str(intent.get("task_family", "unknown")),
                 "slots": intent.get("slots", {}),
             }
-            self._write_record_locked(turtle_id, rec)
-            self._logged_intent_turtles.add(turtle_id)
+            if "natural_language" in intent:
+                rec["natural_language"] = intent.get("natural_language")
+            if "query" in intent:
+                rec["query"] = intent.get("query")
+            session_record["intent"] = rec
+            # One query = one command snapshot.
+            session_record["skills"] = []
+            self._flush_record_locked(turtle_id)
 
     def log_skill(
         self,
@@ -80,6 +96,7 @@ class CommandLogger:
         with self._lock:
             if self._closed:
                 return
+            session_record = self._get_or_create_record_locked(turtle_id)
             rec = {
                 "type": "skill",
                 "t_ms": int(time.time() * 1000),
@@ -88,32 +105,32 @@ class CommandLogger:
                 "status": status,
                 "result": result,
             }
-            self._write_record_locked(turtle_id, rec)
+            session_record["skills"].append(rec)
+            self._flush_record_locked(turtle_id)
 
-    def _write_record_locked(self, turtle_id: str, record: Dict[str, Any]) -> None:
-        fp = self._files.get(turtle_id)
-        if fp is None:
-            path = self.path_for(turtle_id)
-            path.parent.mkdir(parents=True, exist_ok=True)
-            fp = open(path, "a", encoding="utf-8")
-            self._files[turtle_id] = fp
+    def _get_or_create_record_locked(self, turtle_id: str) -> Dict[str, Any]:
+        record = self._records_by_turtle.get(turtle_id)
+        if record is not None:
+            return record
 
-        fp.write(json.dumps(record, separators=(",", ":"), ensure_ascii=False) + "\n")
-        fp.flush()
+        record = {
+            "session_id": self._session_id,
+            "turtle_id": turtle_id,
+            "intent": None,
+            "skills": [],
+        }
+        self._records_by_turtle[turtle_id] = record
+        return record
+
+    def _flush_record_locked(self, turtle_id: str) -> None:
+        path = self.path_for(turtle_id)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        payload = self._records_by_turtle[turtle_id]
+        with open(path, "w", encoding="utf-8") as fp:
+            fp.write(json.dumps(payload, separators=(",", ":"), ensure_ascii=False) + "\n")
 
     def close(self) -> None:
-        """열린 로그 파일 핸들을 모두 flush/close 합니다."""
+        """close 호출 이후 로그 기록을 중단합니다."""
         with self._lock:
             self._closed = True
-            files = tuple(self._files.values())
-            self._files.clear()
-
-        for fp in files:
-            try:
-                fp.flush()
-            except OSError:
-                pass
-            try:
-                fp.close()
-            except OSError:
-                pass
+            self._records_by_turtle.clear()

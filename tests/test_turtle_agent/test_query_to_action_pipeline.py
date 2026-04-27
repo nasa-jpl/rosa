@@ -75,7 +75,7 @@ class TestCommandLogger(unittest.TestCase):
         p = build_command_log_path(Path("/tmp/logs"), "2026-04-27", "sess-1", "turtle1")
         self.assertEqual(p, Path("/tmp/logs/2026-04-27/sess-1/turtle1/command.jsonl"))
 
-    def test_intent_logged_only_once_and_skill_always_logged(self):
+    def test_intent_is_replaced_per_query_and_skill_logged(self):
         with tempfile.TemporaryDirectory() as tmp:
             logger = CommandLogger(
                 log_root=Path(tmp),
@@ -96,10 +96,13 @@ class TestCommandLogger(unittest.TestCase):
                 logger.close()
 
             path = Path(tmp) / "2026-04-27" / "sess-1" / "turtle1" / "command.jsonl"
-            rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
-            self.assertEqual(len(rows), 2)
-            self.assertEqual(rows[0]["type"], "intent")
-            self.assertEqual(rows[1]["type"], "skill")
+            doc = json.loads(path.read_text(encoding="utf-8").strip())
+            self.assertEqual(doc["session_id"], "sess-1")
+            self.assertEqual(doc["turtle_id"], "turtle1")
+            self.assertEqual(doc["intent"]["type"], "intent")
+            self.assertEqual(doc["intent"]["task_family"], "goto")
+            self.assertEqual(len(doc["skills"]), 1)
+            self.assertEqual(doc["skills"][0]["type"], "skill")
 
 
 if __name__ == "__main__":
