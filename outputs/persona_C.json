@@ -1,0 +1,77 @@
+{
+  "persona_id": "ROBOT_C",
+  "persona_version": "2.0",
+  "memory_type": "full",
+  "kgi_alignment": {
+    "kgi_id": "KGI_MEMORY_DIVERGENCE_001",
+    "objective": "Inject different virtual memories into three robots so identical commands produce different behaviors.",
+    "role_in_experiment": "Long-term + short-term memory group"
+  },
+  "long_term_memory": {
+    "learned_rules": [
+      "position (2,2) is dangerous - wet floor, avoid it",
+      "when wall collision detected, change direction immediately",
+      "reduce speed near obstacles",
+      "prefer safe detours over shortest path when risk is high"
+    ],
+    "past_incidents": [
+      {
+        "summary": "slipped at position (2,2) while moving to target",
+        "position": {
+          "x": 2,
+          "y": 2
+        },
+        "severity": "high",
+        "lesson": "mark cell as avoid zone and route around"
+      },
+      {
+        "summary": "wall collision at boundary (0,y) caused task failure",
+        "position": "boundary (0,y)",
+        "severity": "medium",
+        "lesson": "turn away immediately from wall-facing heading"
+      }
+    ]
+  },
+  "short_term_memory": {
+    "current_task": "Move from (1,1) to (8,8)",
+    "last_3_actions": [],
+    "current_position": {
+      "x": 1,
+      "y": 1
+    },
+    "target_position": {
+      "x": 8,
+      "y": 8
+    },
+    "working_state": {
+      "navigation_mode": "safety_first",
+      "recent_obstacle_seen": false,
+      "retry_budget": 3
+    }
+  },
+  "active_goal": {
+    "natural_language": "Move from (1,1) to (8,8) while avoiding dangerous areas"
+  },
+  "decision_profile": {
+    "style": "memory_guided_safe_navigation",
+    "risk_tolerance": "low",
+    "adaptation_capability": "high_with_past_incident_recall"
+  },
+  "expected_behavior_signature": {
+    "path_preference": "safer_detour_around_known_risks",
+    "obstacle_response": "proactive_avoidance_plus_reactive_correction",
+    "consistency_across_runs": "high"
+  },
+  "evaluation_hooks": {
+    "primary_metrics": [
+      "collision_count",
+      "unsafe_zone_entries",
+      "time_to_goal",
+      "rule_compliance_rate"
+    ],
+    "comparison_group": [
+      "ROBOT_A",
+      "ROBOT_B"
+    ]
+  }
+}

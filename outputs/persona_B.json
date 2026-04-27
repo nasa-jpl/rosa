@@ -1,0 +1,52 @@
+{
+  "persona_id": "ROBOT_B",
+  "persona_version": "2.0",
+  "memory_type": "short_only",
+  "kgi_alignment": {
+    "kgi_id": "KGI_MEMORY_DIVERGENCE_001",
+    "objective": "Inject different virtual memories into three robots so identical commands produce different behaviors.",
+    "role_in_experiment": "Short-term context only group"
+  },
+  "long_term_memory": null,
+  "short_term_memory": {
+    "current_task": "Move from (1,1) to (8,8)",
+    "last_3_actions": [],
+    "current_position": {
+      "x": 1,
+      "y": 1
+    },
+    "target_position": {
+      "x": 8,
+      "y": 8
+    },
+    "working_state": {
+      "navigation_mode": "goal_directed",
+      "recent_obstacle_seen": false,
+      "retry_budget": 2
+    }
+  },
+  "active_goal": {
+    "natural_language": "Move from (1,1) to (8,8)"
+  },
+  "decision_profile": {
+    "style": "context_aware_execution",
+    "risk_tolerance": "medium",
+    "adaptation_capability": "short_horizon_only"
+  },
+  "expected_behavior_signature": {
+    "path_preference": "efficient_with_local_adjustments",
+    "obstacle_response": "uses_current_context_but_no_past_lesson",
+    "consistency_across_runs": "medium"
+  },
+  "evaluation_hooks": {
+    "primary_metrics": [
+      "time_to_goal",
+      "collision_count",
+      "replan_count"
+    ],
+    "comparison_group": [
+      "ROBOT_A",
+      "ROBOT_C"
+    ]
+  }
+}

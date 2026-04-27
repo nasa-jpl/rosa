@@ -1,0 +1,36 @@
+{
+  "persona_id": "ROBOT_A",
+  "persona_version": "2.0",
+  "memory_type": "none",
+  "kgi_alignment": {
+    "kgi_id": "KGI_MEMORY_DIVERGENCE_001",
+    "objective": "Inject different virtual memories into three robots so identical commands produce different behaviors.",
+    "role_in_experiment": "No-memory baseline control group"
+  },
+  "long_term_memory": null,
+  "short_term_memory": null,
+  "active_goal": {
+    "natural_language": "Move from (1,1) to (8,8)"
+  },
+  "decision_profile": {
+    "style": "direct_shortest_path",
+    "risk_tolerance": "unknown",
+    "adaptation_capability": "minimal_without_memory_context"
+  },
+  "expected_behavior_signature": {
+    "path_preference": "straight_or_naive_shortest",
+    "obstacle_response": "reactive_only",
+    "consistency_across_runs": "low_to_medium"
+  },
+  "evaluation_hooks": {
+    "primary_metrics": [
+      "time_to_goal",
+      "collision_count",
+      "path_efficiency"
+    ],
+    "comparison_group": [
+      "ROBOT_B",
+      "ROBOT_C"
+    ]
+  }
+}
