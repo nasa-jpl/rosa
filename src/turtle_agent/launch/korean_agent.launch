@@ -1,0 +1,23 @@
+<launch>
+    <arg name="streaming" default="false" />
+    <arg name="static_obstacles_file" default="$(find turtle_agent)/config/static_obstacles_turtlesim.yaml" />
+    <arg name="draw_static_world" default="true" />
+    <arg name="world_builder_required" default="true" />
+
+    <!-- turtlesim 노드 자동 실행 -->
+    <node name="turtlesim" pkg="turtlesim" type="turtlesim_node" output="screen" />
+
+    <!-- 한국어 거북이 에이전트 -->
+    <node name="korean_turtle_agent"
+          pkg="turtle_agent"
+          type="korean_turtle_agent.py"
+          respawn="false"
+          respawn_delay="10"
+          cwd="node"
+          output="screen" >
+        <param name="streaming" value="$(arg streaming)" />
+        <param name="static_obstacles_file" value="$(arg static_obstacles_file)" />
+        <param name="draw_static_world" value="$(arg draw_static_world)" />
+        <param name="world_builder_required" value="$(arg world_builder_required)" />
+    </node>
+</launch>
