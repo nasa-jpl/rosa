@@ -95,33 +95,48 @@ def _move_turtle_to(name: str, x: float, y: float) -> str:
 
 
 @langchain_tool
-def move_to_point(name: str, x: float, y: float) -> str:
-    """임의의 좌표 (x, y)까지 직선으로 이동한다. 거리와 각도는 자동 계산된다.
-    이름이 있는 지점(a-point, b-point, c-point)은 전용 도구를 사용해라.
-
-    :param name: 거북이 이름 (예: 'turtle1')
-    :param x: 목표 x 좌표 (0~11)
-    :param y: 목표 y 좌표 (0~11)
-    """
-    return _move_turtle_to(name, x, y)
-
-
-@langchain_tool
 def move_to_a_point() -> str:
-    """a-point (1, 5) 지점으로 turtle1을 직선 이동시킨다. 좌표는 고정이므로 파라미터 불필요."""
+    """a-point (1, 5) 지점으로 turtle1을 직선 이동시킨다. 파라미터 없음."""
     return _move_turtle_to("turtle1", *NAMED_POINTS["a-point"])
 
 
 @langchain_tool
 def move_to_b_point() -> str:
-    """b-point (10, 5) 지점으로 turtle1을 직선 이동시킨다. 좌표는 고정이므로 파라미터 불필요."""
+    """b-point (10, 5) 지점으로 turtle1을 직선 이동시킨다. 파라미터 없음."""
     return _move_turtle_to("turtle1", *NAMED_POINTS["b-point"])
 
 
 @langchain_tool
 def move_to_c_point() -> str:
-    """c-point (6, 7) 지점으로 turtle1을 직선 이동시킨다. 좌표는 고정이므로 파라미터 불필요."""
+    """c-point (6, 7) 지점으로 turtle1을 직선 이동시킨다. 파라미터 없음."""
     return _move_turtle_to("turtle1", *NAMED_POINTS["c-point"])
+
+
+# wet 영역 (5,4)~(7,6) 위쪽으로 우회하는 경유지
+_WET_AVOID_WAYPOINTS_TO_A = [(7.0, 7.0), (4.0, 7.0)]
+_WET_AVOID_WAYPOINTS_TO_B = [(4.0, 7.0), (7.0, 7.0)]
+
+
+@langchain_tool
+def avoid_wet_to_a_point() -> str:
+    """wet 위험 구간을 피해서 a-point (1, 5)까지 우회 이동한다. 파라미터 없음.
+    경로: 현재위치 → (7,7) → (4,7) → (1,5) 위쪽 우회."""
+    results = []
+    for wx, wy in _WET_AVOID_WAYPOINTS_TO_A:
+        results.append(_move_turtle_to("turtle1", wx, wy))
+    results.append(_move_turtle_to("turtle1", *NAMED_POINTS["a-point"]))
+    return " → ".join(results)
+
+
+@langchain_tool
+def avoid_wet_to_b_point() -> str:
+    """wet 위험 구간을 피해서 b-point (10, 5)까지 우회 이동한다. 파라미터 없음.
+    경로: 현재위치 → (4,7) → (7,7) → (10,5) 위쪽 우회."""
+    results = []
+    for wx, wy in _WET_AVOID_WAYPOINTS_TO_B:
+        results.append(_move_turtle_to("turtle1", wx, wy))
+    results.append(_move_turtle_to("turtle1", *NAMED_POINTS["b-point"]))
+    return " → ".join(results)
 
 
 TOOLS = [
@@ -129,8 +144,8 @@ TOOLS = [
     move_to_a_point,
     move_to_b_point,
     move_to_c_point,
-    move_to_point,
-    teleport_absolute,
+    avoid_wet_to_a_point,
+    avoid_wet_to_b_point,
     set_pen,
     list_obstacles,
     reset_turtlesim,
@@ -139,31 +154,25 @@ TOOLS = [
 SYSTEM_PROMPT = (
     "너는 한국어 TurtleSim 에이전트야. 항상 한국어로 대답해.\n"
     "\n"
-    "환경: 11x11 2D 공간. 거북이 이름에 /붙이지 마.\n"
+    "환경: 11x11 2D 공간.\n"
     "\n"
-    "사용 가능한 도구 9개:\n"
+    "사용 가능한 도구 9개 (모두 파라미터 없거나 최소):\n"
     "- get_turtle_pose: 거북이 현재 위치 확인\n"
-    "- move_to_a_point(): a-point (1,5)로 이동. 파라미터 없음.\n"
-    "- move_to_b_point(): b-point (10,5)로 이동. 파라미터 없음.\n"
-    "- move_to_c_point(): c-point (6,7)로 이동. 파라미터 없음.\n"
-    "- move_to_point(name, x, y): 임의 좌표까지 직선 이동 (경유지 등에 사용)\n"
-    "- teleport_absolute(name, x, y, theta): 순간이동 (선 안 그림)\n"
+    "- move_to_a_point(): a-point (1,5)로 직선 이동\n"
+    "- move_to_b_point(): b-point (10,5)로 직선 이동\n"
+    "- move_to_c_point(): c-point (6,7)로 직선 이동\n"
+    "- avoid_wet_to_a_point(): wet 구간을 피해서 a-point로 우회 이동\n"
+    "- avoid_wet_to_b_point(): wet 구간을 피해서 b-point로 우회 이동\n"
     "- set_pen(name, r, g, b, width, off): 펜 색상/켜기(off=0)/끄기(off=1)\n"
     "- list_obstacles: 현재 장애물 목록 조회\n"
     "- reset_turtlesim: 환경 초기화\n"
     "\n"
-    "정적 장애물 맵:\n"
-    "- wet: (5,4)~(7,6) 사각형 — 미끄러운 위험 구간\n"
-    "- a-point: (1, 5) → 반드시 move_to_a_point() 사용\n"
-    "- b-point: (10, 5) → 반드시 move_to_b_point() 사용\n"
-    "- c-point: (6, 7) → 반드시 move_to_c_point() 사용\n"
-    "\n"
     "이동 규칙:\n"
-    "- a/b/c 지점 이동 → 반드시 전용 도구 사용 (move_to_a_point 등)\n"
-    "- 경유지 이동 → move_to_point(name, x, y) 사용\n"
-    "- 선을 안 그리고 위치만 옮기기 → teleport_absolute 사용\n"
-    "- wet 회피 이동 → wet 영역 (5,4)~(7,6)을 피하는 경유지를 잡아서 move_to_point를 여러 번 호출\n"
-    "  예: b→a 회피 경로: move_to_point(7,7) → move_to_point(4,7) → move_to_a_point()\n"
+    "- a-point로 이동 → move_to_a_point()\n"
+    "- b-point로 이동 → move_to_b_point()\n"
+    "- c-point로 이동 → move_to_c_point()\n"
+    "- wet 피해서 a-point → avoid_wet_to_a_point()\n"
+    "- wet 피해서 b-point → avoid_wet_to_b_point()\n"
     "- 경로 색 구분 → 이동 전에 set_pen으로 색상 변경\n"
 )
 
@@ -175,17 +184,13 @@ def log(msg, style="dim cyan"):
 
 # 전처리 레이어: 키워드 → 도구 힌트 매핑
 QUERY_HINTS = [
-    # 이름 지점 전용 도구 (좌표 하드코딩됨)
-    (["a-point", "a포인트", "A지점", "a지점"], "move_to_a_point()를 호출해라. 좌표는 도구 내부에 고정되어 있다."),
-    (["b-point", "b포인트", "B지점", "b지점"], "move_to_b_point()를 호출해라. 좌표는 도구 내부에 고정되어 있다."),
-    (["c-point", "c포인트", "C지점", "c지점"], "move_to_c_point()를 호출해라. 좌표는 도구 내부에 고정되어 있다."),
-    # 임의 좌표 이동
-    (["이동", "가줘", "직선", "으로 가"], "move_to_point를 사용해라"),
-    # teleport_absolute
-    (["순간이동", "텔레포트", "옮겨"], "teleport_absolute를 사용해라 (선 안 그림)"),
-    # wet 회피
+    # 이름 지점 전용 도구 (좌표 하드코딩, 파라미터 없음)
+    (["a-point", "a포인트", "A지점", "a지점"], "move_to_a_point()를 호출해라"),
+    (["b-point", "b포인트", "B지점", "b지점"], "move_to_b_point()를 호출해라"),
+    (["c-point", "c포인트", "C지점", "c지점"], "move_to_c_point()를 호출해라"),
+    # wet 회피 전용 도구
     (["wet", "웻", "미끄러운", "피해", "회피", "우회"],
-     "wet 영역 (5,4)~(7,6)을 피해서 이동해라. 경유지를 잡아 move_to_point를 여러 번 호출해라. 예: (7,7)→(4,7) 위쪽 우회"),
+     "avoid_wet_to_a_point() 또는 avoid_wet_to_b_point()를 호출해라"),
     # get_turtle_pose
     (["위치", "어디", "포즈", "���표"], "get_turtle_pose를 호출해라"),
     # set_pen
@@ -262,12 +267,12 @@ class KoreanTurtleAgent:
 
         self.examples = [
             "a-point로 이동해",
-            "b-point까지 직선으로 가줘",
+            "b-point로 가줘",
             "wet 피해서 a-point로 돌아가",
+            "wet 피해서 b-point로 가줘",
             "빨간색 펜으로 바꿔줘",
             "거북이 위치 알려줘",
             "장애물 목록 보여줘",
-            "초기화해줘",
         ]
 
     def _check_ros_status(self):
