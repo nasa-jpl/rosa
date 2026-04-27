@@ -326,16 +326,23 @@ class KoreanTurtleAgent:
             else:
                 log(f"완료: 도구 {tool_count}회 호출, {elapsed:.1f}초 소요")
 
-            if final_output:
-                self.__chat_history.extend([
-                    HumanMessage(content=query),
-                    AIMessage(content=final_output),
-                ])
+            if not final_output:
+                final_output = "(응답 없음)"
+                log("LLM이 빈 응답을 반환함 — 기본 메시지로 대체", "yellow")
+                yield {"type": "final", "content": final_output}
+            self.__chat_history.extend([
+                HumanMessage(content=query),
+                AIMessage(content=final_output),
+            ])
         except KeyboardInterrupt:
             yield {"type": "error", "content": "중단됨"}
         except Exception as e:
             elapsed = time.time() - start_time
             log(f"스트림 오류 ({elapsed:.1f}초): {type(e).__name__}: {e}", "bold red")
+            self.__chat_history.extend([
+                HumanMessage(content=query),
+                AIMessage(content=f"오류: {e}"),
+            ])
             yield {"type": "error", "content": f"오류: {e}"}
 
     def clear_chat(self):
