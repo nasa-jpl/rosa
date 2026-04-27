@@ -126,6 +126,19 @@ SYSTEM_PROMPT = (
     "별 그리기: 꼭짓점0→2→4→1→3→0 순서로 연결.\n"
     "크기 미지정시 size=2 사용. 거북이 이름에 /붙이지 마.\n"
     "\n"
+    "정적 장애물 맵 (시작 시 자동 로드됨):\n"
+    "- wall-south: 남쪽 벽, (0,0)→(11,0) 선분\n"
+    "- wall-east: 동쪽 벽, (11,0)→(11,11) 선분\n"
+    "- wall-north: 북쪽 벽, (11,11)→(0,11) 선분\n"
+    "- wall-west: 서쪽 벽, (0,11)→(0,0) 선분\n"
+    "- wet: (5,4)~(7,6) 사각형 영역 — 미끄러운 구간, 가능하면 피해서 이동\n"
+    "- a-point: (1,5) 반경 0.25 원형 지점\n"
+    "- b-point: (10,5) 반경 0.25 원형 지점\n"
+    "- c-point: (6,7) 반경 0.25 원형 지점\n"
+    "사용자가 'a-point로 가줘'라고 하면 teleport_absolute(x=1, y=5)로 이동.\n"
+    "'wet 피해서 가줘'라고 하면 (5,4)~(7,6) 영역을 우회하는 경로를 계획.\n"
+    "list_obstacles 도구로 현재 장애물 목록을 실시간 확인 가능.\n"
+    "\n"
     "복합 도형 워크플로우:\n"
     "1. calculate_rectangle_bounds로 각 컴포넌트 좌표 계산\n"
     "2. check_rectangles_overlap으로 겹침 확인 (겹치면 안 되는 것만)\n"
@@ -153,6 +166,10 @@ QUERY_HINTS = [
     (["장애물 추가", "obstacle add"], "add_obstacle를 사용해라"),
     (["장애물 삭제", "obstacle remove"], "remove_obstacle를 사용해라"),
     (["장애물 목록", "obstacle list"], "list_obstacles를 사용해라"),
+    (["a-point", "a포인트", "A지점"], "teleport_absolute(name='turtle1', x=1.0, y=5.0, theta=0)을 호출해라"),
+    (["b-point", "b포인트", "B지점"], "teleport_absolute(name='turtle1', x=10.0, y=5.0, theta=0)을 호출해라"),
+    (["c-point", "c포인트", "C지점"], "teleport_absolute(name='turtle1', x=6.0, y=7.0, theta=0)을 호출해라"),
+    (["wet", "웻", "미끄러운"], "wet 영역은 (5,4)~(7,6)이다. 이 영역을 피해서 이동해라"),
     (["빨간", "빨강"], "set_pen(name='turtle1', r=255, g=0, b=0, width=2, off=0)을 호출해라"),
     (["파란", "파랑"], "set_pen(name='turtle1', r=0, g=0, b=255, width=2, off=0)을 호출해라"),
     (["초록", "녹색"], "set_pen(name='turtle1', r=0, g=255, b=0, width=2, off=0)을 호출해라"),
