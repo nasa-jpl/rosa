@@ -54,6 +54,50 @@ def build_location_log_path(
     return build_log_dir(log_root, date_str, session_id, turtle_id) / "location.jsonl"
 
 
+def build_collision_log_path(
+    log_root: Path, date_str: str, session_id: str
+) -> Path:
+    """Return ``logs/<date>/<session>/collision.jsonl`` (per-session, all turtles)."""
+    return (log_root / date_str / session_id / "collision.jsonl").resolve()
+
+
+class CollisionJsonlWriter:
+    """Append one JSON object per line to a session ``collision.jsonl`` file."""
+
+    def __init__(self, path: Path) -> None:
+        self._path = path
+        self._lock = threading.Lock()
+        self._fp: Optional[TextIO] = None
+
+    @property
+    def path(self) -> Path:
+        return self._path
+
+    def write_record(self, record: Dict[str, Any]) -> None:
+        with self._lock:
+            if self._fp is None:
+                self._path.parent.mkdir(parents=True, exist_ok=True)
+                self._fp = self._path.open("a", encoding="utf-8")
+            self._fp.write(
+                json.dumps(record, ensure_ascii=False, separators=(",", ":")) + "\n"
+            )
+            self._fp.flush()
+
+    def close(self) -> None:
+        with self._lock:
+            fp = self._fp
+            self._fp = None
+        if fp is not None:
+            try:
+                fp.flush()
+            except OSError:
+                pass
+            try:
+                fp.close()
+            except OSError:
+                pass
+
+
 def pose_to_record(pose: Any, stamp: Any) -> Dict[str, Any]:
     """
     Build one JSON-serializable dict from a turtlesim Pose-like object and a time stamp.
@@ -112,6 +156,10 @@ class PoseLogConsumer:
         return build_location_log_path(
             self._log_root, self._date_str, self._session_id, turtle_id
         )
+
+    def collision_log_path(self) -> Path:
+        """Path for this session's ``collision.jsonl`` (sibling to per-turtle dirs)."""
+        return build_collision_log_path(self._log_root, self._date_str, self._session_id)
 
     def on_pose(self, turtle_id: str, pose: Any, stamp: Any) -> None:
         stamp_seconds = _stamp_to_seconds(stamp)

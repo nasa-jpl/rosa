@@ -26,29 +26,33 @@ from typing import Optional
 import dotenv
 import pyinputplus as pyip
 import rospy
-from langchain.agents import tool, Tool
+import tools.obstacle as obstacle_tools
+import tools.turtle as turtle_tools
+from collision_event_sink import make_collision_event_sink
+from collision_monitor import CollisionMonitor
+from command_logger import CommandLogger
+from help import get_help
+from langchain.agents import Tool, tool
 
 # from langchain_ollama import ChatOllama
-from rich.console import Console
-from rich.console import Group
+from llm import get_llm
+from memory_converter import MemoryConverter
+from obstacle_store import ObstacleStore
+from pose_hub import PoseHub
+from pose_logger import (
+    POSE_LOG_INTERVAL_SEC,
+    CollisionJsonlWriter,
+    PoseLogConsumer,
+)
+from prompts import get_prompts
+from rich.console import Console, Group
 from rich.live import Live
 from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.text import Text
 from rosa import ROSA
-
-import tools.turtle as turtle_tools
-import tools.obstacle as obstacle_tools
-from command_logger import CommandLogger
-from help import get_help
-from memory_converter import MemoryConverter
-from obstacle_store import ObstacleStore
-from pose_hub import PoseHub
-from pose_logger import POSE_LOG_INTERVAL_SEC, PoseLogConsumer
-from llm import get_llm
-from prompts import get_prompts
-from static_map_loader import StaticMapLoadError, load_file
-from world_builder import draw_static_world
+from ros_params import get_bool_param
+from static_world import load_static_world
 
 
 def _maybe_attach_debugpy() -> None:
@@ -429,27 +433,19 @@ class TurtleAgent(ROSA):
         console.print("[bold]End of events[/bold]\n")
 
 
-def main():
+def main(
+    obstacle_store: Optional[ObstacleStore] = None,
+    *,
+    load_static_world_once: bool = True,
+) -> None:
     dotenv.load_dotenv(dotenv.find_dotenv())
 
     streaming = rospy.get_param("~streaming", False)
     turtle_id = rospy.get_param("~turtle_id", os.environ.get("TURTLE_TURTLE_ID", "turtle1"))
-    obstacle_store = ObstacleStore()
-    path = str(rospy.get_param("~static_obstacles_file", "")).strip()
-    if path:
-        try:
-            load_file(obstacle_store, path)
-        except StaticMapLoadError as e:
-            rospy.logerr("static obstacles: %s", e)
-            raise
-        if rospy.get_param("~draw_static_world", True):
-            try:
-                count = draw_static_world(obstacle_store)
-                rospy.loginfo("static world builder drew %s segments", count)
-            except Exception as e:
-                rospy.logerr("static world builder failed: %s", e)
-                if rospy.get_param("~world_builder_required", True):
-                    raise
+    if obstacle_store is None:
+        obstacle_store = ObstacleStore()
+    if load_static_world_once:
+        load_static_world(obstacle_store)
 
     command_logger = CommandLogger(session_id=pose_log_consumer.session_id)
     memory_converter = MemoryConverter()
@@ -491,19 +487,32 @@ if __name__ == "__main__":
     spin_thread = threading.Thread(target=_ros_spin, name="rospy_spin", daemon=True)
     spin_thread.start()
 
+    obstacle_store = ObstacleStore()
+    load_static_world(obstacle_store)
     pose_hub = PoseHub()
     pose_log_consumer = PoseLogConsumer(
         period=float(rospy.get_param("~pose_log_interval", POSE_LOG_INTERVAL_SEC))
     )
+    collision_jsonl = CollisionJsonlWriter(pose_log_consumer.collision_log_path())
+    if get_bool_param("~collision_log_to_console", False):
+        rospy.loginfo("collision log: %s", collision_jsonl.path)
+    collision_monitor = CollisionMonitor(
+        obstacle_store,
+        turtle_radius=float(rospy.get_param("~turtle_collision_radius", 0.5)),
+        emit_stay=get_bool_param("~collision_emit_stay", False),
+        event_sink=make_collision_event_sink(collision_jsonl),
+    )
     pose_hub.register_consumer(pose_log_consumer.on_pose)
+    pose_hub.register_consumer(collision_monitor.on_pose)
     registered_turtles = pose_hub.start_from_ros_graph_once()
     rospy.loginfo("PoseHub registered turtles: %s", ", ".join(registered_turtles))
     turtle_tools.configure_turtle_lifecycle_listener(pose_hub)
     try:
-        main()
+        main(obstacle_store=obstacle_store, load_static_world_once=False)
     finally:
         turtle_tools.configure_turtle_lifecycle_listener(None)
         pose_hub.stop()
         pose_log_consumer.close()
+        collision_jsonl.close()
         rospy.signal_shutdown("turtle_agent exiting")
         spin_thread.join(timeout=5.0)
