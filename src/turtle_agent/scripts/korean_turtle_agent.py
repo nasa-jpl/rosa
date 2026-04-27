@@ -155,21 +155,17 @@ def log(msg, style="dim cyan"):
 
 # 전처리 레이어: 키워드 → 도구 힌트 매핑
 QUERY_HINTS = [
-    (["별"], "draw_polyline을 사용해서 오각형 별을 그려. 꼭짓점 5개를 72도 간격으로 계산하고 0→2→4→1→3 순서로 연결, closed=True"),
-    (["사각형", "네모", "박스", "상자"], "draw_rectangle을 사용해라"),
-    (["원", "동그라미", "서클"], "draw_circle을 사용해라"),
-    (["삼각형", "세모"], "draw_polyline으로 3개 점을 연결해라, closed=True"),
-    (["직선", "선", "라인"], "draw_line_segment를 사용해라"),
-    (["집", "하우스"], "draw_rectangle로 벽을 그리고 draw_polyline으로 삼각형 지붕을 그려라"),
-    (["오각형"], "draw_polyline으로 5개 점을 연결, closed=True"),
-    (["육각형"], "draw_polyline으로 6개 점을 연결, closed=True"),
-    (["장애물 추가", "obstacle add"], "add_obstacle를 사용해라"),
-    (["장애물 삭제", "obstacle remove"], "remove_obstacle를 사용해라"),
-    (["장애물 목록", "obstacle list"], "list_obstacles를 사용해라"),
-    (["a-point", "a포인트", "A지점"], "teleport_absolute(name='turtle1', x=1.0, y=5.0, theta=0)을 호출해라"),
-    (["b-point", "b포인트", "B지점"], "teleport_absolute(name='turtle1', x=10.0, y=5.0, theta=0)을 호출해라"),
-    (["c-point", "c포인트", "C지점"], "teleport_absolute(name='turtle1', x=6.0, y=7.0, theta=0)을 호출해라"),
-    (["wet", "웻", "미끄러운"], "wet 영역은 (5,4)~(7,6)이다. 이 영역을 피해서 이동해라"),
+    # get_turtle_pose
+    (["위치", "어디", "포즈", "pose", "좌표"], "get_turtle_pose를 호출해라"),
+    # teleport_absolute
+    (["이동", "옮겨", "텔레포트", "가줘", "보내줘"], "teleport_absolute를 사용해라"),
+    # teleport_relative
+    (["왼쪽", "좌회전"], "teleport_relative(name='turtle1', linear=0, angular=1.57)을 호출해라"),
+    (["오른쪽", "우회전"], "teleport_relative(name='turtle1', linear=0, angular=-1.57)을 호출해라"),
+    # publish_twist_to_cmd_vel
+    (["앞으로", "전진"], "publish_twist_to_cmd_vel(name='turtle1', velocity=2.0, lateral=0, angle=0, steps=1)을 호출해라"),
+    (["뒤로", "후진"], "publish_twist_to_cmd_vel(name='turtle1', velocity=-2.0, lateral=0, angle=0, steps=1)을 호출해라"),
+    # set_pen
     (["빨간", "빨강"], "set_pen(name='turtle1', r=255, g=0, b=0, width=2, off=0)을 호출해라"),
     (["파란", "파랑"], "set_pen(name='turtle1', r=0, g=0, b=255, width=2, off=0)을 호출해라"),
     (["초록", "녹색"], "set_pen(name='turtle1', r=0, g=255, b=0, width=2, off=0)을 호출해라"),
@@ -179,14 +175,48 @@ QUERY_HINTS = [
     (["펜 켜", "선 그"], "set_pen(name='turtle1', r=0, g=0, b=0, width=2, off=0)을 호출해라"),
     (["굵게", "두껍"], "set_pen에서 width=5로 설정해라"),
     (["가늘", "얇"], "set_pen에서 width=1로 설정해라"),
+    # spawn_turtle
+    (["생성", "만들어", "스폰", "spawn", "새 거북"], "spawn_turtle을 사용해라. name, x, y, theta를 지정해라"),
+    # kill_turtle
+    (["삭제", "없애", "제거", "kill", "죽여"], "kill_turtle을 사용해라. names 리스트로 전달해라"),
+    # stop_turtle
+    (["멈춰", "정지", "스톱", "stop"], "stop_turtle을 호출해라"),
+    # reset_turtlesim
     (["초기화", "리셋", "reset"], "reset_turtlesim을 호출해라"),
-    (["위치", "어디", "포즈", "pose"], "get_turtle_pose를 호출해라"),
-    (["앞으로", "전진"], "publish_twist_to_cmd_vel(name='turtle1', velocity=2.0, lateral=0, angle=0, steps=1)을 호출해라"),
-    (["뒤로", "후진"], "publish_twist_to_cmd_vel(name='turtle1', velocity=-2.0, lateral=0, angle=0, steps=1)을 호출해라"),
-    (["왼쪽", "좌회전"], "teleport_relative(name='turtle1', linear=0, angular=1.57)을 호출해라"),
-    (["오른쪽", "우회전"], "teleport_relative(name='turtle1', linear=0, angular=-1.57)을 호출해라"),
-    (["이동", "옮겨", "텔레포트", "가줘"], "teleport_absolute를 사용해라"),
-    (["멈춰", "정지", "스톱"], "stop_turtle을 호출해라"),
+    # clear_turtlesim
+    (["배경 지우", "화면 지우", "지워", "clear"], "clear_turtlesim을 호출해라"),
+    # has_moved_to_expected_coordinates
+    (["도착했", "도달했", "확인해", "위치 확인"], "has_moved_to_expected_coordinates로 거북이가 목표 좌표에 도착했는지 확인해라"),
+    # draw_line_segment
+    (["직선", "라인"], "draw_line_segment를 사용해라"),
+    # draw_rectangle
+    (["사각형", "네모", "박스", "상자"], "draw_rectangle을 사용해라"),
+    # draw_polyline
+    (["별"], "draw_polyline을 사용해서 오각형 별을 그려. 꼭짓점 5개를 72도 간격으로 계산하고 0→2→4→1→3 순서로 연결, closed=True"),
+    (["삼각형", "세모"], "draw_polyline으로 3개 점을 연결해라, closed=True"),
+    (["오각형"], "draw_polyline으로 5개 점을 연결, closed=True"),
+    (["육각형"], "draw_polyline으로 6개 점을 연결, closed=True"),
+    (["다각형"], "draw_polyline을 사용해라, closed=True"),
+    (["집", "하우스"], "draw_rectangle로 벽을 그리고 draw_polyline으로 삼각형 지붕을 그려라"),
+    # draw_circle
+    (["원", "동그라미", "서클"], "draw_circle을 사용해라"),
+    # draw_arc
+    (["호", "반원", "아크", "arc", "곡선"], "draw_arc를 사용해라. center_x, center_y, radius, start_angle, arc_angle을 지정해라"),
+    # calculate_rectangle_bounds
+    (["사각형 좌표", "꼭짓점 계산", "레이아웃", "배치 계산"], "calculate_rectangle_bounds로 사각형의 네 꼭짓점과 중심을 계산해라"),
+    # check_rectangles_overlap
+    (["겹침", "겹치", "충돌 확인", "overlap"], "check_rectangles_overlap으로 두 사각형이 겹치는지 확인해라"),
+    # add_obstacle
+    (["장애물 추가", "obstacle add"], "add_obstacle를 사용해라"),
+    # remove_obstacle
+    (["장애물 삭제", "장애물 제거", "obstacle remove"], "remove_obstacle를 사용해라"),
+    # list_obstacles
+    (["장애물 목록", "장애물 보여", "obstacle list"], "list_obstacles를 사용해라"),
+    # 정적 장애물 지점
+    (["a-point", "a포인트", "A지점"], "teleport_absolute(name='turtle1', x=1.0, y=5.0, theta=0)을 호출해라"),
+    (["b-point", "b포인트", "B지점"], "teleport_absolute(name='turtle1', x=10.0, y=5.0, theta=0)을 호출해라"),
+    (["c-point", "c포인트", "C지점"], "teleport_absolute(name='turtle1', x=6.0, y=7.0, theta=0)을 호출해라"),
+    (["wet", "웻", "미끄러운"], "wet 영역은 (5,4)~(7,6)이다. 이 영역을 피해서 이동해라"),
 ]
 
 
