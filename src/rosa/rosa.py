@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import logging
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any, AsyncIterable, Dict, Literal, Optional, Union
+from typing import TYPE_CHECKING, Any, AsyncIterable, Callable, Dict, List, Literal, Optional, Tuple, Union
 
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain.prompts import MessagesPlaceholder
@@ -93,6 +93,9 @@ class ROSA:
         streaming: bool = True,
         max_iterations: int = 100,
         return_intermediate_steps: bool = False,
+        on_intermediate_steps: Optional[
+            Callable[[List[Tuple[Any, str]]], None]
+        ] = None,
     ):
         self.__chat_history = []
         self.__ros_version = ros_version
@@ -104,6 +107,7 @@ class ROSA:
         self.__streaming = streaming
         self.__max_iterations = max_iterations
         self.__return_intermediate_steps = return_intermediate_steps
+        self.__on_intermediate_steps = on_intermediate_steps
         self.__tools = self._get_tools(
             ros_version, packages=tool_packages, tools=tools, blacklist=self.__blacklist
         )
@@ -163,6 +167,13 @@ class ROSA:
             raise
         except Exception as e:
             return f"An error occurred: {str(e)}"
+
+        if self.__on_intermediate_steps:
+            steps = result.get("intermediate_steps") or []
+            try:
+                self.__on_intermediate_steps(steps)
+            except Exception as cb_err:
+                logger.warning("on_intermediate_steps callback failed: %s", cb_err)
 
         self._record_chat_history(query, result["output"])
         return result["output"]

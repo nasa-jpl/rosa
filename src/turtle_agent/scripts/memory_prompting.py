@@ -8,6 +8,10 @@ from typing import Any, Dict, List, Optional, Tuple
 
 def infer_query_context(query: str) -> Dict[str, Any]:
     text = str(query or "").strip()
+    # IME/오타: 선두 한글 자모 짧은 접두 + 공백 후 영문 명령인 경우 접두 제거 (예: "ㅇ draw ...")
+    m_prefix = re.match(r"^([\u3131-\u318e]{1,3})\s+(.*)$", text)
+    if m_prefix and re.match(r"^[A-Za-z]", m_prefix.group(2)):
+        text = m_prefix.group(2).strip()
     lowered = text.lower()
     slots: Dict[str, str] = {}
 
@@ -24,9 +28,33 @@ def infer_query_context(query: str) -> Dict[str, Any]:
         slots["to"] = m_ko.group(2).upper()
 
     task_family = "natural_language_query"
-    if slots.get("from") and slots.get("to"):
+    # 좌표 기반 이동/선분 (memory 매칭을 navigate와 맞춤 — long intent_norm 과 일치시키기 위함)
+    if re.search(
+        r"\b(?:draw\s+(?:a\s+)?line|line)\s+to\s+(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)",
+        lowered,
+    ):
         task_family = "navigate"
-    elif any(token in lowered for token in ("go to", "move to", "goto", "이동", "가줘", "가 ", "로 가")):
+    elif re.search(
+        r"\b(?:move\s+back\s+to|return\s+to)\s+(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)",
+        lowered,
+    ):
+        task_family = "navigate"
+    elif slots.get("from") and slots.get("to"):
+        task_family = "navigate"
+    elif any(
+        token in lowered
+        for token in (
+            "go to",
+            "move to",
+            "move back to",
+            "return to",
+            "goto",
+            "이동",
+            "가줘",
+            "가 ",
+            "로 가",
+        )
+    ):
         task_family = "navigate"
     elif any(token in lowered for token in ("star", "pentagram", "별", "오각별")):
         task_family = "trace_shape"
@@ -111,18 +139,41 @@ def build_memory_context(query: str, records: List[Dict[str, Any]], top_k: int =
     ranked.sort(key=lambda item: item[0], reverse=True)
     selected = [row for _, row in ranked[: max(1, int(top_k))]]
     lines: List[str] = []
+    lesson_lines: List[str] = []
+    max_collision_enter = 0
     for idx, row in enumerate(selected, start=1):
         payload = row.get("payload", {})
         op = payload.get("operation", {})
         goal_text = str(op.get("nl_goal", {}).get("text", ""))
         evidence = payload.get("evidence", {})
         collisions = int(evidence.get("collision_enter_count", 0))
+        max_collision_enter = max(max_collision_enter, collisions)
         success_rate = evidence.get("success_rate")
         lines.append(
             f"{idx}. goal={goal_text[:160]} / collision_enter_count={collisions} / success_rate={success_rate}"
         )
+        raw_lessons = payload.get("lessons")
+        if isinstance(raw_lessons, list):
+            for _, lesson in enumerate(raw_lessons):
+                if isinstance(lesson, str) and lesson.strip():
+                    lesson_lines.append(f"[memory {idx}] {lesson.strip()}")
+    policy_lines = [
+        "MUST: Use memory as executable policy for this query, not as optional commentary.",
+        "MUST: Prefer multi-step segmented movement over a single direct movement command.",
+    ]
+    if query_ctx.get("task_family") == "navigate" and max_collision_enter > 0:
+        policy_lines.extend(
+            [
+                "MUST: Do not choose a single straight-line path for this navigation.",
+                "MUST: If a move attempt causes collision, immediately replan with smaller segmented moves.",
+            ]
+        )
     context = (
-        "Memory context (apply when relevant to current query):\n"
+        "Memory policy (strict):\n"
+        + "\n".join(f"- {line}" for line in policy_lines)
+        + "\n\nMemory evidence:\n"
         + "\n".join(lines)
     )
+    if lesson_lines:
+        context += "\n\nMemory lessons:\n" + "\n".join(f"- {line}" for line in lesson_lines)
     return context, len(selected)

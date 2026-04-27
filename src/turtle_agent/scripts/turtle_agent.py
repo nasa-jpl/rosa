@@ -22,7 +22,8 @@ import threading
 import time
 import uuid
 from datetime import datetime
-from typing import Optional
+import json
+from typing import Any, Dict, List, Optional, Tuple
 
 import dotenv
 import pyinputplus as pyip
@@ -114,6 +115,23 @@ def cool_turtle_tool():
     return "This is a cool turtle tool! It doesn't do anything, but it's cool."
 
 
+def _normalize_tool_args(raw_input: Any) -> Dict[str, Any]:
+    """LangChain AgentAction.tool_input 을 JSON 직렬화 가능한 dict 로 맞춥니다."""
+    if isinstance(raw_input, dict):
+        return dict(raw_input)
+    if isinstance(raw_input, str):
+        try:
+            parsed = json.loads(raw_input)
+            if isinstance(parsed, dict):
+                return parsed
+        except json.JSONDecodeError:
+            pass
+        return {"tool_input": raw_input}
+    if raw_input is None:
+        return {}
+    return {"tool_input": raw_input}
+
+
 class TurtleAgent(ROSA):
 
     def __init__(
@@ -162,6 +180,8 @@ class TurtleAgent(ROSA):
             verbose=verbose,
             accumulate_chat_history=True,
             streaming=streaming,
+            return_intermediate_steps=True,
+            on_intermediate_steps=self._record_agent_tool_steps,
         )
 
         self.examples = [
@@ -178,6 +198,30 @@ class TurtleAgent(ROSA):
             "examples": lambda: self.submit(self.choose_example()),
             "clear": lambda: self.clear(),
         }
+
+    def _record_agent_tool_steps(self, intermediate_steps: List[Tuple[Any, Any]]) -> None:
+        """AgentExecutor intermediate_steps 에서 실제 호출된 도구 이름·인자를 command 로그에 남깁니다."""
+        if not intermediate_steps:
+            return
+        for pair in intermediate_steps:
+            try:
+                if not isinstance(pair, tuple) or len(pair) < 2:
+                    continue
+                action, observation = pair[0], pair[1]
+            except Exception:
+                continue
+            tool_name = getattr(action, "tool", None) or getattr(action, "tool_name", None)
+            if not tool_name:
+                continue
+            raw_input = getattr(action, "tool_input", None)
+            args = _normalize_tool_args(raw_input)
+            self._command_logger.log_skill(
+                self._turtle_id,
+                skill=str(tool_name),
+                args=args,
+                status="success",
+                result=str(observation)[:4000],
+            )
 
     def blast_off(self, input: str):
         return f"""
@@ -365,6 +409,8 @@ class TurtleAgent(ROSA):
 
         panel = Panel("", title="Streaming Response", border_style="green")
 
+        stream_tool_inputs_queue: List[Any] = []
+
         try:
             with GracefulInterruptHandler() as handler:
                 with Live(panel, console=console, auto_refresh=False) as live:
@@ -379,7 +425,21 @@ class TurtleAgent(ROSA):
                             content += event["content"]
                             panel.renderable = Markdown(content)
                             live.refresh()
-                        elif event["type"] in ["tool_start", "tool_end", "error"]:
+                        elif event["type"] == "tool_start":
+                            self.last_events.append(event)
+                            stream_tool_inputs_queue.append(event.get("input"))
+                        elif event["type"] == "tool_end":
+                            self.last_events.append(event)
+                            inp = stream_tool_inputs_queue.pop(0) if stream_tool_inputs_queue else None
+                            args = _normalize_tool_args(inp)
+                            self._command_logger.log_skill(
+                                self._turtle_id,
+                                skill=str(event.get("name", "unknown")),
+                                args=args,
+                                status="success",
+                                result=str(event.get("output", ""))[:4000],
+                            )
+                        elif event["type"] == "error":
                             self.last_events.append(event)
                         elif event["type"] == "final":
                             content = event["content"]

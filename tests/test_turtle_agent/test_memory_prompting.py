@@ -22,6 +22,39 @@ class TestMemoryPrompting(unittest.TestCase):
         self.assertEqual(ctx["slots"]["to"], "B")
         self.assertEqual(ctx["experience_key"], "navigate|from:A|to:B")
 
+    def test_infer_query_context_draw_line_to_coords_is_navigate(self):
+        ctx = infer_query_context("draw a line to 10, 5 while avoiding obstacles")
+        self.assertEqual(ctx["task_family"], "navigate")
+        self.assertEqual(ctx["experience_key"], "navigate")
+
+    def test_infer_query_context_leading_hangul_jamo_stripped_for_english_command(self):
+        ctx = infer_query_context("ㅇ draw a line to 10,5 while avoiding obstacles")
+        self.assertEqual(ctx["task_family"], "navigate")
+        self.assertEqual(ctx["experience_key"], "navigate")
+
+    def test_infer_query_context_move_back_to_coords_is_navigate(self):
+        ctx = infer_query_context("move back to 1, 5 while avoiding obstacles")
+        self.assertEqual(ctx["task_family"], "navigate")
+        self.assertEqual(ctx["experience_key"], "navigate")
+
+    def test_build_memory_context_draw_line_matches_navigate_long_record(self):
+        records = [
+            {
+                "turtle_id": "turtle1",
+                "payload": {
+                    "operation": {
+                        "nl_goal": {"text": "go to 1, 5"},
+                        "intent_norm": {"task_family": "navigate", "slots": {}},
+                    },
+                    "evidence": {"collision_enter_count": 1, "success_rate": 1.0},
+                },
+            },
+        ]
+        _, hits = build_memory_context(
+            "draw a line to 10, 5 while avoiding obstacles", records, top_k=1
+        )
+        self.assertGreaterEqual(hits, 1)
+
     def test_build_memory_context_prefers_exact_key(self):
         records = [
             {
@@ -55,6 +88,32 @@ class TestMemoryPrompting(unittest.TestCase):
         self.assertEqual(hits, 1)
         self.assertIn("A to B with detour", context)
         self.assertNotIn("B to A direct", context)
+        self.assertIn("Memory policy (strict):", context)
+        self.assertIn("MUST: Do not choose a single straight-line path", context)
+
+    def test_build_memory_context_includes_lessons_when_present(self):
+        records = [
+            {
+                "turtle_id": "turtle1",
+                "payload": {
+                    "operation": {
+                        "nl_goal": {"text": "go to 1, 5"},
+                        "intent_norm": {"task_family": "navigate", "slots": {}},
+                    },
+                    "evidence": {"collision_enter_count": 0, "success_rate": 1.0},
+                    "lessons": [
+                        "첫 번째 교훈입니다.",
+                        "두 번째 교훈입니다.",
+                        "세 번째 교훈입니다.",
+                    ],
+                },
+            },
+        ]
+        context, hits = build_memory_context("go to 2, 3", records, top_k=1)
+        self.assertEqual(hits, 1)
+        self.assertIn("Memory lessons:", context)
+        self.assertIn("[memory 1]", context)
+        self.assertIn("첫 번째 교훈입니다.", context)
 
     def test_load_long_term_records_filters_by_turtle(self):
         with tempfile.TemporaryDirectory() as td:
