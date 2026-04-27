@@ -15,6 +15,7 @@
 
 import asyncio
 import os
+from pathlib import Path
 import signal
 import sys
 import threading
@@ -37,6 +38,7 @@ from langchain.agents import Tool, tool
 # from langchain_ollama import ChatOllama
 from llm import get_llm
 from memory_converter import MemoryConverter
+from memory_prompting import build_memory_context, infer_query_context, load_long_term_records
 from obstacle_store import ObstacleStore
 from pose_hub import PoseHub
 from pose_logger import (
@@ -141,6 +143,7 @@ class TurtleAgent(ROSA):
         self._turtle_id = rospy.get_param(
             "~turtle_id", os.environ.get("TURTLE_TURTLE_ID", "turtle1")
         )
+        self._memory_root = (Path(__file__).resolve().parent / "memory").resolve()
 
         # Another method for adding tools
         blast_off = Tool(
@@ -262,23 +265,40 @@ class TurtleAgent(ROSA):
                 continue
 
     async def submit(self, query: str):
+        query_ctx = infer_query_context(query)
+        long_records = load_long_term_records(self._memory_root, self._turtle_id)
+        memory_context, memory_hits = build_memory_context(query, long_records, top_k=2)
+        effective_query = (
+            f"{memory_context}\n\nUser query:\n{query}" if memory_context else query
+        )
+        rospy.loginfo(
+            "memory prompt: hits=%s experience_key=%s",
+            memory_hits,
+            query_ctx.get("experience_key", ""),
+        )
         self._command_logger.log_intent(
             self._turtle_id,
             {
-                "task_family": "natural_language_query",
-                "slots": {},
+                "task_family": str(query_ctx.get("task_family", "natural_language_query")),
+                "slots": query_ctx.get("slots", {}),
                 "natural_language": query,
                 "query": query,
+                "memory_hits": memory_hits,
+                "experience_key": query_ctx.get("experience_key", ""),
             },
         )
         if self.__streaming:
-            response = await self.stream_response(query)
+            response = await self.stream_response(effective_query)
         else:
-            response = self.print_response(query)
+            response = self.print_response(effective_query)
         self._command_logger.log_skill(
             self._turtle_id,
             skill="rosa_response",
-            args={"query": query},
+            args={
+                "query": query,
+                "memory_hits": memory_hits,
+                "experience_key": query_ctx.get("experience_key", ""),
+            },
             status="success",
             result=str(response),
         )
