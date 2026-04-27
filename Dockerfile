@@ -32,6 +32,10 @@ RUN rosdep update && \
 COPY . /app/
 WORKDIR /app/
 
+# Windows CRLF → LF 변환 (Windows 호스트에서 빌드 시 shebang 깨짐 방지)
+RUN find /app -type f -name "*.py" -exec sed -i 's/\r$//' {} + && \
+    find /app -type f -name "*.launch" -exec sed -i 's/\r$//' {} +
+
 # Modify the RUN command to use ARG
 RUN /bin/bash -c 'if [ "$DEVELOPMENT" = "true" ]; then \
     python3.9 -m pip install --break-system-packages --ignore-installed --user -e .; \
