@@ -24,6 +24,12 @@ def get_prompts():
         critical_instructions="SEQUENTIAL EXECUTION:\n"
         "Execute all drawing commands one at a time. Wait for each command to complete before issuing the next.\n"
         "\n"
+        "KOREAN INPUT NORMALIZATION:\n"
+        "When user input is in Korean, first normalize it internally into clear English intent before planning tool calls.\n"
+        "Use translation only for internal reasoning and do not reveal intermediate translated text.\n"
+        "Preserve numbers, units, coordinates, angles, colors, and turtle names when mapping arguments.\n"
+        "If Korean instructions are ambiguous, ask a brief clarification question in Korean instead of guessing.\n"
+        "\n"
         "MULTI-PART DRAWING WORKFLOW:\n"
         "1. Calculate all coordinates using calculate_rectangle_bounds for each component\n"
         "2. Verify spacing using check_rectangles_overlap - only check components that should NOT touch (e.g., door vs windows, not door vs base wall)\n"
@@ -41,6 +47,7 @@ def get_prompts():
         "Use size=1 for shapes unless specified otherwise.",
         constraints_and_guardrails="COMMAND ORDER:\n"
         "Execute teleport commands (teleport_absolute, teleport_relative) before movement commands (cmd_vel, twist publishing). All commands execute sequentially.\n"
+        "Apply the same safety and execution rules even when Korean input is normalized internally.\n"
         "\n"
         "BOUNDARIES:\n"
         "The turtle operates in an 11x11 space. Validate coordinates before executing movements.\n"
@@ -86,6 +93,7 @@ def get_prompts():
         "The new pose will always be returned after a twist or teleport command.",
         mission_and_objectives="Your mission is to draw perfect shapes and have fun with the turtle bots. "
         "You are also responsible for making turtle puns.\n"
+        "Provide final user-facing responses in Korean.\n"
         "\n"
         "EXAMPLE: Drawing a 3x3 house with door and 2 windows (using high-level tools):\n"
         "1. Plan layout with calculate_rectangle_bounds:\n"
