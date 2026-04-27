@@ -449,6 +449,9 @@ if __name__ == "__main__":
 
     obstacle_store = ObstacleStore()
     load_static_world(obstacle_store)
+    # a/b/c-point는 시각적 마커일 뿐, 충돌 감지 대상이 아님
+    for point_id in ("a-point", "b-point", "c-point"):
+        obstacle_store.remove(point_id)
     pose_hub = PoseHub()
     pose_log_consumer = PoseLogConsumer(
         period=float(rospy.get_param("~pose_log_interval", POSE_LOG_INTERVAL_SEC))
