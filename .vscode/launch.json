@@ -1,7 +1,4 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
         {
@@ -35,6 +32,126 @@
                 }
             ],
             "justMyCode": false
+        },
+        {
+            "name": "Tests: All",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "unittest",
+            "args": ["discover", "-s", "tests/test_turtle_agent", "-p", "test_*.py"],
+            "cwd": "${workspaceFolder}",
+            "python": "/usr/bin/python3.9",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Tests: test_turtle_agent (group)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "unittest",
+            "args": ["discover", "-s", "tests/test_turtle_agent", "-p", "test_*.py"],
+            "cwd": "${workspaceFolder}",
+            "python": "/usr/bin/python3.9",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Test: test_collision_geometry",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "unittest",
+            "args": ["tests.test_turtle_agent.test_collision_geometry"],
+            "cwd": "${workspaceFolder}",
+            "python": "/usr/bin/python3.9",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Test: test_collision_monitor",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "unittest",
+            "args": ["tests.test_turtle_agent.test_collision_monitor"],
+            "cwd": "${workspaceFolder}",
+            "python": "/usr/bin/python3.9",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Test: test_memory_converter",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "unittest",
+            "args": ["tests.test_turtle_agent.test_memory_converter"],
+            "cwd": "${workspaceFolder}",
+            "python": "/usr/bin/python3.9",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Test: test_obstacle_store",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "unittest",
+            "args": ["tests.test_turtle_agent.test_obstacle_store"],
+            "cwd": "${workspaceFolder}",
+            "python": "/usr/bin/python3.9",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Test: test_obstacle_tools",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "unittest",
+            "args": ["tests.test_turtle_agent.test_obstacle_tools"],
+            "cwd": "${workspaceFolder}",
+            "python": "/usr/bin/python3.9",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Test: test_pose_hub",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "unittest",
+            "args": ["tests.test_turtle_agent.test_pose_hub"],
+            "cwd": "${workspaceFolder}",
+            "python": "/usr/bin/python3.9",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Test: test_pose_logger",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "unittest",
+            "args": ["tests.test_turtle_agent.test_pose_logger"],
+            "cwd": "${workspaceFolder}",
+            "python": "/usr/bin/python3.9",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Test: test_static_map_loader",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "unittest",
+            "args": ["tests.test_turtle_agent.test_static_map_loader"],
+            "cwd": "${workspaceFolder}",
+            "python": "/usr/bin/python3.9",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Test: test_turtle_lifecycle",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "unittest",
+            "args": ["tests.test_turtle_agent.test_turtle_lifecycle"],
+            "cwd": "${workspaceFolder}",
+            "python": "/usr/bin/python3.9",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Test: test_world_builder",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "unittest",
+            "args": ["tests.test_turtle_agent.test_world_builder"],
+            "cwd": "${workspaceFolder}",
+            "python": "/usr/bin/python3.9",
+            "console": "integratedTerminal"
         }
     ]
 }
