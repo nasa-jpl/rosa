@@ -67,15 +67,15 @@ from tools.obstacle import (
 )
 
 
-@langchain_tool
-def move_to_point(name: str, x: float, y: float) -> str:
-    """목표 좌표 (x, y)까지 직선으로 이동한다. 거리와 각도는 자동 계산된다.
-    펜이 켜져 있으면 이동 경로가 그려진다.
+NAMED_POINTS = {
+    "a-point": (1.0, 5.0),
+    "b-point": (10.0, 5.0),
+    "c-point": (6.0, 7.0),
+}
 
-    :param name: 거북이 이름 (예: 'turtle1')
-    :param x: 목표 x 좌표 (0~11)
-    :param y: 목표 y 좌표 (0~11)
-    """
+
+def _move_turtle_to(name: str, x: float, y: float) -> str:
+    """내부 함수: 거북이를 (x, y)까지 직선 이동시킨다."""
     pose = get_turtle_pose.invoke({"names": [name]})
     if "Error" in pose:
         return f"오류: {pose}"
@@ -94,8 +94,41 @@ def move_to_point(name: str, x: float, y: float) -> str:
     return f"{name}이(가) ({cx:.1f},{cy:.1f})→({x:.1f},{y:.1f}) 이동 완료. {result}"
 
 
+@langchain_tool
+def move_to_point(name: str, x: float, y: float) -> str:
+    """임의의 좌표 (x, y)까지 직선으로 이동한다. 거리와 각도는 자동 계산된다.
+    이름이 있는 지점(a-point, b-point, c-point)은 전용 도구를 사용해라.
+
+    :param name: 거북이 이름 (예: 'turtle1')
+    :param x: 목표 x 좌표 (0~11)
+    :param y: 목표 y 좌표 (0~11)
+    """
+    return _move_turtle_to(name, x, y)
+
+
+@langchain_tool
+def move_to_a_point() -> str:
+    """a-point (1, 5) 지점으로 turtle1을 직선 이동시킨다. 좌표는 고정이므로 파라미터 불필요."""
+    return _move_turtle_to("turtle1", *NAMED_POINTS["a-point"])
+
+
+@langchain_tool
+def move_to_b_point() -> str:
+    """b-point (10, 5) 지점으로 turtle1을 직선 이동시킨다. 좌표는 고정이므로 파라미터 불필요."""
+    return _move_turtle_to("turtle1", *NAMED_POINTS["b-point"])
+
+
+@langchain_tool
+def move_to_c_point() -> str:
+    """c-point (6, 7) 지점으로 turtle1을 직선 이동시킨다. 좌표는 고정이므로 파라미터 불필요."""
+    return _move_turtle_to("turtle1", *NAMED_POINTS["c-point"])
+
+
 TOOLS = [
     get_turtle_pose,
+    move_to_a_point,
+    move_to_b_point,
+    move_to_c_point,
     move_to_point,
     teleport_absolute,
     set_pen,
@@ -108,9 +141,12 @@ SYSTEM_PROMPT = (
     "\n"
     "환경: 11x11 2D 공간. 거북이 이름에 /붙이지 마.\n"
     "\n"
-    "사용 가능한 도구 6개:\n"
+    "사용 가능한 도구 9개:\n"
     "- get_turtle_pose: 거북이 현재 위치 확인\n"
-    "- move_to_point(name, x, y): 목표 좌표까지 직선 이동 (거리·각도 자동 계산)\n"
+    "- move_to_a_point(): a-point (1,5)로 이동. 파라미터 없음.\n"
+    "- move_to_b_point(): b-point (10,5)로 이동. 파라미터 없음.\n"
+    "- move_to_c_point(): c-point (6,7)로 이동. 파라미터 없음.\n"
+    "- move_to_point(name, x, y): 임의 좌표까지 직선 이동 (경유지 등에 사용)\n"
     "- teleport_absolute(name, x, y, theta): 순간이동 (선 안 그림)\n"
     "- set_pen(name, r, g, b, width, off): 펜 색상/켜기(off=0)/끄기(off=1)\n"
     "- list_obstacles: 현재 장애물 목록 조회\n"
@@ -118,15 +154,16 @@ SYSTEM_PROMPT = (
     "\n"
     "정적 장애물 맵:\n"
     "- wet: (5,4)~(7,6) 사각형 — 미끄러운 위험 구간\n"
-    "- a-point: (1, 5) 원형 지점\n"
-    "- b-point: (10, 5) 원형 지점\n"
-    "- c-point: (6, 7) 원형 지점\n"
+    "- a-point: (1, 5) → 반드시 move_to_a_point() 사용\n"
+    "- b-point: (10, 5) → 반드시 move_to_b_point() 사용\n"
+    "- c-point: (6, 7) → 반드시 move_to_c_point() 사용\n"
     "\n"
     "이동 규칙:\n"
-    "- 특정 지점으로 이동 → move_to_point 사용\n"
+    "- a/b/c 지점 이동 → 반드시 전용 도구 사용 (move_to_a_point 등)\n"
+    "- 경유지 이동 → move_to_point(name, x, y) 사용\n"
     "- 선을 안 그리고 위치만 옮기기 → teleport_absolute 사용\n"
     "- wet 회피 이동 → wet 영역 (5,4)~(7,6)을 피하는 경유지를 잡아서 move_to_point를 여러 번 호출\n"
-    "  예: (10,5)→(7,7)→(4,7)→(1,5) 처럼 위쪽으로 우회\n"
+    "  예: b→a 회피 경로: move_to_point(7,7) → move_to_point(4,7) → move_to_a_point()\n"
     "- 경로 색 구분 → 이동 전에 set_pen으로 색상 변경\n"
 )
 
@@ -138,10 +175,11 @@ def log(msg, style="dim cyan"):
 
 # 전처리 레이어: 키워드 → 도구 힌트 매핑
 QUERY_HINTS = [
-    # move_to_point
-    (["a-point", "a포인트", "A지점"], "move_to_point(name='turtle1', x=1.0, y=5.0)을 호출해라"),
-    (["b-point", "b포인트", "B지점"], "move_to_point(name='turtle1', x=10.0, y=5.0)을 호출해라"),
-    (["c-point", "c포인트", "C지점"], "move_to_point(name='turtle1', x=6.0, y=7.0)을 호출해라"),
+    # 이름 지점 전용 도구 (좌표 하드코딩됨)
+    (["a-point", "a포인트", "A지점", "a지점"], "move_to_a_point()를 호출해라. 좌표는 도구 내부에 고정되어 있다."),
+    (["b-point", "b포인트", "B지점", "b지점"], "move_to_b_point()를 호출해라. 좌표는 도구 내부에 고정되어 있다."),
+    (["c-point", "c포인트", "C지점", "c지점"], "move_to_c_point()를 호출해라. 좌표는 도구 내부에 고정되어 있다."),
+    # 임의 좌표 이동
     (["이동", "가줘", "직선", "으로 가"], "move_to_point를 사용해라"),
     # teleport_absolute
     (["순간이동", "텔레포트", "옮겨"], "teleport_absolute를 사용해라 (선 안 그림)"),
