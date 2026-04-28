@@ -5,6 +5,7 @@ src/jpl_rosa.egg-info
 build/
 dist/
 __pycache__/
+.venv/
 .DS_Store
 .env
 logs/
