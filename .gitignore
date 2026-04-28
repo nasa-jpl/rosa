@@ -9,3 +9,7 @@ __pycache__/
 .env
 logs/
 .specstory
+.catkin_tools/
+.devcontainer/
+devel/
+src/turtle_agent/scripts/memory/**/*.jsonl

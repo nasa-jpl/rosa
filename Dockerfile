@@ -13,7 +13,15 @@ RUN apt-get update && apt-get install -y \
     python3.9 \
     python3-pip \
     curl \
-    build-essential
+    build-essential \
+    openssh-server
+
+RUN mkdir /var/run/sshd && \
+    echo 'root:ros' | chpasswd && \
+    sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
+    sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
+
+EXPOSE 22
 
 # Install Rust (required for building tiktoken)
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
@@ -43,7 +51,8 @@ RUN /bin/bash -c 'if [ "$DEVELOPMENT" = "true" ]; then \
     python3.9 -m pip install --break-system-packages --ignore-installed -U jpl-rosa>=1.0.8; \
     fi'
 
-CMD ["/bin/bash", "-c", "source /opt/ros/noetic/setup.bash && \
+CMD ["/bin/bash", "-c", "/usr/sbin/sshd && \
+    source /opt/ros/noetic/setup.bash && \
     roscore > /dev/null 2>&1 & \
     sleep 5 && \
     if [ \"$HEADLESS\" = \"false\" ]; then \
