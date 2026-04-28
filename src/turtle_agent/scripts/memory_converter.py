@@ -6,6 +6,7 @@ import os
 import re
 import uuid
 from pathlib import Path
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 from command_logger import build_command_log_path
@@ -104,13 +105,24 @@ def _pick_pose_for_time(location_rows: List[Dict[str, Any]], t_ms: int) -> Dict[
 
 
 def _collision_row_to_trace_event(row: Dict[str, Any]) -> Dict[str, Any]:
-    """collision.jsonl 한 줄을 execution_trace.steps[].events 항목으로 변환합니다."""
+    """collision.jsonl 한 줄을 short-term evidence.collision_events 항목으로 변환합니다."""
     et = str(row.get("event_type", "") or "")
+    details = row.get("details") if isinstance(row.get("details"), dict) else {}
+    obstacle_kind = row.get("obstacle_kind")
+    if obstacle_kind is None:
+        obstacle_kind = details.get("obstacle_kind")
+    if obstacle_kind is not None:
+        obstacle_kind = str(obstacle_kind).strip().lower() or None
     out: Dict[str, Any] = {
-        "type": "collision",
+        # LEGACY COMPAT: 과거 소비자가 event.type을 참조하므로 유지합니다.
+        # 단, 고정값("collision")은 제거하고 실제 collision_type 값을 기록합니다.
+        "type": row.get("collision_type"),
+        # LEGACY COMPAT: phase/event_type은 의미가 중복되지만, 기존 리더가 둘 중 하나만
+        # 읽는 경우가 있어 당분간 함께 유지합니다.
         "phase": et,
         "event_type": et,
         "collision_type": row.get("collision_type"),
+        "obstacle_kind": obstacle_kind,
         "obstacle_id": row.get("obstacle_id"),
         "turtles": row.get("turtles"),
     }
@@ -199,12 +211,166 @@ def _bucket_collision_events_by_skill_index(
     return buckets
 
 
+@dataclass
+class ShortTermCreateInput:
+    session_id: str
+    query_id: str
+    turtle_id: str
+    raw_text: str
+    intent: str
+    constraints: Dict[str, Any]
+
+
+class BaseShortTermModeAdapter:
+    """single/control 모드가 같은 short-term 스키마를 채우기 위한 공통 어댑터 인터페이스."""
+
+    def build_records(
+        self,
+        *,
+        converter: "MemoryConverter",
+        session_id: str,
+        turtle_id: str,
+        location_rows: List[Dict[str, Any]],
+        command_rows: List[Dict[str, Any]],
+        collision_rows: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        raise NotImplementedError
+
+
+class SingleModeMemoryAdapter(BaseShortTermModeAdapter):
+    """single 모드(command/location/collision 로그 기반) short-term 생성."""
+
+    def build_records(
+        self,
+        *,
+        converter: "MemoryConverter",
+        session_id: str,
+        turtle_id: str,
+        location_rows: List[Dict[str, Any]],
+        command_rows: List[Dict[str, Any]],
+        collision_rows: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        return converter._build_short_term_records(
+            location_rows=location_rows,
+            command_rows=command_rows,
+            session_id=session_id,
+            turtle_id=turtle_id,
+            collision_rows=collision_rows,
+        )
+
+
+class ControlModeMemoryAdapter(BaseShortTermModeAdapter):
+    """
+    control 모드는 런타임 이벤트(begin/update/finalize)가 직접 short-term을 채웁니다.
+    convert_session 경로에서는 생성하지 않습니다.
+    """
+
+    def build_records(
+        self,
+        *,
+        converter: "MemoryConverter",
+        session_id: str,
+        turtle_id: str,
+        location_rows: List[Dict[str, Any]],
+        command_rows: List[Dict[str, Any]],
+        collision_rows: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        return []
+
+
 class MemoryConverter:
     """거북이 로그를 단기/장기 기억 스키마로 변환해 저장합니다."""
 
     def __init__(self, memory_root: Optional[Path] = None) -> None:
         """변환기 인스턴스를 초기화합니다."""
         self._memory_root = memory_root or resolve_memory_root()
+        self._pending_short_terms: Dict[Tuple[str, str, str], Dict[str, Any]] = {}
+
+    @staticmethod
+    def create_short_term_record(
+        *,
+        session_id: str,
+        query_id: str,
+        turtle_id: str,
+        raw_text: str,
+        intent: str,
+        constraints: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        return {
+            "identity": {
+                "session_id": session_id,
+                "query_id": query_id,
+                "turtle_id": turtle_id,
+            },
+            "goal": {
+                "raw_text": str(raw_text or ""),
+                "intent": str(intent or "natural_language_query"),
+                "constraints": constraints or {},
+            },
+            "decision_state": {
+                "status": "in_progress",
+                "current_step_index": 0,
+                "plan_steps": [],
+                "start_pose": {"x": 0.0, "y": 0.0, "theta": 0.0},
+                "final_pose": {"x": 0.0, "y": 0.0, "theta": 0.0},
+                "finalized_at_unix_ms": 0,
+                "source": "control",
+            },
+            "evidence": {
+                "execution_steps": [],
+                "collision_events": [],
+            },
+            "outcome": {
+                "success": False,
+                "terminal_reason": "in_progress",
+            },
+        }
+
+    @staticmethod
+    def update_short_term_record(
+        record: Dict[str, Any],
+        *,
+        plan_step: Optional[Dict[str, Any]] = None,
+        execution_step: Optional[Dict[str, Any]] = None,
+        collision_event: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        decision_state = record.setdefault("decision_state", {})
+        evidence = record.setdefault("evidence", {})
+        if plan_step is not None:
+            plan_steps = decision_state.setdefault("plan_steps", [])
+            plan_steps.append(dict(plan_step))
+            decision_state["current_step_index"] = len(plan_steps)
+        if execution_step is not None:
+            steps = evidence.setdefault("execution_steps", [])
+            step = dict(execution_step)
+            step.setdefault("source", "worker")
+            steps.append(step)
+        if collision_event is not None:
+            events = evidence.setdefault("collision_events", [])
+            event = dict(collision_event)
+            event.setdefault("source", "sensor")
+            events.append(event)
+        return record
+
+    @staticmethod
+    def finalize_short_term_record(
+        record: Dict[str, Any],
+        *,
+        finalized_at_unix_ms: int,
+        start_pose: Dict[str, float],
+        final_pose: Dict[str, float],
+        success: bool,
+        terminal_reason: str,
+    ) -> Dict[str, Any]:
+        decision_state = record.setdefault("decision_state", {})
+        decision_state["status"] = "completed" if success else "failed"
+        decision_state["start_pose"] = dict(start_pose)
+        decision_state["final_pose"] = dict(final_pose)
+        decision_state["finalized_at_unix_ms"] = int(finalized_at_unix_ms)
+        outcome = record.setdefault("outcome", {})
+        outcome["success"] = bool(success)
+        outcome["terminal_reason"] = str(terminal_reason)
+        return record
     def convert_session(
         self,
         *,
@@ -214,8 +380,15 @@ class MemoryConverter:
         test_case_id: Optional[str] = None,
         log_root: Optional[Path] = None,
         write_long_term: bool = False,
+        mode: str = "single",
     ) -> Dict[str, int]:
-        """세션 로그를 읽어 단기 기억 파일로 변환 저장합니다."""
+        """세션 로그를 읽어 단기 기억 파일로 변환 저장합니다.
+
+        short-term 저장 타이밍 규칙:
+        - 수집(collect): location/command/collision 로그는 실행 중 계속 적재됩니다.
+        - 확정(finalize short-term): 본 메서드 호출 시점(= 쿼리 1회 완료 시점)에 short-term을 생성/저장합니다.
+        - 압축(long-term): ``write_long_term=True`` 또는 ``finalize_session`` 호출 시점에만 수행합니다.
+        """
         log_root = log_root or resolve_log_root()
 
         location_path = build_location_log_path(
@@ -248,7 +421,13 @@ class MemoryConverter:
         collision_rows = _filter_collision_rows_for_turtle(
             read_jsonl(collision_path), resolved_turtle
         )
-        short_term_records = self._build_short_term_records(
+        adapter: BaseShortTermModeAdapter
+        if str(mode).strip().lower() == "control":
+            adapter = ControlModeMemoryAdapter()
+        else:
+            adapter = SingleModeMemoryAdapter()
+        short_term_records = adapter.build_records(
+            converter=self,
             location_rows=location_rows,
             command_rows=command_rows,
             session_id=resolved_session,
@@ -275,6 +454,77 @@ class MemoryConverter:
             )
 
         return {"short_term_written": short_count, "long_term_written": long_count}
+
+    def begin_query_short_term(
+        self,
+        *,
+        session_id: str,
+        query_id: str,
+        turtle_id: str,
+        raw_text: str,
+        intent: str,
+        constraints: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        key = (session_id, query_id, turtle_id)
+        rec = self.create_short_term_record(
+            session_id=session_id,
+            query_id=query_id,
+            turtle_id=turtle_id,
+            raw_text=raw_text,
+            intent=intent,
+            constraints=constraints,
+        )
+        self._pending_short_terms[key] = rec
+        return rec
+
+    def update_query_short_term(
+        self,
+        *,
+        session_id: str,
+        query_id: str,
+        turtle_id: str,
+        plan_step: Optional[Dict[str, Any]] = None,
+        execution_step: Optional[Dict[str, Any]] = None,
+        collision_event: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        key = (session_id, query_id, turtle_id)
+        if key not in self._pending_short_terms:
+            raise KeyError("pending short-term record not found")
+        rec = self._pending_short_terms[key]
+        return self.update_short_term_record(
+            rec,
+            plan_step=plan_step,
+            execution_step=execution_step,
+            collision_event=collision_event,
+        )
+
+    def finalize_query_short_term(
+        self,
+        *,
+        session_id: str,
+        query_id: str,
+        turtle_id: str,
+        test_case_id: str,
+        finalized_at_unix_ms: int,
+        start_pose: Dict[str, float],
+        final_pose: Dict[str, float],
+        success: bool,
+        terminal_reason: str,
+    ) -> Dict[str, int]:
+        key = (session_id, query_id, turtle_id)
+        if key not in self._pending_short_terms:
+            raise KeyError("pending short-term record not found")
+        rec = self.finalize_short_term_record(
+            self._pending_short_terms.pop(key),
+            finalized_at_unix_ms=finalized_at_unix_ms,
+            start_pose=start_pose,
+            final_pose=final_pose,
+            success=success,
+            terminal_reason=terminal_reason,
+        )
+        short_path = build_short_term_path(self._memory_root, session_id, test_case_id)
+        append_jsonl(short_path, rec)
+        return {"short_term_written": 1, "long_term_written": 0}
 
     def finalize_session(self, *, session_id: str, turtle_id: str) -> int:
         """세션 단기 기억을 압축해 장기 기억 1건을 저장합니다."""
@@ -318,46 +568,52 @@ class MemoryConverter:
         records: List[Dict[str, Any]] = []
         for idx, skill in enumerate(skills):
             t_ms = int(skill.get("t_ms", 0))
-            plan_steps = [
-                {"name": s.get("skill", ""), "status": s.get("status", "pending")}
-                for s in skills[: idx + 1]
-            ]
-            trace_steps = []
+            query_id = f"{session_id}:{idx + 1}"
+            record = self.create_short_term_record(
+                session_id=session_id,
+                query_id=query_id,
+                turtle_id=turtle_id,
+                raw_text=nl_text,
+                intent=str(intent.get("task_family", "natural_language_query")),
+                constraints={},
+            )
             for j, s in enumerate(skills[: idx + 1]):
                 step_t_ms = int(s.get("t_ms", 0))
-                trace_steps.append(
-                    {
+                self.update_short_term_record(
+                    record,
+                    plan_step={
+                        "skill": s.get("skill", ""),
+                        "status": s.get("status", "pending"),
+                    },
+                    execution_step={
                         "t_ms": step_t_ms,
-                        "pose": _pick_pose_for_time(location_rows, step_t_ms),
-                        "skill_invocations": [
-                            {
-                                "skill": s.get("skill", ""),
-                                "args": s.get("args", {}),
-                                "status": s.get("status", "unknown"),
-                                "result": s.get("result", ""),
-                            }
-                        ],
-                        "events": list(collision_by_skill[j]),
-                    }
+                        "skill": s.get("skill", ""),
+                        "args": s.get("args", {}),
+                        "status": s.get("status", "unknown"),
+                        "result": s.get("result", ""),
+                    },
                 )
-
+                for event in list(collision_by_skill[j]):
+                    self.update_short_term_record(record, collision_event=event)
+            start_pose = (
+                _pick_pose_for_time(location_rows, int(skills[0].get("t_ms", 0)))
+                if skills
+                else {"x": 0.0, "y": 0.0, "theta": 0.0}
+            )
+            final_pose = _pick_pose_for_time(location_rows, t_ms)
+            is_last = idx == (len(skills) - 1)
+            terminal_status = str(skill.get("status", "unknown")).lower()
             records.append(
-                {
-                    "session_id": session_id,
-                    "turtle_id": turtle_id,
-                    # NOTE: turtlesim에서는 좌표계가 사실상 단일(world)이라 frame_id 활용도가 낮습니다.
-                    # 추후 world/map 식별이 필요해지면 frame_id를 map_id로 대체하는 방향을 검토합니다.
-                    "clock": {"unix_ms": t_ms, "frame_id": "world"},
-                    "active_goal": {
-                        "natural_language": nl_text,
-                        "constraints": {},
-                    },
-                    "plan": {
-                        "steps": plan_steps,
-                        "current_step_idx": idx + 1,
-                    },
-                    "execution_trace": {"steps": trace_steps},
-                }
+                self.finalize_short_term_record(
+                    record,
+                    finalized_at_unix_ms=t_ms,
+                    start_pose=start_pose,
+                    final_pose=final_pose,
+                    success=bool(is_last and terminal_status == "success"),
+                    terminal_reason="goal_reached"
+                    if is_last and terminal_status == "success"
+                    else ("execution_failed" if is_last else "in_progress"),
+                )
             )
         return records
 
@@ -372,7 +628,7 @@ class MemoryConverter:
 
     @staticmethod
     def _is_bootstrap_query_record(short_row: Dict[str, Any]) -> bool:
-        goal = str(short_row.get("active_goal", {}).get("natural_language", "")).strip().lower()
+        goal = str(MemoryConverter._short_goal_text(short_row)).strip().lower()
         if not goal:
             return False
         if not any(token in goal for token in ("go to", "move to", "goto", "teleport")):
@@ -409,6 +665,47 @@ class MemoryConverter:
         ai = (a.get("skill_invocations") or [{}])[0]
         bi = (b.get("skill_invocations") or [{}])[0]
         return str(ai.get("skill", "")) == str(bi.get("skill", ""))
+
+    @staticmethod
+    def _short_goal_text(short_row: Dict[str, Any]) -> str:
+        goal = short_row.get("goal", {})
+        return str(goal.get("raw_text", "")) if isinstance(goal, dict) else ""
+
+    @staticmethod
+    def _short_trace_steps(short_row: Dict[str, Any]) -> List[Dict[str, Any]]:
+        out: List[Dict[str, Any]] = []
+        ev = short_row.get("evidence", {})
+        execution_steps = ev.get("execution_steps", []) if isinstance(ev, dict) else []
+        if not isinstance(execution_steps, list):
+            return out
+        for item in execution_steps:
+            if not isinstance(item, dict):
+                continue
+            out.append(
+                {
+                    "t_ms": int(item.get("t_ms", 0)),
+                    "skill_invocations": [
+                        {
+                            "skill": item.get("skill", ""),
+                            "args": item.get("args", {}),
+                            "status": item.get("status", "unknown"),
+                            "result": item.get("result", ""),
+                        }
+                    ],
+                }
+            )
+        return out
+
+    @staticmethod
+    def _short_collision_events(short_row: Dict[str, Any]) -> List[Dict[str, Any]]:
+        ev = short_row.get("evidence", {})
+        events = ev.get("collision_events", []) if isinstance(ev, dict) else []
+        return [e for e in events if isinstance(e, dict)] if isinstance(events, list) else []
+
+    @staticmethod
+    def _short_unix_ms(short_row: Dict[str, Any]) -> int:
+        ds = short_row.get("decision_state", {})
+        return int(ds.get("finalized_at_unix_ms", 0)) if isinstance(ds, dict) else 0
 
     @staticmethod
     def _is_strict_prefix_steps(
@@ -520,6 +817,7 @@ class MemoryConverter:
         return (
             tkey,
             str(event.get("obstacle_id") or event.get("obstacle") or ""),
+            # LEGACY COMPAT: 구데이터는 phase만, 신데이터는 event_type만 있는 경우를 모두 허용.
             str(event.get("event_type") or event.get("phase") or ""),
             str(event.get("collision_type") or ""),
         )
@@ -531,32 +829,33 @@ class MemoryConverter:
         collision_obstacles: set[str] = set()
         seen_fp: set[Tuple[Any, ...]] = set()
         for short in short_term_batch:
-            steps = short.get("execution_trace", {}).get("steps", [])
-            for step in steps:
-                for event in step.get("events", []) or []:
-                    if not isinstance(event, dict):
-                        continue
-                    row_kind = str(event.get("type", "")).lower()
-                    phase = str(event.get("phase") or event.get("event") or "").lower()
-                    subtype = str(event.get("event_type") or "").lower()
-                    # short에 붙는 이벤트는 보통 type=collision, enter/stay/exit 는 event_type(#16)
-                    if "collision" not in row_kind and "collision" not in phase:
-                        continue
-                    fp = MemoryConverter._collision_event_fingerprint(event)
-                    if fp in seen_fp:
-                        continue
-                    seen_fp.add(fp)
-                    collision_events += 1
-                    if phase in ("enter", "collision_enter") or subtype == "enter":
-                        collision_enter_count += 1
-                    obstacle = (
-                        event.get("obstacle")
-                        or event.get("obstacle_id")
-                        or event.get("name")
-                        or event.get("obstacle_name")
-                    )
-                    if obstacle:
-                        collision_obstacles.add(str(obstacle))
+            for event in MemoryConverter._short_collision_events(short):
+                row_kind = str(event.get("type", "")).lower()
+                phase = str(event.get("phase") or event.get("event") or "").lower()
+                subtype = str(event.get("event_type") or "").lower()
+                collision_type = str(event.get("collision_type") or "").lower()
+                if (
+                    "collision" not in row_kind
+                    and "collision" not in phase
+                    and "collision" not in collision_type
+                    and collision_type not in ("turtle_obstacle", "turtle_turtle")
+                ):
+                    continue
+                fp = MemoryConverter._collision_event_fingerprint(event)
+                if fp in seen_fp:
+                    continue
+                seen_fp.add(fp)
+                collision_events += 1
+                if phase in ("enter", "collision_enter") or subtype == "enter":
+                    collision_enter_count += 1
+                obstacle = (
+                    event.get("obstacle")
+                    or event.get("obstacle_id")
+                    or event.get("name")
+                    or event.get("obstacle_name")
+                )
+                if obstacle:
+                    collision_obstacles.add(str(obstacle))
         return {
             "collision_events": collision_events,
             "collision_enter_count": collision_enter_count,
@@ -706,16 +1005,16 @@ class MemoryConverter:
         session_id: str,
         turtle_id: str,
     ) -> Dict[str, Any]:
-        first_goal = short_term_batch[0].get("active_goal", {}).get("natural_language", "")
+        first_goal = MemoryConverter._short_goal_text(short_term_batch[0])
         queries = [
-            str(short.get("active_goal", {}).get("natural_language", "")).strip()
+            str(MemoryConverter._short_goal_text(short)).strip()
             for short in short_term_batch
-            if str(short.get("active_goal", {}).get("natural_language", "")).strip()
+            if str(MemoryConverter._short_goal_text(short)).strip()
         ]
         action_trace: List[Dict[str, Any]] = []
         prev_trace_steps: Optional[List[Dict[str, Any]]] = None
         for short in short_term_batch:
-            steps = short.get("execution_trace", {}).get("steps", [])
+            steps = MemoryConverter._short_trace_steps(short)
             if not steps:
                 continue
             MemoryConverter._append_action_trace_from_short_row(
@@ -791,6 +1090,6 @@ class MemoryConverter:
             "meta": {
                 "session_id": session_id,
                 "compression": {"method": "deterministic"},
-                "created_at_unix_ms": int(short_term_batch[-1].get("clock", {}).get("unix_ms", 0)),
+                "created_at_unix_ms": MemoryConverter._short_unix_ms(short_term_batch[-1]),
             },
         }
