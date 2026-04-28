@@ -152,4 +152,4 @@ The following test categories are included in our testing setup. Further details
 - **Obstacle Policy:**
   - Static maps are loaded into the in-process `ObstacleStore`.
   - Initial world drawing is performed by a startup `rospy` builder, not by the LLM or LangChain tools.
-  - Runtime obstacle CRUD updates the same store through tools. `static` obstacles remain until removed, and `ephemeral` obstacles expire after their TTL. No HTTP API is used.
+  - Runtime obstacle CRUD updates the same store through tools. `static` obstacles remain until removed, and `temporary` obstacles expire after their TTL. No HTTP API is used.

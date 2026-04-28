@@ -203,7 +203,7 @@ class TestStaticMapLoader(unittest.TestCase):
         finally:
             Path(path).unlink(missing_ok=True)
 
-    def test_ephemeral_kind_without_ttl_uses_default(self):
+    def test_temporary_kind_without_ttl_uses_default(self):
         store = ObstacleStore()
         load_into_store(
             store,
@@ -211,7 +211,7 @@ class TestStaticMapLoader(unittest.TestCase):
                 "obstacles": [
                     {
                         "id": "e",
-                        "kind": "ephemeral",
+                        "kind": "temporary",
                         "geometry": {"type": "circle", "cx": 0.0, "cy": 0.0, "r": 0.1},
                     }
                 ]
@@ -219,10 +219,10 @@ class TestStaticMapLoader(unittest.TestCase):
         )
         o = store.get("e")
         assert o is not None
-        self.assertEqual(o.kind, "ephemeral")
+        self.assertEqual(o.kind, "temporary")
         self.assertIsNotNone(o.expires_at)
 
-    def test_ephemeral_explicit_ttl_seconds(self):
+    def test_temporary_explicit_ttl_seconds(self):
         import time as _time
 
         store = ObstacleStore()
@@ -233,7 +233,7 @@ class TestStaticMapLoader(unittest.TestCase):
                 "obstacles": [
                     {
                         "id": "e",
-                        "kind": "ephemeral",
+                        "kind": "temporary",
                         "ttl_seconds": 30.0,
                         "geometry": {"type": "circle", "cx": 0, "cy": 0, "r": 0.1},
                     }
@@ -270,7 +270,7 @@ class TestStaticMapLoader(unittest.TestCase):
         )
         wet = store.get("wet-top")
         assert wet is not None
-        self.assertEqual(wet.kind, "ephemeral")
+        self.assertEqual(wet.kind, "temporary")
         self.assertIsNotNone(wet.expires_at)
 
 

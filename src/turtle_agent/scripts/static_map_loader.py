@@ -27,8 +27,8 @@ YAML/JSON document shape::
 Field mapping (file keys → :mod:`obstacle_store` types):
 
 - ``id`` (str, required) → :attr:`Obstacle.id`
-- ``kind``: ``\"static\"`` (default) or ``\"ephemeral\"``. Ephemeral deadlines use
-  ``ttl_seconds`` if given, else :data:`DEFAULT_EPHEMERAL_TTL_SECONDS` at load time.
+- ``kind``: ``\"static\"`` (default) or ``\"temporary\"``. Temporary deadlines use
+  ``ttl_seconds`` if given, else :data:`DEFAULT_TEMPORARY_TTL_SECONDS` at load time.
 - ``geometry.type``:
 
   - ``circle`` — keys ``cx``, ``cy``, ``r`` (numbers) → :class:`CircleGeometry`
@@ -74,8 +74,8 @@ from obstacle_store import (
 
 OnDuplicateId = Literal["replace", "error"]
 
-# Used when ``kind: ephemeral`` and ``ttl_seconds`` is omitted (seconds).
-DEFAULT_EPHEMERAL_TTL_SECONDS = 31_536_000.0
+# Used when ``kind: temporary`` and ``ttl_seconds`` is omitted (seconds).
+DEFAULT_TEMPORARY_TTL_SECONDS = 31_536_000.0
 
 
 class StaticMapLoadError(ValueError):
@@ -194,9 +194,9 @@ def _parse_obstacle_entry(raw: Any, *, source: Optional[str], index: int) -> Obs
     if not isinstance(kind, str):
         raise _err("kind must be a string", source=source, index=index)
     kind_l = kind.strip().lower()
-    if kind_l not in ("static", "ephemeral"):
+    if kind_l not in ("static", "temporary"):
         raise _err(
-            f"map kind must be 'static' or 'ephemeral', got {kind!r}",
+            f"map kind must be 'static' or 'temporary', got {kind!r}",
             source=source,
             index=index,
         )
@@ -210,17 +210,17 @@ def _parse_obstacle_entry(raw: Any, *, source: Optional[str], index: int) -> Obs
             geometry=geometry,
             expires_at=None,
         )
-    raw_ttl = raw.get("ttl_seconds", DEFAULT_EPHEMERAL_TTL_SECONDS)
+    raw_ttl = raw.get("ttl_seconds", DEFAULT_TEMPORARY_TTL_SECONDS)
     ttl = _coerce_float(raw_ttl, key="ttl_seconds", source=source, index=index)
     if ttl <= 0:
         raise _err(
-            "ttl_seconds must be positive for ephemeral obstacles",
+            "ttl_seconds must be positive for temporary obstacles",
             source=source,
             index=index,
         )
     return Obstacle(
         id=oid.strip(),
-        kind="ephemeral",
+        kind="temporary",
         geometry=geometry,
         expires_at=time.monotonic() + ttl,
     )
