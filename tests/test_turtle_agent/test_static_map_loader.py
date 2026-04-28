@@ -203,12 +203,54 @@ class TestStaticMapLoader(unittest.TestCase):
         finally:
             Path(path).unlink(missing_ok=True)
 
+    def test_ephemeral_kind_without_ttl_uses_default(self):
+        store = ObstacleStore()
+        load_into_store(
+            store,
+            {
+                "obstacles": [
+                    {
+                        "id": "e",
+                        "kind": "ephemeral",
+                        "geometry": {"type": "circle", "cx": 0.0, "cy": 0.0, "r": 0.1},
+                    }
+                ]
+            },
+        )
+        o = store.get("e")
+        assert o is not None
+        self.assertEqual(o.kind, "ephemeral")
+        self.assertIsNotNone(o.expires_at)
+
+    def test_ephemeral_explicit_ttl_seconds(self):
+        import time as _time
+
+        store = ObstacleStore()
+        before = _time.monotonic()
+        load_into_store(
+            store,
+            {
+                "obstacles": [
+                    {
+                        "id": "e",
+                        "kind": "ephemeral",
+                        "ttl_seconds": 30.0,
+                        "geometry": {"type": "circle", "cx": 0, "cy": 0, "r": 0.1},
+                    }
+                ]
+            },
+        )
+        o = store.get("e")
+        assert o is not None
+        self.assertGreater(o.expires_at, before + 29.0)
+        self.assertLess(o.expires_at, before + 31.0)
+
     def test_sample_config_repo_path(self):
         sample = _CONFIG / "static_obstacles_turtlesim.yaml"
         self.assertTrue(sample.is_file(), msg=f"missing {sample}")
         store = ObstacleStore()
         n = load_file(store, sample)
-        self.assertEqual(n, 8)
+        self.assertEqual(n, 11)
         ids = {o.id for o in store.snapshot()}
         self.assertEqual(
             ids,
@@ -217,12 +259,19 @@ class TestStaticMapLoader(unittest.TestCase):
                 "wall-east",
                 "wall-north",
                 "wall-west",
-                "wet",
+                "wet-top",
+                "wet-right",
+                "wet-bottom",
                 "a-point",
                 "b-point",
                 "c-point",
+                "d-point",
             },
         )
+        wet = store.get("wet-top")
+        assert wet is not None
+        self.assertEqual(wet.kind, "ephemeral")
+        self.assertIsNotNone(wet.expires_at)
 
 
 if __name__ == "__main__":
