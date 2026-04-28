@@ -195,7 +195,10 @@ def finalize_short_term_record(
     terminal_reason: str,
 ) -> Dict[str, Any]:
     decision_state = record.setdefault("decision_state", {})
-    decision_state["status"] = "completed" if success else "failed"
+    if str(terminal_reason) == "in_progress":
+        decision_state["status"] = "in_progress"
+    else:
+        decision_state["status"] = "completed" if success else "failed"
     decision_state["start_pose"] = dict(start_pose)
     decision_state["final_pose"] = dict(final_pose)
     decision_state["finalized_at_unix_ms"] = int(finalized_at_unix_ms)
