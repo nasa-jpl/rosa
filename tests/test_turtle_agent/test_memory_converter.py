@@ -27,6 +27,63 @@ class TestMemoryConverter(unittest.TestCase):
         self.assertEqual(session_id, "sess-1")
         self.assertEqual(turtle_id, "turtle1")
 
+    def test_three_phase_short_term_lifecycle(self):
+        memory_root = _SCRIPTS / "memory"
+        converter = MemoryConverter(memory_root=memory_root)
+        session_id = f"sess-test-{uuid.uuid4().hex[:8]}"
+        turtle_id = "turtle1"
+        query_id = "q-1"
+
+        rec = converter.begin_query_short_term(
+            session_id=session_id,
+            query_id=query_id,
+            turtle_id=turtle_id,
+            raw_text="relay race",
+            intent="navigate",
+            constraints={},
+        )
+        self.assertEqual(rec["decision_state"]["status"], "in_progress")
+        converter.update_query_short_term(
+            session_id=session_id,
+            query_id=query_id,
+            turtle_id=turtle_id,
+            plan_step={"skill": "move_forward", "status": "success"},
+            execution_step={
+                "t_ms": 1000,
+                "skill": "move_forward",
+                "args": {"velocity": 1.0},
+                "status": "success",
+                "result": "ok",
+            },
+            collision_event={
+                "type": "turtle_obstacle",
+                "phase": "enter",
+                "event_type": "enter",
+                "collision_type": "turtle_obstacle",
+                "obstacle_kind": "temporary",
+                "t_ros": {"secs": 1, "nsecs": 0},
+                "turtles": [turtle_id],
+            },
+        )
+        out = converter.finalize_query_short_term(
+            session_id=session_id,
+            query_id=query_id,
+            turtle_id=turtle_id,
+            test_case_id="tc-lifecycle",
+            finalized_at_unix_ms=1200,
+            start_pose={"x": 1.0, "y": 1.0, "theta": 0.0},
+            final_pose={"x": 2.0, "y": 2.0, "theta": 0.3},
+            success=True,
+            terminal_reason="goal_reached",
+        )
+        self.assertEqual(out["short_term_written"], 1)
+        short_path = build_short_term_path(memory_root, session_id, "tc-lifecycle")
+        rows = [json.loads(line) for line in short_path.read_text(encoding="utf-8").splitlines()]
+        self.assertEqual(rows[-1]["decision_state"]["status"], "completed")
+        self.assertEqual(rows[-1]["decision_state"]["final_pose"]["x"], 2.0)
+        self.assertEqual(rows[-1]["evidence"]["execution_steps"][0]["source"], "worker")
+        self.assertEqual(rows[-1]["evidence"]["collision_events"][0]["source"], "sensor")
+
     def test_convert_session_writes_short_and_long_term(self):
         log_root = _REPO_ROOT / "logs"
         memory_root = _SCRIPTS / "memory"
@@ -130,10 +187,14 @@ class TestMemoryConverter(unittest.TestCase):
         )
 
         self.assertEqual(len(short_rows), 2)
-        self.assertEqual(short_rows[0]["session_id"], session_id)
-        self.assertEqual(short_rows[0]["active_goal"]["natural_language"], obstacle_run_cmd)
-        self.assertNotIn("intent_norm", short_rows[0])
-        self.assertEqual(short_rows[1]["plan"]["current_step_idx"], 2)
+        self.assertEqual(short_rows[0]["identity"]["session_id"], session_id)
+        self.assertEqual(short_rows[0]["goal"]["raw_text"], obstacle_run_cmd)
+        self.assertEqual(short_rows[0]["decision_state"]["status"], "in_progress")
+        self.assertEqual(short_rows[1]["decision_state"]["current_step_index"], 2)
+        self.assertEqual(short_rows[1]["decision_state"]["status"], "completed")
+        self.assertIn("start_pose", short_rows[0]["decision_state"])
+        self.assertIn("final_pose", short_rows[0]["decision_state"])
+        self.assertIn("source", short_rows[0]["decision_state"])
         self.assertEqual(len(long_rows), before_long_count)
 
     def test_convert_session_merges_collision_jsonl_into_short_steps(self):
@@ -205,6 +266,7 @@ class TestMemoryConverter(unittest.TestCase):
                 "collision_type": "turtle_obstacle",
                 "turtles": [turtle_id],
                 "obstacle_id": "obs1",
+                "details": {"obstacle_kind": "temporary"},
                 "t_ros": _ms_to_t_ros(ms),
                 "x": 1.0,
                 "y": 2.0,
@@ -240,17 +302,41 @@ class TestMemoryConverter(unittest.TestCase):
             json.loads(line) for line in short_path.read_text(encoding="utf-8").splitlines()
         ]
         self.assertEqual(len(rows), 2)
-        last = rows[-1]["execution_trace"]["steps"]
-        self.assertEqual(len(last), 2)
-        self.assertEqual(len(last[0]["events"]), 1)
-        self.assertEqual(last[0]["events"][0]["type"], "collision")
-        self.assertEqual(last[0]["events"][0]["event_type"], "enter")
-        self.assertEqual(len(last[1]["events"]), 1)
-        self.assertEqual(last[1]["events"][0]["event_type"], "exit")
+        self.assertEqual(len(rows[-1]["evidence"]["execution_steps"]), 2)
+        collisions = rows[-1]["evidence"]["collision_events"]
+        self.assertEqual(len(collisions), 2)
+        self.assertEqual(collisions[0]["type"], "turtle_obstacle")
+        self.assertEqual(collisions[0]["event_type"], "enter")
+        self.assertEqual(collisions[0]["obstacle_kind"], "temporary")
+        self.assertEqual(collisions[1]["event_type"], "exit")
 
         ev = MemoryConverter._collect_collision_evidence(rows)
         self.assertEqual(ev["collision_events"], 2)
         self.assertEqual(ev["collision_enter_count"], 1)
+
+    def test_convert_session_control_mode_writes_nothing(self):
+        log_root = _REPO_ROOT / "logs"
+        memory_root = _SCRIPTS / "memory"
+        date_str = "2026-04-27"
+        session_id = f"sess-test-{uuid.uuid4().hex[:8]}"
+        turtle_id = "turtle1"
+        test_case_id = f"tc-{uuid.uuid4().hex[:8]}"
+        location_path = build_location_log_path(log_root, date_str, session_id, turtle_id)
+        command_path = build_command_log_path(log_root, date_str, session_id, turtle_id)
+        location_path.parent.mkdir(parents=True, exist_ok=True)
+        location_path.write_text("", encoding="utf-8")
+        command_path.write_text("", encoding="utf-8")
+
+        converter = MemoryConverter(memory_root=memory_root)
+        result = converter.convert_session(
+            date_str=date_str,
+            session_id=session_id,
+            turtle_id=turtle_id,
+            test_case_id=test_case_id,
+            log_root=log_root,
+            mode="control",
+        )
+        self.assertEqual(result["short_term_written"], 0)
 
     @patch.dict(os.environ, {"MEMORY_LESSONS_LLM": "0"})
     def test_finalize_session_writes_compressed_long_term(self):
@@ -261,37 +347,51 @@ class TestMemoryConverter(unittest.TestCase):
         session_dir.mkdir(parents=True, exist_ok=True)
 
         base = {
-            "session_id": session_id,
-            "turtle_id": turtle_id,
-            "active_goal": {"natural_language": "draw me a pentagram", "constraints": {}},
-            "plan": {"steps": [{"name": "rosa_response", "status": "success"}], "current_step_idx": 1},
-            "execution_trace": {
-                "steps": [
+            "identity": {
+                "session_id": session_id,
+                "query_id": f"{session_id}:1",
+                "turtle_id": turtle_id,
+            },
+            "goal": {"raw_text": "draw me a pentagram", "intent": "trace_shape", "constraints": {}},
+            "decision_state": {
+                "status": "completed",
+                "current_step_index": 1,
+                "plan_steps": [{"skill": "rosa_response", "status": "success"}],
+                "start_pose": {"x": 5.5, "y": 5.5, "theta": 1.2},
+                "final_pose": {"x": 5.5, "y": 5.5, "theta": 1.2},
+                "finalized_at_unix_ms": 1777275300520,
+                "source": "control",
+            },
+            "evidence": {
+                "execution_steps": [
                     {
                         "t_ms": 1777275300520,
-                        "pose": {"x": 5.5, "y": 5.5, "theta": 1.2},
-                        "skill_invocations": [
-                            {
-                                "skill": "rosa_response",
-                                "args": {"query": "draw me a pentagram"},
-                                "status": "success",
-                                "result": "radius 3.0",
-                            }
-                        ],
-                        "events": [
-                            {
-                                "type": "collision",
-                                "event_type": "enter",
-                                "obstacle_id": "wet",
-                            }
-                        ],
+                        "skill": "rosa_response",
+                        "args": {"query": "draw me a pentagram"},
+                        "status": "success",
+                        "result": "radius 3.0",
+                        "source": "worker",
                     }
-                ]
+                ],
+                "collision_events": [
+                    {
+                        "type": "turtle_obstacle",
+                        "event_type": "enter",
+                        "phase": "enter",
+                        "collision_type": "turtle_obstacle",
+                        "obstacle_id": "wet",
+                        "t_ros": {"secs": 1777275300, "nsecs": 520000000},
+                        "turtles": [turtle_id],
+                        "source": "sensor",
+                    }
+                ],
             },
+            "outcome": {"success": True, "terminal_reason": "goal_reached"},
         }
         for idx in range(5):
             rec = dict(base)
-            rec["clock"] = {"unix_ms": 1777275300520 + idx, "map_id": "world"}
+            rec["decision_state"] = dict(base["decision_state"])
+            rec["decision_state"]["finalized_at_unix_ms"] = 1777275300520 + idx
             path = session_dir / f"short_testid_tc-{idx}.jsonl"
             path.write_text(json.dumps(rec, ensure_ascii=False) + "\n", encoding="utf-8")
 
@@ -319,28 +419,35 @@ class TestMemoryConverter(unittest.TestCase):
 
         def _write_short(idx: int, query: str) -> None:
             rec = {
-                "session_id": session_id,
-                "turtle_id": turtle_id,
-                "clock": {"unix_ms": 1777275300520 + idx, "map_id": "world"},
-                "active_goal": {"natural_language": query, "constraints": {}},
-                "plan": {"steps": [{"name": "rosa_response", "status": "success"}], "current_step_idx": 1},
-                "execution_trace": {
-                    "steps": [
+                "identity": {
+                    "session_id": session_id,
+                    "query_id": f"{session_id}:{idx+1}",
+                    "turtle_id": turtle_id,
+                },
+                "goal": {"raw_text": query, "intent": "navigate", "constraints": {}},
+                "decision_state": {
+                    "status": "completed",
+                    "current_step_index": 1,
+                    "plan_steps": [{"skill": "rosa_response", "status": "success"}],
+                    "start_pose": {"x": 5.5, "y": 5.5, "theta": 1.2},
+                    "final_pose": {"x": 5.5, "y": 5.5, "theta": 1.2},
+                    "finalized_at_unix_ms": 1777275300520 + idx,
+                    "source": "control",
+                },
+                "evidence": {
+                    "execution_steps": [
                         {
                             "t_ms": 1777275300520 + idx,
-                            "pose": {"x": 5.5, "y": 5.5, "theta": 1.2},
-                            "skill_invocations": [
-                                {
-                                    "skill": "rosa_response",
-                                    "args": {"query": query, "experience_key": "navigate"},
-                                    "status": "success",
-                                    "result": "ok",
-                                }
-                            ],
-                            "events": [],
+                            "skill": "rosa_response",
+                            "args": {"query": query, "experience_key": "navigate"},
+                            "status": "success",
+                            "result": "ok",
+                            "source": "worker",
                         }
-                    ]
+                    ],
+                    "collision_events": [],
                 },
+                "outcome": {"success": True, "terminal_reason": "goal_reached"},
             }
             (session_dir / f"short_testid_tc-{idx}.jsonl").write_text(
                 json.dumps(rec, ensure_ascii=False) + "\n", encoding="utf-8"
@@ -365,53 +472,51 @@ class TestMemoryConverter(unittest.TestCase):
         memory_root = _SCRIPTS / "memory"
         converter = MemoryConverter(memory_root=memory_root)
         one_short = {
-            "session_id": "s",
-            "turtle_id": "t",
-            "active_goal": {"natural_language": "navigate and draw", "constraints": {}},
-            "clock": {"unix_ms": 100},
-            "execution_trace": {
-                "steps": [
+            "identity": {"session_id": "s", "query_id": "s:1", "turtle_id": "t"},
+            "goal": {"raw_text": "navigate and draw", "intent": "navigate", "constraints": {}},
+            "decision_state": {
+                "status": "completed",
+                "current_step_index": 3,
+                "plan_steps": [
+                    {"skill": "teleport_absolute", "status": "success"},
+                    {"skill": "draw_line_segment", "status": "success"},
+                    {"skill": "rosa_response", "status": "success"},
+                ],
+                "start_pose": {"x": 0.0, "y": 0.0, "theta": 0.0},
+                "final_pose": {"x": 0.0, "y": 0.0, "theta": 0.0},
+                "finalized_at_unix_ms": 100,
+                "source": "control",
+            },
+            "evidence": {
+                "execution_steps": [
                     {
                         "t_ms": 10,
-                        "pose": {},
-                        "skill_invocations": [
-                            {
-                                "skill": "teleport_absolute",
-                                "args": {"x": 1.0, "y": 2.0},
-                                "status": "success",
-                                "result": "",
-                            }
-                        ],
-                        "events": [],
+                        "skill": "teleport_absolute",
+                        "args": {"x": 1.0, "y": 2.0},
+                        "status": "success",
+                        "result": "",
+                        "source": "worker",
                     },
                     {
                         "t_ms": 20,
-                        "pose": {},
-                        "skill_invocations": [
-                            {
-                                "skill": "draw_line_segment",
-                                "args": {"x": 10.0, "y": 5.0},
-                                "status": "success",
-                                "result": "",
-                            }
-                        ],
-                        "events": [],
+                        "skill": "draw_line_segment",
+                        "args": {"x": 10.0, "y": 5.0},
+                        "status": "success",
+                        "result": "",
+                        "source": "worker",
                     },
                     {
                         "t_ms": 30,
-                        "pose": {},
-                        "skill_invocations": [
-                            {
-                                "skill": "rosa_response",
-                                "args": {"query": "done"},
-                                "status": "success",
-                                "result": "ok",
-                            }
-                        ],
-                        "events": [],
+                        "skill": "rosa_response",
+                        "args": {"query": "done"},
+                        "status": "success",
+                        "result": "ok",
+                        "source": "worker",
                     },
-                ]
+                ],
+                "collision_events": [],
             },
+            "outcome": {"success": True, "terminal_reason": "goal_reached"},
         }
         rec = converter._build_compressed_long_record([one_short], "session-x", "turtle1")
         skills = [item["skill"] for item in rec["payload"]["action_trace"]]
@@ -429,32 +534,69 @@ class TestMemoryConverter(unittest.TestCase):
         memory_root = _SCRIPTS / "memory"
         converter = MemoryConverter(memory_root=memory_root)
         s1 = {
-            "active_goal": {"natural_language": "q"},
-            "clock": {"unix_ms": 1},
-            "execution_trace": {
-                "steps": [
+            "identity": {"session_id": "sid", "query_id": "sid:1", "turtle_id": "tid"},
+            "goal": {"raw_text": "q", "intent": "natural_language_query", "constraints": {}},
+            "decision_state": {
+                "status": "completed",
+                "current_step_index": 1,
+                "plan_steps": [{"skill": "a", "status": "success"}],
+                "start_pose": {"x": 0.0, "y": 0.0, "theta": 0.0},
+                "final_pose": {"x": 0.0, "y": 0.0, "theta": 0.0},
+                "finalized_at_unix_ms": 1,
+                "source": "control",
+            },
+            "evidence": {
+                "execution_steps": [
                     {
                         "t_ms": 1,
-                        "skill_invocations": [{"skill": "a", "args": {}, "status": "success", "result": ""}],
+                        "skill": "a",
+                        "args": {},
+                        "status": "success",
+                        "result": "",
+                        "source": "worker",
                     }
-                ]
+                ],
+                "collision_events": [],
             },
+            "outcome": {"success": True, "terminal_reason": "goal_reached"},
         }
         s2 = {
-            "active_goal": {"natural_language": "q"},
-            "clock": {"unix_ms": 2},
-            "execution_trace": {
-                "steps": [
+            "identity": {"session_id": "sid", "query_id": "sid:2", "turtle_id": "tid"},
+            "goal": {"raw_text": "q", "intent": "natural_language_query", "constraints": {}},
+            "decision_state": {
+                "status": "completed",
+                "current_step_index": 2,
+                "plan_steps": [
+                    {"skill": "a", "status": "success"},
+                    {"skill": "b", "status": "success"},
+                ],
+                "start_pose": {"x": 0.0, "y": 0.0, "theta": 0.0},
+                "final_pose": {"x": 0.0, "y": 0.0, "theta": 0.0},
+                "finalized_at_unix_ms": 2,
+                "source": "control",
+            },
+            "evidence": {
+                "execution_steps": [
                     {
                         "t_ms": 1,
-                        "skill_invocations": [{"skill": "a", "args": {}, "status": "success", "result": ""}],
+                        "skill": "a",
+                        "args": {},
+                        "status": "success",
+                        "result": "",
+                        "source": "worker",
                     },
                     {
                         "t_ms": 2,
-                        "skill_invocations": [{"skill": "b", "args": {}, "status": "success", "result": ""}],
+                        "skill": "b",
+                        "args": {},
+                        "status": "success",
+                        "result": "",
+                        "source": "worker",
                     },
-                ]
+                ],
+                "collision_events": [],
             },
+            "outcome": {"success": True, "terminal_reason": "goal_reached"},
         }
         rec = converter._build_compressed_long_record([s1, s2], "sid", "tid")
         skills = [item["skill"] for item in rec["payload"]["action_trace"]]

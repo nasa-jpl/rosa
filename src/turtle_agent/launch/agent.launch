@@ -1,5 +1,6 @@
 <launch>
     <arg name="streaming" default="false" />
+    <arg name="agent_mode" default="single" />
     <arg name="static_obstacles_file" default="$(find turtle_agent)/config/static_obstacles_turtlesim.yaml" />
     <arg name="draw_static_world" default="true" />
     <arg name="world_builder_required" default="true" />
@@ -12,6 +13,7 @@
           cwd="node"
           output="screen" >
         <param name="streaming" value="$(arg streaming)" />
+        <param name="agent_mode" value="$(arg agent_mode)" />
         <param name="static_obstacles_file" value="$(arg static_obstacles_file)" />
         <param name="draw_static_world" value="$(arg draw_static_world)" />
         <param name="world_builder_required" value="$(arg world_builder_required)" />
