@@ -149,7 +149,7 @@ class TestCollisionMonitor(unittest.TestCase):
         store.upsert(
             Obstacle(
                 "temp",
-                "ephemeral",
+                "temporary",
                 CircleGeometry(0.0, 0.0, 1.0),
                 time.monotonic() + 0.05,
             )

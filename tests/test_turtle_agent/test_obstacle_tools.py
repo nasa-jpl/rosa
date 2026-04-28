@@ -68,28 +68,28 @@ class TestObstacleTools(unittest.TestCase):
         self.assertIn("Failed to add obstacle", out)
         self.assertEqual(len(self.store), 0)
 
-    def test_add_ephemeral_rejects_non_positive_ttl(self):
+    def test_add_temporary_rejects_non_positive_ttl(self):
         out = obstacle_tools.add_obstacle.invoke(
             {
                 "obstacle_id": "bad",
                 "geometry_json": json.dumps(
                     {"type": "circle", "cx": 0, "cy": 0, "r": 1}
                 ),
-                "kind": "ephemeral",
+                "kind": "temporary",
                 "ttl_seconds": 0,
             }
         )
-        self.assertIn("ttl_seconds must be positive for ephemeral obstacles", out)
+        self.assertIn("ttl_seconds must be positive for temporary obstacles", out)
         self.assertEqual(len(self.store), 0)
 
-    def test_ephemeral_expires_from_tool_listing(self):
+    def test_temporary_expires_from_tool_listing(self):
         obstacle_tools.add_obstacle.invoke(
             {
                 "obstacle_id": "short",
                 "geometry_json": json.dumps(
                     {"type": "circle", "cx": 0, "cy": 0, "r": 1}
                 ),
-                "kind": "ephemeral",
+                "kind": "temporary",
                 "ttl_seconds": 0.01,
             }
         )

@@ -26,9 +26,10 @@ Each :class:`Obstacle` is immutable. Geometry variants align with
 
 ``ObstacleStore`` uses :class:`threading.RLock`. :meth:`snapshot` returns a tuple
 of obstacles consistent with a single lock acquisition (after purging expired
-``ephemeral`` entries), suitable for one collision-evaluation pass.
+``temporary`` entries), suitable for one collision-evaluation pass.
 
-Ephemeral TTL uses :func:`time.monotonic` deadlines in :attr:`Obstacle.expires_at`.
+Temporary-obstacle TTL uses :func:`time.monotonic` deadlines in
+:attr:`Obstacle.expires_at`.
 """
 
 from __future__ import annotations
@@ -40,7 +41,7 @@ from typing import Dict, Literal, Optional, Tuple, Union
 
 from collision_geometry import Segment
 
-ObstacleKind = Literal["static", "ephemeral", "turtle"]
+ObstacleKind = Literal["static", "temporary", "turtle"]
 
 
 @dataclass(frozen=True)
@@ -92,13 +93,13 @@ def _normalize_geometry(geometry: ObstacleGeometry) -> ObstacleGeometry:
 
 
 def _validate_obstacle(obstacle: Obstacle) -> None:
-    if obstacle.kind == "ephemeral":
+    if obstacle.kind == "temporary":
         if obstacle.expires_at is None:
             raise ValueError(
-                "ephemeral obstacles require expires_at (monotonic deadline)"
+                "temporary obstacles require expires_at (monotonic deadline)"
             )
     elif obstacle.expires_at is not None:
-        raise ValueError("only ephemeral obstacles may set expires_at")
+        raise ValueError("only temporary obstacles may set expires_at")
 
 
 def _copy_obstacle_for_snapshot(obstacle: Obstacle) -> Obstacle:
@@ -115,7 +116,7 @@ def _copy_obstacle_for_snapshot(obstacle: Obstacle) -> Obstacle:
 
 
 class ObstacleStore:
-    """Thread-safe store: upsert/remove/get/snapshot with ephemeral expiry."""
+    """Thread-safe store: upsert/remove/get/snapshot with temporary-obstacle expiry."""
 
     def __init__(self) -> None:
         self._lock = threading.RLock()

@@ -152,21 +152,21 @@ def add_obstacle(
     ``{"type":"segments","segments":[[[0,0],[1,0]]]}``.
 
     ``kind`` is ``static`` for an obstacle that remains until removed, or
-    ``ephemeral`` for a temporary obstacle that expires after ``ttl_seconds``.
+    ``temporary`` for an obstacle that expires after ``ttl_seconds``.
     """
     try:
         oid = obstacle_id.strip()
         if not oid:
             raise ObstacleToolError("obstacle_id must be a non-empty string.")
         kind_l = kind.strip().lower()
-        if kind_l not in ("static", "ephemeral"):
-            raise ObstacleToolError("kind must be 'static' or 'ephemeral'.")
+        if kind_l not in ("static", "temporary"):
+            raise ObstacleToolError("kind must be 'static' or 'temporary'.")
         expires_at = None
-        if kind_l == "ephemeral":
+        if kind_l == "temporary":
             ttl = _coerce_float(ttl_seconds, "ttl_seconds")
             if ttl <= 0:
                 raise ObstacleToolError(
-                    "ttl_seconds must be positive for ephemeral obstacles."
+                    "ttl_seconds must be positive for temporary obstacles."
                 )
             expires_at = time.monotonic() + ttl
         geometry = _parse_geometry_json(geometry_json)
@@ -178,8 +178,8 @@ def add_obstacle(
                 expires_at=expires_at,
             )
         )
-        if kind_l == "ephemeral":
-            return f"Added ephemeral obstacle '{oid}' with ttl_seconds={ttl}."
+        if kind_l == "temporary":
+            return f"Added temporary obstacle '{oid}' with ttl_seconds={ttl}."
         return f"Added static obstacle '{oid}'."
     except (ObstacleToolError, ValueError) as e:
         return f"Failed to add obstacle: {e}"

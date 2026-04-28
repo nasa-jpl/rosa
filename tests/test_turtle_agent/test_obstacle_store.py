@@ -61,13 +61,13 @@ class TestObstacleStoreSingleThread(unittest.TestCase):
         store.clear()
         self.assertEqual(len(store), 0)
 
-    def test_ephemeral_expires_on_snapshot(self):
+    def test_temporary_expires_on_snapshot(self):
         store = ObstacleStore()
         deadline = time.monotonic() + 0.05
         store.upsert(
             Obstacle(
                 "e",
-                "ephemeral",
+                "temporary",
                 CircleGeometry(0.0, 0.0, 1.0),
                 deadline,
             )
@@ -75,11 +75,11 @@ class TestObstacleStoreSingleThread(unittest.TestCase):
         time.sleep(0.1)
         self.assertEqual(len(store.snapshot()), 0)
 
-    def test_ephemeral_expires_on_get(self):
+    def test_temporary_expires_on_get(self):
         store = ObstacleStore()
         deadline = time.monotonic() + 0.05
         store.upsert(
-            Obstacle("e", "ephemeral", CircleGeometry(0.0, 0.0, 1.0), deadline)
+            Obstacle("e", "temporary", CircleGeometry(0.0, 0.0, 1.0), deadline)
         )
         time.sleep(0.1)
         self.assertIsNone(store.get("e"))
@@ -89,7 +89,7 @@ class TestObstacleStoreSingleThread(unittest.TestCase):
         store.upsert(
             Obstacle(
                 "e",
-                "ephemeral",
+                "temporary",
                 CircleGeometry(0.0, 0.0, 1.0),
                 time.monotonic() - 1.0,
             )
@@ -97,10 +97,10 @@ class TestObstacleStoreSingleThread(unittest.TestCase):
         store.purge_expired()
         self.assertEqual(len(store), 0)
 
-    def test_validation_ephemeral_requires_deadline(self):
+    def test_validation_temporary_requires_deadline(self):
         with self.assertRaises(ValueError):
             ObstacleStore().upsert(
-                Obstacle("bad", "ephemeral", CircleGeometry(0.0, 0.0, 1.0), None)
+                Obstacle("bad", "temporary", CircleGeometry(0.0, 0.0, 1.0), None)
             )
 
     def test_validation_static_may_not_have_deadline(self):

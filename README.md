@@ -90,7 +90,7 @@ JSON map such as `src/turtle_agent/config/static_obstacles_turtlesim.yaml`.
 When `~draw_static_world` is enabled, a startup-only `rospy` world builder reads
 the same store snapshot and draws the static world with a temporary builder
 turtle. Runtime obstacle CRUD is managed through LangChain tools that update the
-same store directly. `static` obstacles remain until removed; `ephemeral`
+same store directly. `static` obstacles remain until removed; `temporary`
 obstacles expire after their TTL. No HTTP layer is used for obstacle CRUD or
 initial map injection.
 

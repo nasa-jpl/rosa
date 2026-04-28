@@ -25,9 +25,9 @@ obstacles:
       type: segments
       segments:
         - [ [ 0.0, 11.0 ], [ 0.0, 0.0 ] ]
-  # Wet markers: side-1 squares; kind ephemeral (optional ttl_seconds; else loader default).
+  # Wet markers: side-1 squares; kind temporary (optional ttl_seconds; else loader default).
   - id: wet-top
-    kind: ephemeral
+    kind: temporary
     geometry:
       type: aabb
       min_x: 4.5
@@ -35,7 +35,7 @@ obstacles:
       max_x: 5.5
       max_y: 9.5
   - id: wet-right
-    kind: ephemeral
+    kind: temporary
     geometry:
       type: aabb
       min_x: 8.5
@@ -43,7 +43,7 @@ obstacles:
       max_x: 9.5
       max_y: 5.5
   - id: wet-bottom
-    kind: ephemeral
+    kind: temporary
     geometry:
       type: aabb
       min_x: 4.5
