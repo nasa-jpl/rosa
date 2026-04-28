@@ -93,8 +93,8 @@ class ROSA:
         streaming: bool = True,
         max_iterations: int = 100,
         return_intermediate_steps: bool = False,
-        # Turtle agent persists executed tool traces into memory/command logs.
-        # This callback exposes intermediate steps in non-streaming invoke() path.
+        # turtle_agent가 실행한 tool trace를 memory/command 로그에 남길 수 있도록,
+        # 비스트리밍 invoke() 경로에서도 intermediate step을 콜백으로 노출합니다.
         on_intermediate_steps: Optional[
             Callable[[List[Tuple[Any, str]]], None]
         ] = None,
@@ -171,7 +171,7 @@ class ROSA:
             return f"An error occurred: {str(e)}"
 
         if self.__on_intermediate_steps:
-            # Keep callback errors non-fatal so agent responses are not blocked.
+            # 콜백 예외가 발생해도 사용자 응답 흐름을 막지 않도록 비치명 처리합니다.
             steps = result.get("intermediate_steps") or []
             try:
                 self.__on_intermediate_steps(steps)

@@ -46,8 +46,8 @@ def get_prompts():
         "DEFAULTS:\n"
         "Use size=1 for shapes unless specified otherwise.\n"
         "\n"
-        # Limit repeated teleports on interactive turtles to reduce path "snapping"
-        # and keep trajectories comparable for memory/collision learning.
+        # 사용자 조작 터틀에서 과도한 순간이동(경로 튐)을 줄이고,
+        # 충돌/메모리 학습 시 궤적 비교 가능성을 유지하기 위한 제약입니다.
         "TELEPORT BUDGET (user-facing turtles):\n"
         "For every turtle you control for the user (e.g. turtle1, turtle2—not the arena map turtle): "
         "you may use teleport_absolute or teleport_relative at most once per user request as the very first "
