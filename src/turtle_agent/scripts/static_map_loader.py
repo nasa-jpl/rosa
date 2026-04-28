@@ -37,6 +37,7 @@ Field mapping (file keys → :mod:`obstacle_store` types):
     :class:`SegmentsGeometry` (same tuple layout as :class:`collision_geometry.Segment`)
 
 **Duplicate ids:** default ``on_duplicate_id=\"replace\"`` matches :meth:`ObstacleStore.upsert`
+(last write wins). With ``on_duplicate_id=\"error\"``, a duplicate id in the store
 (or duplicated earlier in the same document) raises :exc:`StaticMapLoadError`.
 
 **Files:** :func:`load_file` uses the path suffix (``.yaml``/``.yml`` → PyYAML,
