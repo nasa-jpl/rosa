@@ -261,6 +261,9 @@ class TurtleAgent(ROSA):
         self.clear_chat()
         self.last_events = []
         self.command_handler.pop("info", None)
+        no_clear = os.environ.get("ROSA_NO_CLEAR", "").strip().lower()
+        if no_clear in ("1", "true", "yes", "on"):
+            return
         os.system("clear")
 
     def get_input(self, prompt: str):
@@ -561,6 +564,7 @@ def main(
 if __name__ == "__main__":
     _maybe_attach_debugpy()
     rospy.init_node("rosa", log_level=rospy.INFO)
+    rospy.loginfo("runtime tools.turtle module: %s", getattr(turtle_tools, "__file__", "unknown"))
 
     # rospy.AsyncSpinner is missing in some stacks; a daemon spin thread is portable.
     def _ros_spin() -> None:

@@ -13,3 +13,4 @@ logs/
 .devcontainer/
 devel/
 src/turtle_agent/scripts/memory/**/*.jsonl
+.venv/
