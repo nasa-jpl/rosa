@@ -27,8 +27,8 @@ YAML/JSON document shape::
 Field mapping (file keys → :mod:`obstacle_store` types):
 
 - ``id`` (str, required) → :attr:`Obstacle.id`
-- ``kind`` (str, optional) → :attr:`Obstacle.kind`; must be ``\"static\"`` if set.
-  Omitted defaults to ``\"static\"``.
+- ``kind``: ``\"static\"`` (default) or ``\"ephemeral\"``. Ephemeral deadlines use
+  ``ttl_seconds`` if given, else :data:`DEFAULT_EPHEMERAL_TTL_SECONDS` at load time.
 - ``geometry.type``:
 
   - ``circle`` — keys ``cx``, ``cy``, ``r`` (numbers) → :class:`CircleGeometry`
@@ -36,10 +36,8 @@ Field mapping (file keys → :mod:`obstacle_store` types):
   - ``segments`` — ``segments`` is a list of ``[[x1,y1],[x2,y2]]`` pairs →
     :class:`SegmentsGeometry` (same tuple layout as :class:`collision_geometry.Segment`)
 
-- ``expires_at`` is not supported here; static obstacles use ``expires_at=None``.
-
 **Duplicate ids:** default ``on_duplicate_id=\"replace\"`` matches :meth:`ObstacleStore.upsert`
-(last write wins). With ``on_duplicate_id=\"error\"``, an id already present in the store
+(last write wins). With ``on_duplicate_id=\"error\"``, a duplicate id in the store
 (or duplicated earlier in the same document) raises :exc:`StaticMapLoadError`.
 
 **Files:** :func:`load_file` uses the path suffix (``.yaml``/``.yml`` → PyYAML,
@@ -49,6 +47,7 @@ Field mapping (file keys → :mod:`obstacle_store` types):
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
 from typing import (
     Any,
@@ -74,6 +73,9 @@ from obstacle_store import (
 )
 
 OnDuplicateId = Literal["replace", "error"]
+
+# Used when ``kind: ephemeral`` and ``ttl_seconds`` is omitted (seconds).
+DEFAULT_EPHEMERAL_TTL_SECONDS = 31_536_000.0
 
 
 class StaticMapLoadError(ValueError):
@@ -192,16 +194,36 @@ def _parse_obstacle_entry(raw: Any, *, source: Optional[str], index: int) -> Obs
     if not isinstance(kind, str):
         raise _err("kind must be a string", source=source, index=index)
     kind_l = kind.strip().lower()
-    if kind_l != "static":
+    if kind_l not in ("static", "ephemeral"):
         raise _err(
-            f"only static obstacles are supported, got kind={kind!r}",
+            f"map kind must be 'static' or 'ephemeral', got {kind!r}",
             source=source,
             index=index,
         )
     if "geometry" not in raw:
         raise _err("geometry is required", source=source, index=index)
     geometry = _parse_geometry(raw["geometry"], source=source, index=index)
-    return Obstacle(id=oid.strip(), kind="static", geometry=geometry, expires_at=None)
+    if kind_l == "static":
+        return Obstacle(
+            id=oid.strip(),
+            kind="static",
+            geometry=geometry,
+            expires_at=None,
+        )
+    raw_ttl = raw.get("ttl_seconds", DEFAULT_EPHEMERAL_TTL_SECONDS)
+    ttl = _coerce_float(raw_ttl, key="ttl_seconds", source=source, index=index)
+    if ttl <= 0:
+        raise _err(
+            "ttl_seconds must be positive for ephemeral obstacles",
+            source=source,
+            index=index,
+        )
+    return Obstacle(
+        id=oid.strip(),
+        kind="ephemeral",
+        geometry=geometry,
+        expires_at=time.monotonic() + ttl,
+    )
 
 
 def load_into_store(
@@ -310,7 +332,6 @@ def load_from_rosparam(
         )
     return load_into_store(
         store,
-        
         data,
         on_duplicate_id=on_duplicate_id,
         source=f"rosparam:{param_name}",
