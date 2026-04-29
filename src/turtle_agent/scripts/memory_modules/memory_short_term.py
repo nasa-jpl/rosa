@@ -150,6 +150,7 @@ def create_short_term_record(
         },
         "evidence": {
             "execution_steps": [],
+            "execution_trace": {"steps": []},
             "collision_events": [],
         },
         "outcome": {
@@ -174,9 +175,23 @@ def update_short_term_record(
         decision_state["current_step_index"] = len(plan_steps)
     if execution_step is not None:
         steps = evidence.setdefault("execution_steps", [])
+        trace = evidence.setdefault("execution_trace", {})
+        trace_steps = trace.setdefault("steps", []) if isinstance(trace, dict) else []
         step = dict(execution_step)
         step.setdefault("source", "worker")
         steps.append(step)
+        trace_step = {
+            "t_ms": int(step.get("t_ms", 0)),
+            "skill": step.get("skill", ""),
+            "args": step.get("args", {}),
+            "status": step.get("status", "unknown"),
+            "result": step.get("result", ""),
+            "source": step.get("source", "worker"),
+            "start_pose": dict(step.get("start_pose", {"x": 0.0, "y": 0.0, "theta": 0.0})),
+            "final_pose": dict(step.get("final_pose", {"x": 0.0, "y": 0.0, "theta": 0.0})),
+        }
+        if isinstance(trace_steps, list):
+            trace_steps.append(trace_step)
     if collision_event is not None:
         events = evidence.setdefault("collision_events", [])
         event = dict(collision_event)
@@ -205,6 +220,17 @@ def finalize_short_term_record(
     outcome = record.setdefault("outcome", {})
     outcome["success"] = bool(success)
     outcome["terminal_reason"] = str(terminal_reason)
+    evidence = record.setdefault("evidence", {})
+    execution_trace = evidence.get("execution_trace", {})
+    if isinstance(execution_trace, dict):
+        steps = execution_trace.get("steps", [])
+        if isinstance(steps, list) and steps:
+            first = steps[0]
+            last = steps[-1]
+            if isinstance(first, dict):
+                first["start_pose"] = dict(start_pose)
+            if isinstance(last, dict):
+                last["final_pose"] = dict(final_pose)
     return record
 
 
@@ -243,6 +269,12 @@ def build_short_term_records(
         )
         for j, s in enumerate(skills[: idx + 1]):
             step_t_ms = int(s.get("t_ms", 0))
+            step_start = (
+                _pick_pose_for_time(location_rows, int(skills[j - 1].get("t_ms", 0)))
+                if j > 0
+                else _pick_pose_for_time(location_rows, int(skills[0].get("t_ms", 0)))
+            )
+            step_final = _pick_pose_for_time(location_rows, step_t_ms)
             update_short_term_record(
                 record,
                 plan_step={
@@ -255,6 +287,8 @@ def build_short_term_records(
                     "args": s.get("args", {}),
                     "status": s.get("status", "unknown"),
                     "result": s.get("result", ""),
+                    "start_pose": step_start,
+                    "final_pose": step_final,
                 },
             )
             for event in list(collision_by_skill[j]):

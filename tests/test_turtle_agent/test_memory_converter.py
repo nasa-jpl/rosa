@@ -82,6 +82,12 @@ class TestMemoryConverter(unittest.TestCase):
         self.assertEqual(rows[-1]["decision_state"]["status"], "completed")
         self.assertEqual(rows[-1]["decision_state"]["final_pose"]["x"], 2.0)
         self.assertEqual(rows[-1]["evidence"]["execution_steps"][0]["source"], "worker")
+        self.assertEqual(
+            rows[-1]["evidence"]["execution_trace"]["steps"][0]["start_pose"]["x"], 1.0
+        )
+        self.assertEqual(
+            rows[-1]["evidence"]["execution_trace"]["steps"][0]["final_pose"]["x"], 2.0
+        )
         self.assertEqual(rows[-1]["evidence"]["collision_events"][0]["source"], "sensor")
 
     def test_convert_session_writes_short_and_long_term(self):
@@ -194,6 +200,10 @@ class TestMemoryConverter(unittest.TestCase):
         self.assertEqual(short_rows[1]["decision_state"]["status"], "completed")
         self.assertIn("start_pose", short_rows[0]["decision_state"])
         self.assertIn("final_pose", short_rows[0]["decision_state"])
+        self.assertIn("execution_trace", short_rows[0]["evidence"])
+        self.assertIn("steps", short_rows[0]["evidence"]["execution_trace"])
+        self.assertIn("start_pose", short_rows[0]["evidence"]["execution_trace"]["steps"][0])
+        self.assertIn("final_pose", short_rows[0]["evidence"]["execution_trace"]["steps"][0])
         self.assertIn("source", short_rows[0]["decision_state"])
         self.assertEqual(len(long_rows), before_long_count)
 
