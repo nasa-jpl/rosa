@@ -314,13 +314,17 @@ class TurtleAgent(ROSA):
 
     async def submit(self, query: str):
         query_ctx = infer_query_context(query)
-        long_records = load_long_term_records(self._memory_root, self._turtle_id)
-        memory_context, memory_hits = build_memory_context(query, long_records, top_k=2)
+        memory_context = ""
+        memory_hits = 0
+        if self._agent_mode.strip().lower() == "single":
+            long_records = load_long_term_records(self._memory_root, self._turtle_id)
+            memory_context, memory_hits = build_memory_context(query, long_records, top_k=3)
         effective_query = (
             f"{memory_context}\n\nUser query:\n{query}" if memory_context else query
         )
         rospy.loginfo(
-            "memory prompt: hits=%s experience_key=%s",
+            "memory prompt: mode=%s hits=%s experience_key=%s",
+            self._agent_mode,
             memory_hits,
             query_ctx.get("experience_key", ""),
         )
