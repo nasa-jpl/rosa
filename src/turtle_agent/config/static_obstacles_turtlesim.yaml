@@ -1,0 +1,82 @@
+# Turtlesim default window: x and y span [0, 11] (inclusive). Walls as four edges.
+# wet-*: side-1 AABB. a–d-point: circles diameter 0.5 (r=0.25) on inner corners; walls use segment-vs-disc checks.
+obstacles:
+  - id: wall-south
+    kind: static
+    geometry:
+      type: segments
+      segments:
+        - [ [ 0.0, 0.0 ], [ 11.0, 0.0 ] ]
+  - id: wall-east
+    kind: static
+    geometry:
+      type: segments
+      segments:
+        - [ [ 11.0, 0.0 ], [ 11.0, 11.0 ] ]
+  - id: wall-north
+    kind: static
+    geometry:
+      type: segments
+      segments:
+        - [ [ 11.0, 11.0 ], [ 0.0, 11.0 ] ]
+  - id: wall-west
+    kind: static
+    geometry:
+      type: segments
+      segments:
+        - [ [ 0.0, 11.0 ], [ 0.0, 0.0 ] ]
+  # Wet markers: side-1 squares; kind temporary (optional ttl_seconds; else loader default).
+  - id: wet-top
+    kind: temporary
+    geometry:
+      type: aabb
+      min_x: 4.5
+      min_y: 8.5
+      max_x: 5.5
+      max_y: 9.5
+  - id: wet-right
+    kind: temporary
+    geometry:
+      type: aabb
+      min_x: 8.5
+      min_y: 4.5
+      max_x: 9.5
+      max_y: 5.5
+  - id: wet-bottom
+    kind: temporary
+    geometry:
+      type: aabb
+      min_x: 4.5
+      min_y: 1.5
+      max_x: 5.5
+      max_y: 2.5
+  # Inner rect tlbr: left=2, top(y)=9, right=9, bottom(y)=2.
+  # a→b→c→d = 시계방향: SW(2,2) → SE(9,2) → NE(9,9) → NW(2,9) — 지름 0.5 원 (r=0.25)
+  - id: a-point
+    kind: static
+    geometry:
+      type: circle
+      cx: 2.0
+      cy: 2.0
+      r: 0.25
+  - id: b-point
+    kind: static
+    geometry:
+      type: circle
+      cx: 9.0
+      cy: 2.0
+      r: 0.25
+  - id: c-point
+    kind: static
+    geometry:
+      type: circle
+      cx: 9.0
+      cy: 9.0
+      r: 0.25
+  - id: d-point
+    kind: static
+    geometry:
+      type: circle
+      cx: 2.0
+      cy: 9.0
+      r: 0.25

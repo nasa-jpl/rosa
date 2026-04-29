@@ -36,6 +36,7 @@ dependencies = [
     "rich",
     "pillow>=10.4.0",
     "numpy>=1.26.4",
+    "debugpy>=1.8.20",
 ]
 
 [project.optional-dependencies]
@@ -49,3 +50,15 @@ all = ["langchain-anthropic~=0.3.12", "langchain-ollama~=0.3.2"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.11",
+]

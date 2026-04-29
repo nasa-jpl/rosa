@@ -41,7 +41,9 @@ case "$(uname)" in
         # Keep XQuartz's DISPLAY or default to :0
         export DISPLAY=${DISPLAY:-:0}
         xhost +local:docker &>/dev/null || true
-        
+        # host.docker.internal X clients may appear as localhost on the host
+        xhost +localhost &>/dev/null || true
+
         # Check if XQuartz is running and properly configured
         if ! pgrep -xq "Xquartz" && ! pgrep -xq "X11"; then
             echo "Error: XQuartz is not running. Please start XQuartz and try again."
@@ -79,21 +81,31 @@ docker build $PLATFORM_ARG --build-arg DEVELOPMENT=$DEVELOPMENT -t $CONTAINER_NA
 }
 
 echo "Running the Docker container..."
+# Remote debug: export ROSA_DEBUGPY=1 before running; macOS publishes debugpy port to the host.
+DEBUGPY_PORT="${ROSA_DEBUGPY_PORT:-5678}"
 if [ "$(uname)" = "Darwin" ]; then
+    # macOS: LAN IP in DISPLAY often does not route from the Linux VM; use
+    # host.docker.internal. Override: ROSA_DOCKER_DISPLAY=host.example.com:0 ./demo.sh
+    DOCKER_DISPLAY="${ROSA_DOCKER_DISPLAY:-host.docker.internal:0}"
     # macOS: Use host.docker.internal for X11
     docker run -it --rm --init --name $CONTAINER_NAME \
-        -e DISPLAY=host.docker.internal:0 \
+        -p "${DEBUGPY_PORT}:${DEBUGPY_PORT}" \
+        -e DISPLAY="$DOCKER_DISPLAY" \
         -e HEADLESS=$HEADLESS \
         -e DEVELOPMENT=$DEVELOPMENT \
+        -e ROSA_DEBUGPY="${ROSA_DEBUGPY:-}" \
+        -e ROSA_DEBUGPY_PORT="${DEBUGPY_PORT}" \
         -v "$PWD/src":/app/src \
         -v "$PWD/tests":/app/tests \
         $CONTAINER_NAME
 else
-    # Linux/WSL: Use unix socket
+    # Linux/WSL: Use unix socket (--network host: debugpy port is on the host without -p)
     docker run -it --rm --init --name $CONTAINER_NAME \
         -e DISPLAY=$DISPLAY \
         -e HEADLESS=$HEADLESS \
         -e DEVELOPMENT=$DEVELOPMENT \
+        -e ROSA_DEBUGPY="${ROSA_DEBUGPY:-}" \
+        -e ROSA_DEBUGPY_PORT="${DEBUGPY_PORT}" \
         -v /tmp/.X11-unix:/tmp/.X11-unix \
         -v "$PWD/src":/app/src \
         -v "$PWD/tests":/app/tests \

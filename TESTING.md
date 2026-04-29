@@ -139,3 +139,17 @@ The following test categories are included in our testing setup. Further details
   - **Tips:**
     - Test the different system states, such as verbosity and debugging modes.
     - Validate the correct implementation of timing functions.
+
+#### Turtle Agent Obstacles
+
+- **Location:** `./tests/test_turtle_agent`
+- **Purpose:** To verify TurtleSim obstacle infrastructure, including static map loading, `ObstacleStore` TTL behavior, runtime obstacle tools, and world builder render planning.
+- **Running Tests:**
+  - **Manually:**
+    1. Navigate to the project root directory in the command line.
+    2. Execute `uv run python -m unittest discover -s tests/test_turtle_agent -v`.
+    3. The unit tests avoid requiring a live turtlesim process; ROS service calls in the world builder are covered with mocks.
+- **Obstacle Policy:**
+  - Static maps are loaded into the in-process `ObstacleStore`.
+  - Initial world drawing is performed by a startup `rospy` builder, not by the LLM or LangChain tools.
+  - Runtime obstacle CRUD updates the same store through tools. `static` obstacles remain until removed, and `temporary` obstacles expire after their TTL. No HTTP API is used.
