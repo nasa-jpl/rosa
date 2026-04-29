@@ -29,6 +29,9 @@ def infer_query_context(query: str) -> Dict[str, Any]:
         slots["to"] = m_ko.group(2).upper()
 
     task_family = "natural_language_query"
+    # NOTE: 현재 retrieval 품질 검증 범위가 navigation 중심이라 navigate 분기를 명시적으로 유지한다.
+    # intent_norm(task_family=navigate, from/to slots)과 키를 맞춰 recall 일관성을 확보하는 목적이며,
+    # 추후 trace_shape/rotate 확장 시에는 task별 parser/score 전략을 분리할 계획이다.
     # 좌표 기반 이동/선분 (memory 매칭을 navigate와 맞춤 — long intent_norm 과 일치시키기 위함)
     if re.search(
         r"\b(?:draw\s+(?:a\s+)?line|line)\s+to\s+(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)",
@@ -168,9 +171,11 @@ def _score_record(query_ctx: Dict[str, Any], record_ctx: Dict[str, Any], quality
         score += 20
     if q_slots.get("to") and str(r_slots.get("to", "")).upper() == q_slots.get("to"):
         score += 20
-    if quality == "high":
+    # NOTE: 피드백에 따라 "성공 사례 우선" 대신 "실패 사례 우선" retrieval 정책을 적용한다.
+    # 당장은 task-agnostic 규칙으로 일반화하지 않고, navigation 실효성 검증을 우선한다.
+    if quality == "low":
         score += 8
-    elif quality == "low":
+    elif quality == "high":
         score -= 8
     return score
 
@@ -188,7 +193,8 @@ def _record_sort_tuple(score: int, record_ctx: Dict[str, Any], row: Dict[str, An
     success_rate = _safe_float(evidence.get("success_rate")) or 0.0
     collisions = _safe_int(evidence.get("collision_enter_count"), 0)
     created_at = _safe_int(row.get("meta", {}).get("created_at_unix_ms"), 0)
-    return (score, _slot_specificity(record_ctx), -collisions, success_rate, created_at)
+    # 정렬 우선순위(내림차순): score > slot_specificity > 충돌 많음 > 성공률 낮음 > 최신성
+    return (score, _slot_specificity(record_ctx), collisions, -success_rate, created_at)
 
 
 def build_memory_context(query: str, records: List[Dict[str, Any]], top_k: int = 3) -> Tuple[str, int]:
