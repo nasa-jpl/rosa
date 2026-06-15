@@ -13,8 +13,9 @@
 #  limitations under the License.
 
 import inspect
+import warnings
 from functools import wraps
-from typing import Literal, List, Optional
+from typing import Literal, List, Optional, Set
 
 from langchain.agents import Tool
 
@@ -62,31 +63,65 @@ def inject_blacklist(default_blacklist: List[str]):
     return decorator
 
 
+# All available built-in tool modules
+ALL_MODULES: Set[str] = {"calculation", "log", "system", "ros"}
+
+# Default: load all modules (preserves original behaviour)
+DEFAULT_MODULES: Set[str] = ALL_MODULES.copy()
+
+
 class ROSATools:
     def __init__(
-        self, ros_version: Literal[1, 2], blacklist: Optional[List[str]] = None
+        self,
+        ros_version: Literal[1, 2],
+        blacklist: Optional[List[str]] = None,
+        tool_modules: Optional[Set[str]] = None,
     ):
+        """
+        Initialize ROSATools.
+
+        :param ros_version: ROS version (1 or 2).
+        :param blacklist: List of tool names to exclude from the agent.
+        :param tool_modules: Set of built-in module names to load. Available modules:
+            'calculation', 'log', 'system', 'ros'. Defaults to all modules.
+            Pass an empty set to disable all built-in tools and use only custom tools.
+        """
         self.__tools: list = []
         self.__ros_version = ros_version
         self.__blacklist = blacklist
+        self.__tool_modules = tool_modules if tool_modules is not None else DEFAULT_MODULES
 
-        # Add the default tools
-        from . import calculation, log, system
+        # Warn about unknown module names
+        unknown = self.__tool_modules - ALL_MODULES
+        if unknown:
+            warnings.warn(
+                f"Unknown tool module(s): {unknown}. "
+                f"Available modules: {ALL_MODULES}",
+                UserWarning,
+                stacklevel=2,
+            )
 
-        self.__iterative_add(calculation)
-        self.__iterative_add(log)
-        self.__iterative_add(system)
+        if "calculation" in self.__tool_modules:
+            from . import calculation
+            self.__iterative_add(calculation)
 
-        if self.__ros_version == 1:
-            from . import ros1
+        if "log" in self.__tool_modules:
+            from . import log
+            self.__iterative_add(log)
 
-            self.__iterative_add(ros1, blacklist=blacklist)
-        elif self.__ros_version == 2:
-            from . import ros2
+        if "system" in self.__tool_modules:
+            from . import system
+            self.__iterative_add(system)
 
-            self.__iterative_add(ros2, blacklist=blacklist)
-        else:
-            raise ValueError("Invalid ROS version. Must be either 1 or 2.")
+        if "ros" in self.__tool_modules:
+            if self.__ros_version == 1:
+                from . import ros1
+                self.__iterative_add(ros1, blacklist=blacklist)
+            elif self.__ros_version == 2:
+                from . import ros2
+                self.__iterative_add(ros2, blacklist=blacklist)
+            else:
+                raise ValueError("Invalid ROS version. Must be either 1 or 2.")
 
     def get_tools(self) -> List[Tool]:
         return self.__tools
@@ -94,7 +129,6 @@ class ROSATools:
     def __add_tool(self, tool):
         if hasattr(tool, "name") and hasattr(tool, "func"):
             if self.__blacklist and "blacklist" in tool.func.__code__.co_varnames:
-                # Inject the blacklist into the tool function
                 tool.func = inject_blacklist(self.__blacklist)(tool.func)
             self.__tools.append(tool)
 
@@ -123,7 +157,7 @@ class ROSATools:
         """
         Add a single tool to the Tools object.
 
-        :param tools: A list of tools to add
+        :param tools: A list of tools to add.
         """
         for tool in tools:
             self.__add_tool(tool)

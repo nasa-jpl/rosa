@@ -105,6 +105,64 @@ class TestROSA2Tools(unittest.TestCase):
             tools = ROSATools(ros_version=1)
             self.assertIn(mock_ros2.return_value, tools.get_tools())
 
+class TestROSAToolModules(unittest.TestCase):
+    """Tests for the tool_modules parameter introduced to allow selective
+    loading of built-in ROSA tool modules."""
+
+    def test_empty_tool_modules_loads_no_builtin_tools(self):
+        """Passing tool_modules=set() should result in zero built-in tools."""
+        ros_version = int(os.getenv("ROS_VERSION", 1))
+        tools = ROSATools(ros_version=ros_version, tool_modules=set())
+        self.assertEqual(len(tools.get_tools()), 0)
+
+    def test_none_tool_modules_loads_all_builtin_tools(self):
+        """Passing tool_modules=None should load all built-in modules (default behaviour)."""
+        from src.rosa.tools import DEFAULT_MODULES, ALL_MODULES
+        self.assertEqual(DEFAULT_MODULES, ALL_MODULES)
+
+    def test_selective_tool_modules_loads_only_specified(self):
+        """Passing tool_modules={'calculation'} should load only the specified modules
+        and not load others."""
+        ros_version = int(os.getenv("ROS_VERSION", 1))
+        # With only calculation, we get some tools
+        tools_calc = ROSATools(ros_version=ros_version, tool_modules={"calculation"})
+        count_calc = len(tools_calc.get_tools())
+        # With empty set, we get zero tools
+        tools_empty = ROSATools(ros_version=ros_version, tool_modules=set())
+        count_empty = len(tools_empty.get_tools())
+        # With all modules, we get more tools than with just calculation
+        tools_all = ROSATools(ros_version=ros_version, tool_modules=None)
+        count_all = len(tools_all.get_tools())
+        # Selective loading should give more than empty but less than all
+        self.assertEqual(count_empty, 0)
+        self.assertGreater(count_calc, count_empty)
+        self.assertLess(count_calc, count_all)
+
+    def test_unknown_module_raises_warning(self):
+        """Passing an unknown module name should raise a UserWarning."""
+        ros_version = int(os.getenv("ROS_VERSION", 1))
+        with self.assertWarns(UserWarning):
+            ROSATools(ros_version=ros_version, tool_modules={"unknown_module"})
+
+    def test_tool_modules_defaults_to_all(self):
+        """Not passing tool_modules should default to all built-in modules."""
+        from src.rosa.tools import DEFAULT_MODULES, ALL_MODULES
+        ros_version = int(os.getenv("ROS_VERSION", 1))
+        tools = ROSATools(ros_version=ros_version, tool_modules=None)
+        self.assertEqual(tools._ROSATools__tool_modules, ALL_MODULES)
+
+    def test_custom_tools_work_with_empty_tool_modules(self):
+        """Custom tools should still be added when tool_modules=set()."""
+        @tool
+        def my_custom_tool() -> str:
+            """A custom tool."""
+            return "custom"
+
+        ros_version = int(os.getenv("ROS_VERSION", 1))
+        rosa_tools = ROSATools(ros_version=ros_version, tool_modules=set())
+        rosa_tools.add_tools([my_custom_tool])
+        self.assertEqual(len(rosa_tools.get_tools()), 1)
+        self.assertEqual(rosa_tools.get_tools()[0].name, "my_custom_tool")
 
 if __name__ == "__main__":
     unittest.main()
