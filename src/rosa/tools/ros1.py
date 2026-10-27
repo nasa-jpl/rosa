@@ -13,6 +13,7 @@
 #  limitations under the License.
 
 import os
+import subprocess
 import time
 from typing import Optional, List
 
@@ -743,8 +744,12 @@ def roslaunch(package: str, launch_file: str) -> str:
     :param package: The name of the ROS package containing the launch file.
     :param launch_file: The name of the launch file to launch.
     """
+    for name, value in (("package", package), ("launch file", launch_file)):
+        if not isinstance(value, str) or not value.strip() or value.startswith("-"):
+            return f"Failed to launch ROS launch file: invalid {name} '{value}'."
+
     try:
-        os.system(f"roslaunch {package} {launch_file}")
+        subprocess.call(["roslaunch", package, launch_file])
         return f"Launched ROS launch file '{launch_file}' in package '{package}'."
     except Exception as e:
         return f"Failed to launch ROS launch file '{launch_file}' in package '{package}': {e}"

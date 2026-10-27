@@ -13,9 +13,58 @@
 #  limitations under the License.
 
 import os
-from typing import Optional, Literal
+from typing import List, Optional, Literal
 
 from langchain.agents import tool
+
+
+def get_allowed_log_directories() -> List[str]:
+    """
+    Return the directories that `read_log` is permitted to read from.
+
+    This includes the standard ROS1 and ROS2 log locations, plus any directories listed in the
+    `ROSA_LOG_DIRS` environment variable (separated by `os.pathsep`).
+    """
+    candidates = []
+
+    for env_var in ("ROS_LOG_DIR", "ROS_HOME"):
+        value = os.getenv(env_var)
+        if value:
+            candidates.append(value if env_var == "ROS_LOG_DIR" else os.path.join(value, "log"))
+
+    candidates.append(os.path.join(os.path.expanduser("~"), ".ros", "log"))
+
+    try:
+        import rospkg
+
+        candidates.append(rospkg.get_log_dir())
+    except Exception:
+        pass
+
+    try:
+        from rclpy.logging import get_logging_directory
+
+        candidates.append(get_logging_directory())
+    except Exception:
+        pass
+
+    extra = os.getenv("ROSA_LOG_DIRS")
+    if extra:
+        candidates.extend(d for d in extra.split(os.pathsep) if d)
+
+    return [os.path.realpath(c) for c in candidates if c]
+
+
+def is_path_within_directories(path: str, directories: List[str]) -> bool:
+    """Check whether `path` (after resolving symlinks) is located inside one of `directories`."""
+    real_path = os.path.realpath(path)
+    for directory in directories:
+        try:
+            if os.path.commonpath([real_path, directory]) == directory:
+                return True
+        except ValueError:
+            continue
+    return False
 
 
 @tool
@@ -38,13 +87,22 @@ def read_log(
     if num_lines is not None and num_lines < 1:
         return {"error": "Invalid `num_lines` argument. It must be a positive integer."}
 
+    full_log_path = os.path.join(log_file_directory, log_filename)
+
+    # Only allow reading files that live inside a known ROS log directory. This prevents path traversal
+    # (e.g. "../../etc/passwd") and absolute paths from being used to read arbitrary files.
+    allowed_directories = get_allowed_log_directories()
+    if not is_path_within_directories(full_log_path, allowed_directories):
+        return {
+            "error": f"Access denied: '{full_log_path}' is not inside an allowed ROS log directory. "
+            f"Allowed directories: {allowed_directories}"
+        }
+
     if not os.path.exists(log_file_directory):
         return {
             "error": f"The log directory '{log_file_directory}' does not exist. You should first use your tools to "
             f"get the correct log directory."
         }
-
-    full_log_path = os.path.join(log_file_directory, log_filename)
 
     if not os.path.exists(full_log_path):
         return {
@@ -54,7 +112,7 @@ def read_log(
     if not os.path.isfile(full_log_path):
         return {"error": f"The path '{full_log_path}' is not a file."}
 
-    with open(full_log_path, "r") as f:
+    with open(os.path.realpath(full_log_path), "r") as f:
         log_lines = f.readlines()
 
     total_lines = len(log_lines)

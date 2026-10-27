@@ -12,6 +12,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import os
+import tempfile
 import unittest
 from unittest.mock import patch, mock_open
 
@@ -19,6 +21,14 @@ from src.rosa.tools.log import read_log
 
 
 class TestReadLog(unittest.TestCase):
+
+    def setUp(self):
+        patcher = patch(
+            "src.rosa.tools.log.get_allowed_log_directories",
+            return_value=["/valid/directory", "/invalid/directory"],
+        )
+        self.mock_allowed_dirs = patcher.start()
+        self.addCleanup(patcher.stop)
 
     @patch("os.path.exists")
     def test_log_directory_does_not_exist(self, mock_exists):
@@ -170,6 +180,66 @@ class TestReadLog(unittest.TestCase):
                 }
             )
             self.assertEqual(result["lines"], [])
+
+
+    def test_path_traversal_in_filename_is_rejected(self):
+        with patch("builtins.open", new_callable=mock_open, read_data="secret\n") as m:
+            result = read_log.invoke(
+                {
+                    "log_file_directory": "/valid/directory",
+                    "log_filename": "../../etc/passwd",
+                }
+            )
+        self.assertIn("Access denied", result["error"])
+        m.assert_not_called()
+
+    def test_absolute_filename_is_rejected(self):
+        with patch("builtins.open", new_callable=mock_open, read_data="secret\n") as m:
+            result = read_log.invoke(
+                {
+                    "log_file_directory": "/valid/directory",
+                    "log_filename": "/etc/passwd",
+                }
+            )
+        self.assertIn("Access denied", result["error"])
+        m.assert_not_called()
+
+    def test_directory_outside_allowed_roots_is_rejected(self):
+        with patch("builtins.open", new_callable=mock_open, read_data="secret\n") as m:
+            result = read_log.invoke(
+                {
+                    "log_file_directory": "/etc",
+                    "log_filename": "passwd",
+                }
+            )
+        self.assertIn("Access denied", result["error"])
+        m.assert_not_called()
+
+    def test_symlink_escaping_allowed_directory_is_rejected(self):
+        with tempfile.TemporaryDirectory() as log_dir, tempfile.TemporaryDirectory() as other_dir:
+            log_dir = os.path.realpath(log_dir)
+            secret = os.path.join(other_dir, "secret.txt")
+            with open(secret, "w") as f:
+                f.write("secret\n")
+            os.symlink(secret, os.path.join(log_dir, "link.log"))
+            self.mock_allowed_dirs.return_value = [log_dir]
+
+            result = read_log.invoke(
+                {"log_file_directory": log_dir, "log_filename": "link.log"}
+            )
+        self.assertIn("Access denied", result["error"])
+
+    def test_real_file_in_allowed_directory_is_read(self):
+        with tempfile.TemporaryDirectory() as log_dir:
+            log_dir = os.path.realpath(log_dir)
+            with open(os.path.join(log_dir, "node.log"), "w") as f:
+                f.write("INFO: hello\n")
+            self.mock_allowed_dirs.return_value = [log_dir]
+
+            result = read_log.invoke(
+                {"log_file_directory": log_dir, "log_filename": "node.log"}
+            )
+        self.assertEqual(result["lines"], ["line 1: INFO: hello"])
 
 
 if __name__ == "__main__":

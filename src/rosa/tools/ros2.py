@@ -16,79 +16,161 @@ import os
 import re
 import shlex
 import subprocess
+import threading
 import time
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
+import yaml
 from langchain.agents import tool
-from rclpy.logging import get_logging_directory
 
-# Detection and configuration for native ROS2 rclpy support
-HAS_RCLPY = False
+# rclpy is optional: when it is available the tools query the ROS2 graph through a shared,
+# long-lived node instead of spawning a ros2 CLI process (and a fresh DDS participant) per call.
 try:
     import rclpy
+    from rclpy.logging import get_logging_directory
     from rclpy.node import Node
+
     HAS_RCLPY = True
 except ImportError:
-    pass
+    rclpy = None
+    get_logging_directory = None
+    Node = object
+    HAS_RCLPY = False
 
-class ROSANode(Node if HAS_RCLPY else object):
-    """Singleton ROS2 node for high-performance native tool operations."""
+try:
+    from rclpy.action.graph import (
+        get_action_client_names_and_types_by_node,
+        get_action_server_names_and_types_by_node,
+    )
+except ImportError:
+    get_action_client_names_and_types_by_node = None
+    get_action_server_names_and_types_by_node = None
+
+# Maximum time to wait for DDS discovery to populate the graph when the shared node is created.
+DISCOVERY_TIMEOUT = float(os.environ.get("ROSA_ROS2_DISCOVERY_TIMEOUT", "2.0"))
+
+
+class ROSANode(Node):
+    """Singleton ROS2 node shared across all native tool invocations."""
+
+    NODE_NAME = "_rosa_agent"
+
     _instance = None
+    _lock = threading.Lock()
 
     @classmethod
-    def get_instance(cls):
+    def get_instance(cls) -> Optional["ROSANode"]:
+        """
+        Get the shared node, creating it on first use.
+
+        :return: The shared node, or None if rclpy is unavailable or the node cannot be created,
+                 in which case callers should fall back to the ros2 CLI.
+        """
         if not HAS_RCLPY:
             return None
-        if cls._instance is None:
-            try:
-                if not rclpy.ok():
-                    rclpy.init()
-                cls._instance = cls("rosa_agent_node")
-            except Exception:
-                cls._instance = None
-        return cls._instance
+
+        with cls._lock:
+            if cls._instance is None:
+                try:
+                    if not rclpy.ok():
+                        rclpy.init()
+                    node = cls(cls.NODE_NAME, start_parameter_services=False)
+                except Exception:
+                    return None
+                node.wait_for_discovery(DISCOVERY_TIMEOUT)
+                cls._instance = node
+            return cls._instance
+
+    def wait_for_discovery(self, timeout: float) -> None:
+        """
+        Block until another node has been discovered or the timeout elapses.
+
+        DDS discovery is asynchronous, so a freshly created node's graph cache can be empty or
+        incomplete. Graph queries do not fail in that case, so wait briefly before trusting them.
+        """
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if any(
+                name != self.get_name() or ns != self.get_namespace()
+                for name, ns in self.get_node_names_and_namespaces()
+            ):
+                # Give endpoints of the discovered nodes a moment to arrive as well.
+                time.sleep(min(0.2, max(0.0, deadline - time.monotonic())))
+                return
+            time.sleep(0.05)
 
 
-# Security validation: reject shell metacharacters in dynamic inputs
-_SHELL_META_CHARS = re.compile(r"[;&|`$(){}!\n\r\\]")
-
-def _validate_ros_arg(value: str, label: str = "argument") -> None:
-    if _SHELL_META_CHARS.search(value):
-        raise ValueError(
-            f"Invalid {label}: '{value}' contains disallowed shell metacharacters."
-        )
+def is_hidden_name(name: str) -> bool:
+    """Return True if any token of a ROS2 name is hidden (starts with an underscore)."""
+    return any(token.startswith("_") for token in name.split("/"))
 
 
-def execute_ros_command(command) -> Tuple[bool, str]:
+def filter_entities(
+    entities: List[str],
+    pattern: Optional[str] = None,
+    blacklist: Optional[List[str]] = None,
+) -> List[str]:
+    """Apply the blacklist and pattern filters used by the list tools."""
+    if blacklist:
+        entities = [
+            e for e in entities if not any(re.match(f".*{b}.*", e) for b in blacklist)
+        ]
+    if pattern:
+        entities = [e for e in entities if re.match(f".*{pattern}.*", e)]
+    return entities
+
+
+def split_node_name(node_name: str) -> Tuple[str, str]:
+    """Split a fully qualified node name into (name, namespace)."""
+    ns, _, name = node_name.rpartition("/")
+    return name, ns or "/"
+
+
+def execute_ros_command(command: Union[str, List[str]]) -> Tuple[bool, str]:
     """
     Execute a ROS2 command.
-    Accepts either a pre-split list of arguments (preferred) or a single
-    command string for backward compatibility. In both cases the command
-    is executed without a shell (shell=False) to prevent command injection.
-    """
-    if isinstance(command, str):
-        cmd = shlex.split(command)
-    else:
-        cmd = list(command)
 
-    # Validate all command arguments
-    for arg in cmd:
-        _validate_ros_arg(arg, "command argument")
+    The command is executed directly (never through a shell), so shell metacharacters in any
+    argument are passed to ros2 verbatim rather than being interpreted.
+
+    :param command: The ROS2 command to execute, either as a list of arguments or as a string
+                    that will be split using shell-like syntax.
+    :return: A tuple containing a boolean indicating success and the output of the command.
+    """
+
+    # Validate the command is a proper ROS2 command
+    try:
+        cmd = shlex.split(command) if isinstance(command, str) else list(command)
+    except ValueError as e:
+        raise ValueError(f"'{command}' is not a valid ROS2 command: {e}")
 
     valid_ros2_commands = ["node", "topic", "service", "param", "doctor"]
 
     if len(cmd) < 2:
-        raise ValueError(f"'{' '.join(cmd)}' is not a valid ROS2 command.")
+        raise ValueError(f"'{command}' is not a valid ROS2 command.")
     if cmd[0] != "ros2":
-        raise ValueError(f"'{' '.join(cmd)}' is not a valid ROS2 command.")
+        raise ValueError(f"'{command}' is not a valid ROS2 command.")
     if cmd[1] not in valid_ros2_commands:
         raise ValueError(f"'ros2 {cmd[1]}' is not a valid ros2 subcommand.")
+    if not all(isinstance(arg, str) for arg in cmd):
+        raise ValueError(f"'{command}' is not a valid ROS2 command.")
 
     try:
         output = subprocess.check_output(cmd, shell=False).decode()
         return True, output
     except Exception as e:
         return False, str(e)
+
+
+def validate_ros_name(name: str, kind: str = "name") -> None:
+    """
+    Ensure a ROS2 entity name cannot be interpreted as a command-line option.
+
+    :param name: The name to validate (node, topic, service, parameter, type, etc.).
+    :param kind: A human-readable description of the name, used in the error message.
+    """
+    if not isinstance(name, str) or not name.strip() or name.startswith("-"):
+        raise ValueError(f"Invalid ROS2 {kind}: '{name}'.")
 
 
 def get_entities(
@@ -98,7 +180,12 @@ def get_entities(
     blacklist: Optional[List[str]] = None,
 ) -> List[str]:
     """
-    Get a list of ROS2 entities (nodes, topics, services, etc.) via fallback subprocess path.
+    Get a list of ROS2 entities (nodes, topics, services, etc.).
+
+    :param cmd: the ROS2 command to execute.
+    :param delimiter: The delimiter to split the output by.
+    :param pattern: A regular expression pattern to filter the list of entities.
+    :return:
     """
     success, output = execute_ros_command(cmd)
 
@@ -112,7 +199,7 @@ def get_entities(
         entities = list(
             filter(
                 lambda x: not any(
-                    re.match(f".*{pat}.*", x) for pat in blacklist
+                    re.match(f".*{pattern}.*", x) for pattern in blacklist
                 ),
                 entities,
             )
@@ -136,17 +223,17 @@ def ros2_node_list(pattern: Optional[str] = None, blacklist: Optional[List[str]]
     node = ROSANode.get_instance()
     if node is not None:
         try:
-            node_names = node.get_node_names_and_namespaces()
-            nodes = [f"{ns}/{name}".replace("//", "/") for name, ns in node_names]
-            if blacklist:
-                nodes = [n for n in nodes if not any(re.match(f".*{b}.*", n) for b in blacklist)]
-            if pattern:
-                nodes = [n for n in nodes if re.match(f".*{pattern}.*", n)]
-            return {"nodes": nodes}
+            nodes = [
+                f"{ns.rstrip('/')}/{name}"
+                for name, ns in node.get_node_names_and_namespaces()
+                if not is_hidden_name(name)
+            ]
+            return {"nodes": filter_entities(sorted(nodes), pattern, blacklist)}
         except Exception:
             pass
 
-    nodes = get_entities("ros2 node list", pattern=pattern, blacklist=blacklist)
+    cmd = "ros2 node list"
+    nodes = get_entities(cmd, pattern=pattern, blacklist=blacklist)
     return {"nodes": nodes}
 
 
@@ -160,17 +247,17 @@ def ros2_topic_list(pattern: Optional[str] = None, blacklist: Optional[List[str]
     node = ROSANode.get_instance()
     if node is not None:
         try:
-            topic_names_and_types = node.get_topic_names_and_types()
-            topics = [name for name, _ in topic_names_and_types]
-            if blacklist:
-                topics = [t for t in topics if not any(re.match(f".*{b}.*", t) for b in blacklist)]
-            if pattern:
-                topics = [t for t in topics if re.match(f".*{pattern}.*", t)]
-            return {"topics": topics}
+            topics = [
+                name
+                for name, _ in node.get_topic_names_and_types()
+                if not is_hidden_name(name)
+            ]
+            return {"topics": filter_entities(topics, pattern, blacklist)}
         except Exception:
             pass
 
-    topics = get_entities("ros2 topic list", pattern=pattern, blacklist=blacklist)
+    cmd = "ros2 topic list"
+    topics = get_entities(cmd, pattern=pattern, blacklist=blacklist)
     return {"topics": topics}
 
 
@@ -190,12 +277,21 @@ def ros2_topic_echo(
     :param return_echoes: If True, return the messages as a list with the response.
     :param delay: Time to wait between each message in seconds.
     :param timeout: Max time to wait for a message before timing out.
+
+    :note: Do not set return_echoes to True if the number of messages is large.
+           This will cause the response to be too large and may cause the tool to fail.
     """
-    _validate_ros_arg(topic, "topic name")
     if count < 1 or count > 10:
         return {"error": "Count must be between 1 and 10."}
 
+    try:
+        validate_ros_name(topic, "topic")
+        timeout = float(timeout)
+    except (TypeError, ValueError) as e:
+        return {"error": str(e)}
+
     cmd = ["ros2", "topic", "echo", topic, "--once", "--spin-time", str(timeout)]
+
     echoes = []
     for i in range(count):
         success, output = execute_ros_command(cmd)
@@ -227,18 +323,43 @@ def ros2_service_list(
     node = ROSANode.get_instance()
     if node is not None:
         try:
-            service_names_and_types = node.get_service_names_and_types()
-            services = [name for name, _ in service_names_and_types]
-            if blacklist:
-                services = [s for s in services if not any(re.match(f".*{b}.*", s) for b in blacklist)]
-            if pattern:
-                services = [s for s in services if re.match(f".*{pattern}.*", s)]
-            return {"services": services}
+            services = [
+                name
+                for name, _ in node.get_service_names_and_types()
+                if not is_hidden_name(name)
+            ]
+            return {"services": filter_entities(services, pattern, blacklist)}
         except Exception:
             pass
 
-    services = get_entities("ros2 service list", pattern=pattern, blacklist=blacklist)
+    cmd = "ros2 service list"
+    services = get_entities(cmd, pattern=pattern, blacklist=blacklist)
     return {"services": services}
+
+
+def native_node_info(node: "ROSANode", node_name: str) -> str:
+    """Describe a node using the graph API, in the same layout as `ros2 node info`."""
+    name, ns = split_node_name(node_name)
+
+    sections = [
+        ("Subscribers", node.get_subscriber_names_and_types_by_node(name, ns)),
+        ("Publishers", node.get_publisher_names_and_types_by_node(name, ns)),
+        ("Service Servers", node.get_service_names_and_types_by_node(name, ns)),
+        ("Service Clients", node.get_client_names_and_types_by_node(name, ns)),
+    ]
+    if get_action_server_names_and_types_by_node is not None:
+        sections += [
+            ("Action Servers", get_action_server_names_and_types_by_node(node, name, ns)),
+            ("Action Clients", get_action_client_names_and_types_by_node(node, name, ns)),
+        ]
+
+    lines = [node_name]
+    for title, entries in sections:
+        lines.append(f"  {title}:")
+        for entry_name, entry_types in entries:
+            if not is_hidden_name(entry_name):
+                lines.append(f"    {entry_name}: {', '.join(entry_types)}")
+    return "\n".join(lines) + "\n"
 
 
 @tool
@@ -252,40 +373,49 @@ def ros2_node_info(nodes: List[str]) -> dict:
     data = {}
 
     for node_name in nodes:
-        _validate_ros_arg(node_name, "node name")
+
+        try:
+            validate_ros_name(node_name, "node name")
+        except ValueError as e:
+            data[node_name] = dict(error=str(e))
+            continue
+
         if node is not None:
             try:
-                parts = node_name.rsplit('/', 1)
-                ns = parts[0] if parts[0] else "/"
-                name = parts[1]
-
-                pubs = node.get_publisher_names_and_types_by_node(name, ns)
-                subs = node.get_subscriber_names_and_types_by_node(name, ns)
-                srvs = node.get_service_names_and_types_by_node(name, ns)
-
-                info = f"Node: {node_name}\n"
-                info += "  Publishers:\n"
-                for p_name, p_types in pubs:
-                    info += f"    {p_name} [{', '.join(p_types)}]\n"
-                info += "  Subscribers:\n"
-                for s_name, s_types in subs:
-                    info += f"    {s_name} [{', '.join(s_types)}]\n"
-                info += "  Services:\n"
-                for sv_name, sv_types in srvs:
-                    info += f"    {sv_name} [{', '.join(sv_types)}]\n"
-
-                data[node_name] = info
+                data[node_name] = native_node_info(node, node_name)
                 continue
             except Exception:
                 pass
 
-        success, output = execute_ros_command(["ros2", "node", "info", node_name])
+        cmd = ["ros2", "node", "info", node_name]
+        success, output = execute_ros_command(cmd)
         if not success:
             data[node_name] = dict(error=output)
             continue
         data[node_name] = output
 
     return data
+
+
+def native_topic_info(node: "ROSANode", topic: str) -> Optional[str]:
+    """
+    Describe a topic using the graph API, in the same layout as `ros2 topic info --verbose`.
+
+    :return: The description, or None if the topic is not known to the graph.
+    """
+    types = dict(node.get_topic_names_and_types()).get(topic)
+    if types is None:
+        return None
+
+    publishers = node.get_publishers_info_by_topic(topic)
+    subscriptions = node.get_subscriptions_info_by_topic(topic)
+
+    lines = [f"Type: {', '.join(types)}", ""]
+    for title, endpoints in (("Publisher", publishers), ("Subscription", subscriptions)):
+        lines += [f"{title} count: {len(endpoints)}", ""]
+        for endpoint in endpoints:
+            lines += [str(endpoint), ""]
+    return "\n".join(lines)
 
 
 @tool
@@ -299,21 +429,23 @@ def ros2_topic_info(topics: List[str]) -> dict:
     data = {}
 
     for topic in topics:
-        _validate_ros_arg(topic, "topic name")
+        try:
+            validate_ros_name(topic, "topic")
+        except ValueError as e:
+            data[topic] = dict(error=str(e))
+            continue
+
         if node is not None:
             try:
-                pubs = node.get_publishers_info_by_topic(topic)
-                subs = node.get_subscriptions_info_by_topic(topic)
-
-                info = f"Topic: {topic}\n"
-                info += f"  Publisher count: {len(pubs)}\n"
-                info += f"  Subscriber count: {len(subs)}\n"
-                data[topic] = info
-                continue
+                info = native_topic_info(node, topic)
+                if info is not None:
+                    data[topic] = info
+                    continue
             except Exception:
                 pass
 
-        success, output = execute_ros_command(["ros2", "topic", "info", topic, "--verbose"])
+        cmd = ["ros2", "topic", "info", topic, "--verbose"]
+        success, output = execute_ros_command(cmd)
         if not success:
             topic_info = dict(error=output)
         else:
@@ -337,7 +469,11 @@ def ros2_param_list(
     :param pattern: A regular expression pattern to filter the list of parameters.
     """
     if node_name:
-        _validate_ros_arg(node_name, "node name")
+        try:
+            validate_ros_name(node_name, "node name")
+        except ValueError as e:
+            return {"error": str(e)}
+
         cmd = ["ros2", "param", "list", node_name]
         success, output = execute_ros_command(cmd)
         if not success:
@@ -352,12 +488,14 @@ def ros2_param_list(
             ]
         return {node_name: params}
     else:
-        cmd = ["ros2", "param", "list"]
+        cmd = f"ros2 param list"
         success, output = execute_ros_command(cmd)
 
         if not success:
             return {"error": output}
 
+        # When we get a list of all nodes params, we have to parse it
+        # The node name starts with a '/' and the params are indented
         lines = output.split("\n")
         data = {}
         current_node = None
@@ -387,8 +525,12 @@ def ros2_param_get(node_name: str, param_name: str) -> dict:
     :param node_name: The name of the ROS2 node.
     :param param_name: The name of the parameter.
     """
-    _validate_ros_arg(node_name, "node name")
-    _validate_ros_arg(param_name, "parameter name")
+    try:
+        validate_ros_name(node_name, "node name")
+        validate_ros_name(param_name, "parameter name")
+    except ValueError as e:
+        return {"error": str(e)}
+
     cmd = ["ros2", "param", "get", node_name, param_name]
     success, output = execute_ros_command(cmd)
 
@@ -407,9 +549,12 @@ def ros2_param_set(node_name: str, param_name: str, param_value: str) -> dict:
     :param param_name: The name of the parameter.
     :param param_value: The value to set the parameter to.
     """
-    _validate_ros_arg(node_name, "node name")
-    _validate_ros_arg(param_name, "parameter name")
-    _validate_ros_arg(str(param_value), "parameter value")
+    try:
+        validate_ros_name(node_name, "node name")
+        validate_ros_name(param_name, "parameter name")
+    except ValueError as e:
+        return {"error": str(e)}
+
     cmd = ["ros2", "param", "set", node_name, param_name, str(param_value)]
     success, output = execute_ros_command(cmd)
 
@@ -430,21 +575,28 @@ def ros2_service_info(services: List[str]) -> dict:
     data = {}
 
     for service_name in services:
-        _validate_ros_arg(service_name, "service name")
+        try:
+            validate_ros_name(service_name, "service name")
+        except ValueError as e:
+            data[service_name] = dict(error=str(e))
+            continue
+
         if node is not None:
             try:
-                srv_names_and_types = node.get_service_names_and_types()
-                srv_type = next((types for name, types in srv_names_and_types if name == service_name), None)
-                if srv_type:
-                    data[service_name] = srv_type[0]
+                types = dict(node.get_service_names_and_types()).get(service_name)
+                if types:
+                    data[service_name] = "\n".join(types) + "\n"
                     continue
             except Exception:
                 pass
 
-        success, output = execute_ros_command(["ros2", "service", "type", service_name])
+        cmd = ["ros2", "service", "type", service_name]
+        success, output = execute_ros_command(cmd)
+
         if not success:
             data[service_name] = dict(error=output)
             continue
+
         data[service_name] = output
 
     return data
@@ -459,9 +611,13 @@ def ros2_service_call(service_name: str, srv_type: str, request: str) -> dict:
     :param srv_type: The type of the service (use ros2_service_info to verify).
     :param request: The request to send to the service.
     """
-    _validate_ros_arg(service_name, "service name")
-    _validate_ros_arg(srv_type, "service type")
-    cmd = ["ros2", "service", "call", service_name, srv_type, request]
+    try:
+        validate_ros_name(service_name, "service name")
+        validate_ros_name(srv_type, "service type")
+    except ValueError as e:
+        return {"error": str(e)}
+
+    cmd = ["ros2", "service", "call", service_name, srv_type, str(request)]
     success, output = execute_ros_command(cmd)
     if not success:
         return {"error": output}
@@ -474,60 +630,75 @@ def ros2_topic_pub(
     msg_type: str,
     message: str,
     rate: float = 10.0,
-    duration: float = 1.0
+    duration: float = 1.0,
+    wait_timeout: float = 2.0,
 ) -> dict:
     """
-    Publish a message to a ROS2 topic.
+    Publish a message to a ROS2 topic, repeatedly at the given rate for the given duration.
 
     :param topic: The name of the topic to publish to.
-    :param msg_type: The message type (e.g. 'std_msgs/msg/String').
-    :param message: The message content in YAML/JSON format.
-    :param rate: The frequency (Hz) at which to publish the message. Defaults to 10.0 Hz.
-    :param duration: The total duration (seconds) to keep publishing the message. Defaults to 1.0 second.
+    :param msg_type: The message type (e.g. 'geometry_msgs/msg/Twist').
+    :param message: The message content in YAML format (e.g. '{linear: {x: 1.0}}').
+    :param rate: The frequency (Hz) at which to publish the message.
+    :param duration: The total time (seconds) to keep publishing the message.
+    :param wait_timeout: Max time (seconds) to wait for a subscriber before giving up.
     """
-    _validate_ros_arg(topic, "topic name")
-    _validate_ros_arg(msg_type, "message type")
-    
-    node = ROSANode.get_instance()
-    if node is not None:
-        try:
-            parts = msg_type.split('/')
-            package = parts[0]
-            module = parts[1] if len(parts) > 2 else "msg"
-            cls_name = parts[-1]
-            
-            import importlib
-            mod = importlib.import_module(f"{package}.{module}")
-            msg_cls = getattr(mod, cls_name)
-            
-            import yaml
-            msg_data = yaml.safe_load(message)
-            
-            from rosidl_runtime_py import set_message_fields
-            msg = msg_cls()
-            set_message_fields(msg, msg_data)
-            
-            pub = node.create_publisher(msg_cls, topic, 10)
-            
-            # Publish loop to maintain velocity/messages over duration
-            sleep_time = 1.0 / max(0.1, rate)
-            steps = int(duration * rate)
-            for _ in range(max(1, steps)):
-                pub.publish(msg)
-                time.sleep(sleep_time)
-            
-            node.destroy_publisher(pub)
-            return {"success": True, "message": f"Published to {topic} for {duration}s at {rate}Hz"}
-        except Exception as e:
-            pass
+    try:
+        validate_ros_name(topic, "topic")
+        validate_ros_name(msg_type, "message type")
+        rate = float(rate)
+        duration = float(duration)
+        wait_timeout = float(wait_timeout)
+    except (TypeError, ValueError) as e:
+        return {"error": str(e)}
 
-    # Fallback to subprocess using --rate and --times
-    times = max(1, int(duration * rate))
-    cmd = ["ros2", "topic", "pub", "--rate", str(rate), "--times", str(times), topic, msg_type, message]
-    success, output = execute_ros_command(cmd)
-    if not success:
-        return {"error": output}
-    return {"success": True, "output": output}
+    if rate <= 0 or duration <= 0:
+        return {"error": "Rate and duration must be greater than zero."}
+
+    times = max(1, round(duration * rate))
+
+    node = ROSANode.get_instance()
+    if node is None:
+        cmd = ["ros2", "topic", "pub", "--rate", str(rate), "--times", str(times)]
+        cmd += [topic, msg_type, str(message)]
+        success, output = execute_ros_command(cmd)
+        if not success:
+            return {"error": output}
+        return {"success": True, "output": output}
+
+    try:
+        from rosidl_runtime_py.set_message import set_message_fields
+        from rosidl_runtime_py.utilities import get_message
+
+        msg_class = get_message(msg_type)
+        msg = msg_class()
+        values = yaml.safe_load(str(message))
+        if values:
+            set_message_fields(msg, values)
+    except Exception as e:
+        return {"error": f"Failed to build {msg_type} message: {e}"}
+
+    publisher = node.create_publisher(msg_class, topic, 10)
+    try:
+        # A volatile publisher drops messages sent before a subscriber is matched.
+        deadline = time.monotonic() + wait_timeout
+        while publisher.get_subscription_count() == 0:
+            if time.monotonic() >= deadline:
+                return {
+                    "error": f"No subscribers matched on {topic} within {wait_timeout}s; "
+                    "nothing was published."
+                }
+            time.sleep(0.05)
+
+        period = 1.0 / rate
+        for i in range(times):
+            publisher.publish(msg)
+            if i < times - 1:
+                time.sleep(period)
+    finally:
+        node.destroy_publisher(publisher)
+
+    return {"success": True, "published": times, "topic": topic, "rate": rate}
 
 
 @tool
@@ -535,7 +706,7 @@ def ros2_doctor() -> dict:
     """
     Check ROS setup and other potential issues.
     """
-    cmd = ["ros2", "doctor"]
+    cmd = "ros2 doctor"
     success, output = execute_ros_command(cmd)
     if not success:
         return {"error": output}
@@ -544,7 +715,12 @@ def ros2_doctor() -> dict:
 
 def ros2_log_directories():
     """Get any available ROS2 log directories."""
-    log_dir = get_logging_directory()
+    if get_logging_directory is not None:
+        log_dir = get_logging_directory()
+    else:
+        # Mirror rcl_logging's resolution: $ROS_LOG_DIR, then $ROS_HOME/log, then ~/.ros/log.
+        ros_home = os.environ.get("ROS_HOME") or os.path.join(os.path.expanduser("~"), ".ros")
+        log_dir = os.environ.get("ROS_LOG_DIR") or os.path.join(ros_home, "log")
     print(f"ROS 2 logs are stored in: {log_dir}")
 
     return {"default": f"{log_dir}"}
@@ -557,13 +733,15 @@ def roslog_list(min_size: int = 2048, blacklist: Optional[List[str]] = None) -> 
 
     :param min_size: The minimum size of the log file in bytes to include in the list.
     """
+
     logs = []
     log_dirs = ros2_log_directories()
 
     for _, log_dir in log_dirs.items():
-        if not log_dir:
+        if not log_dir or not os.path.isdir(log_dir):
             continue
 
+        # Get all .log files in the directory
         log_files = [
             os.path.join(log_dir, f)
             for f in os.listdir(log_dir)
@@ -572,6 +750,7 @@ def roslog_list(min_size: int = 2048, blacklist: Optional[List[str]] = None) -> 
 
         print(f"Log files: {log_files}")
 
+        # Filter out blacklisted files
         if blacklist:
             log_files = list(
                 filter(
@@ -582,8 +761,10 @@ def roslog_list(min_size: int = 2048, blacklist: Optional[List[str]] = None) -> 
                 )
             )
 
+        # Filter out files that are too small
         log_files = list(filter(lambda x: os.path.getsize(x) > min_size, log_files))
 
+        # Get the size of each log file in KB or MB if it's larger than 1 MB
         log_files = [
             {
                 f.replace(log_dir, ""): (
