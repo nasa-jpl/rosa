@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.11]
+
+### Changed
+
+* ROS2 tools now invoke the `ros2` CLI with an argument list instead of a shell command string, and validate entity names passed to it
+* `roslaunch` (ROS1) now launches with an argument list instead of `os.system`
+* `read_log` is now limited to ROS log directories (`ROS_LOG_DIR`, `ROS_HOME/log`, `~/.ros/log`, and the ROS1/ROS2 default log directories); additional directories can be allowed via `ROSA_LOG_DIRS`
+
 ## [1.0.10]
 
 ### Added

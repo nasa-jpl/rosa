@@ -57,6 +57,28 @@ class TestROS2Tools(unittest.TestCase):
             "Command 'ros2 node list' returned non-zero exit status 1.", output
         )
 
+    @patch("src.rosa.tools.ros2.subprocess.check_output")
+    def test_execute_does_not_use_shell(self, mock_check_output):
+        mock_check_output.return_value = b""
+        execute_ros_command("ros2 node list; touch /tmp/pwned")
+        args, kwargs = mock_check_output.call_args
+        self.assertEqual(args[0], ["ros2", "node", "list;", "touch", "/tmp/pwned"])
+        self.assertFalse(kwargs.get("shell", False))
+
+    @patch("src.rosa.tools.ros2.subprocess.check_output")
+    def test_tool_arguments_are_not_shell_interpreted(self, mock_check_output):
+        mock_check_output.return_value = b"42\n"
+        ros2_param_get.invoke({"node_name": "/node; id", "param_name": "$(id)"})
+        args, kwargs = mock_check_output.call_args
+        self.assertEqual(args[0], ["ros2", "param", "get", "/node; id", "$(id)"])
+        self.assertFalse(kwargs.get("shell", False))
+
+    @patch("src.rosa.tools.ros2.subprocess.check_output")
+    def test_option_injection_in_names_is_rejected(self, mock_check_output):
+        result = ros2_param_get.invoke({"node_name": "--help", "param_name": "p"})
+        self.assertIn("error", result)
+        mock_check_output.assert_not_called()
+
     def test_execute_command_with_invalid_prefix(self):
         with self.assertRaises(ValueError):
             execute_ros_command("invalid node list")
