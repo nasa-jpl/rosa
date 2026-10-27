@@ -41,21 +41,13 @@ class TestROSATools(unittest.TestCase):
                 self.assertEqual(tools._ROSATools__ros_version, 1)
 
     def test_initializes_with_ros_version_2(self):
-        if self.ros_version == 2:
-            tools = ROSATools(ros_version=2)
-            self.assertEqual(tools._ROSATools__ros_version, 2)
-        else:
-            with self.assertRaises(ModuleNotFoundError):
-                tools = ROSATools(ros_version=2)
-                self.assertEqual(tools._ROSATools__ros_version, 2)
+        # The ROS2 tools do not require rclpy; without it they fall back to the ros2 CLI.
+        tools = ROSATools(ros_version=2)
+        self.assertEqual(tools._ROSATools__ros_version, 2)
 
     def test_raises_value_error_for_invalid_ros_version(self):
-        if self.ros_version == 1:
-            with self.assertRaises(ModuleNotFoundError):
-                ROSATools(ros_version=2)
-        else:
-            with self.assertRaises(ModuleNotFoundError):
-                ROSATools(ros_version=1)
+        with self.assertRaises(ValueError):
+            ROSATools(ros_version=3)
 
     @patch("src.rosa.tools.calculation")
     @patch("src.rosa.tools.log")
@@ -90,9 +82,6 @@ class TestROSA1Tools(unittest.TestCase):
     def test_ros1_tools(self, mock_ros1):
         tools = ROSATools(ros_version=1)
         self.assertIn(mock_ros1.return_value, tools.get_tools())
-        with self.assertRaises(ModuleNotFoundError):
-            tools = ROSATools(ros_version=2)
-            self.assertIn(mock_ros1.return_value, tools.get_tools())
 
 
 @unittest.skipIf(os.environ.get("ROS_VERSION") == "1", "Skipping ROS 2 tests")
