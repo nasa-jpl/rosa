@@ -13,6 +13,7 @@
 #  limitations under the License.
 
 import os
+import re
 import subprocess
 import time
 from typing import Optional, List
@@ -737,6 +738,14 @@ def get_roslog_directories() -> dict:
     )
 
 
+# Allowlists for roslaunch arguments. Package names follow REP 144 (letters,
+# digits, underscores; hyphens tolerated for legacy packages). Launch files must
+# be a bare file name with a .launch/.xml/.test extension, so no paths, spaces,
+# roslaunch "name:=value" arguments, or shell metacharacters (; | & $ ` > < etc).
+_ROS_PACKAGE_NAME = re.compile(r"[A-Za-z][A-Za-z0-9_-]*")
+_LAUNCH_FILE_NAME = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_.-]*\.(launch|xml|test)")
+
+
 @tool
 def roslaunch(package: str, launch_file: str) -> str:
     """Launches a ROS launch file.
@@ -744,12 +753,19 @@ def roslaunch(package: str, launch_file: str) -> str:
     :param package: The name of the ROS package containing the launch file.
     :param launch_file: The name of the launch file to launch.
     """
-    for name, value in (("package", package), ("launch file", launch_file)):
-        if not isinstance(value, str) or not value.strip() or value.startswith("-"):
-            return f"Failed to launch ROS launch file: invalid {name} '{value}'."
+    if not isinstance(package, str) or not _ROS_PACKAGE_NAME.fullmatch(package):
+        return f"Failed to launch ROS launch file: invalid package '{package}'."
+    if (
+        not isinstance(launch_file, str)
+        or not _LAUNCH_FILE_NAME.fullmatch(launch_file)
+        or ".." in launch_file
+    ):
+        return f"Failed to launch ROS launch file: invalid launch file '{launch_file}'."
 
     try:
-        subprocess.call(["roslaunch", package, launch_file])
+        # Arguments are passed as a list with shell=False, so they are never
+        # interpreted by a shell; the allowlists above are defense in depth.
+        subprocess.call(["roslaunch", package, launch_file], shell=False)
         return f"Launched ROS launch file '{launch_file}' in package '{package}'."
     except Exception as e:
         return f"Failed to launch ROS launch file '{launch_file}' in package '{package}': {e}"

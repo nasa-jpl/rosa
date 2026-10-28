@@ -36,6 +36,7 @@ try:
         rospkg_list,
         rospkg_roots,
         roslog_list,
+        roslaunch,
     )
 except ModuleNotFoundError:
     pass
@@ -597,6 +598,57 @@ class TestROS1Tools(unittest.TestCase):
             entities,
             ["There are currently no topics available matching the specified pattern."],
         )
+
+    @patch("src.rosa.tools.ros1.subprocess.call")
+    def test_roslaunch_valid_arguments(self, mock_call):
+        result = roslaunch.invoke(
+            {"package": "turtle_sim", "launch_file": "multi_sim.launch"}
+        )
+        mock_call.assert_called_once_with(
+            ["roslaunch", "turtle_sim", "multi_sim.launch"], shell=False
+        )
+        self.assertIn("Launched", result)
+
+    @patch("src.rosa.tools.ros1.subprocess.call")
+    def test_roslaunch_rejects_injection_in_package(self, mock_call):
+        for package in [
+            "pkg; rm -rf ~",
+            "pkg | cat /etc/passwd",
+            "pkg && echo hi",
+            "$(whoami)",
+            "`whoami`",
+            "pkg > out",
+            "--help",
+            "../pkg",
+            "pkg\nid",
+            "",
+        ]:
+            result = roslaunch.invoke({"package": package, "launch_file": "sim.launch"})
+            self.assertIn("invalid package", result, package)
+        mock_call.assert_not_called()
+
+    @patch("src.rosa.tools.ros1.subprocess.call")
+    def test_roslaunch_rejects_injection_in_launch_file(self, mock_call):
+        for launch_file in [
+            "sim.launch; rm -rf ~",
+            "sim.launch | nc host 1",
+            "$(id).launch",
+            "`id`.launch",
+            "sim.launch && id",
+            "sim.launch arg:=value",
+            "/etc/passwd",
+            "../../other/sim.launch",
+            "..launch",
+            "-v.launch",
+            "sim.py",
+            "sim.launch\nid",
+            "",
+        ]:
+            result = roslaunch.invoke(
+                {"package": "turtle_sim", "launch_file": launch_file}
+            )
+            self.assertIn("invalid launch file", result, launch_file)
+        mock_call.assert_not_called()
 
 
 if __name__ == "__main__":
