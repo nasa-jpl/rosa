@@ -7,10 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.11]
 
+### Security
+
+Thanks to [@Jasperxjy](https://github.com/Jasperxjy) for privately reporting the following vulnerabilities:
+
+* [GHSA-wjfh-7q6v-vrm2](https://github.com/nasa-jpl/rosa/security/advisories/GHSA-wjfh-7q6v-vrm2): Shell command injection in ROS2 tool arguments (affects 1.0.0–1.0.10)
+* [GHSA-4vf9-r5hq-7qww](https://github.com/nasa-jpl/rosa/security/advisories/GHSA-4vf9-r5hq-7qww): Path traversal and arbitrary local file read in `read_log` (affects 1.0.0–1.0.10)
+* [GHSA-x7qw-596f-9878](https://github.com/nasa-jpl/rosa/security/advisories/GHSA-x7qw-596f-9878): Shell command injection in ROS1 `roslaunch` arguments (affects 1.0.5–1.0.10)
+
+### Added
+
+* New `ros2_topic_pub` tool with `rate`, `duration` and `wait_timeout` options; it waits for a matching subscriber before publishing (#94)
+* `ros2_log_directories` resolves the ROS2 log directory from the environment when `rclpy` is unavailable (#94)
+
 ### Changed
 
+* ROS2 graph tools (`ros2_node_list`, `ros2_topic_list`, `ros2_service_list`, `ros2_node_info`, `ros2_topic_info`, `ros2_service_info`) now query a shared, hidden `rclpy` node instead of spawning the `ros2` CLI on every call, falling back to the CLI when `rclpy` is unavailable or a native query fails. DDS discovery wait is bounded by `ROSA_ROS2_DISCOVERY_TIMEOUT` (default 2s) (#94)
+* `rclpy` is now optional: the ROS2 tools module loads without it (#94)
 * ROS2 tools now invoke the `ros2` CLI with an argument list instead of a shell command string, and validate entity names passed to it
 * `roslaunch` (ROS1) now launches with an argument list instead of `os.system`
+* `roslaunch` (ROS1) now validates its arguments against allowlists: package names must match `[A-Za-z][A-Za-z0-9_-]*`, and launch files must be plain file names ending in `.launch`, `.xml` or `.test` (no paths, `..`, spaces, or `name:=value` arguments) (#93)
 * `read_log` is now limited to ROS log directories (`ROS_LOG_DIR`, `ROS_HOME/log`, `~/.ros/log`, and the ROS1/ROS2 default log directories); additional directories can be allowed via `ROSA_LOG_DIRS`
 
 ## [1.0.10]
