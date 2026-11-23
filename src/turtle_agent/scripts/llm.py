@@ -21,16 +21,17 @@ from langchain_openai import ChatOpenAI
 def get_llm(streaming: bool = False):
     """A helper function to get the LLM instance.
 
-    Supports OpenAI (default), Anthropic and Ollama models.
+    Supports OpenAI (default), Anthropic, NVIDIA NIM and Ollama models.
     Set the LLM_PROVIDER env variable to switch between providers:
       - "openai" (default): uses OPENAI_API_KEY
       - "anthropic": uses ANTHROPIC_API_KEY
+      - "nvidia": uses NVIDIA_API_KEY (NIM API)
       - "ollama": uses local Ollama instance
     """
     dotenv.load_dotenv(dotenv.find_dotenv())
 
     provider = os.getenv("LLM_PROVIDER", "openai").lower().strip()
-    supported = ("openai", "anthropic", "ollama")
+    supported = ("openai", "anthropic", "nvidia", "ollama")
     if provider not in supported:
         raise ValueError(
             f"Unknown LLM_PROVIDER: '{provider}'. Must be one of: {', '.join(supported)}"
@@ -53,6 +54,19 @@ def get_llm(streaming: bool = False):
         llm = ChatAnthropic(
             api_key=get_env_variable("ANTHROPIC_API_KEY"),
             model=os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-5"),
+            streaming=streaming,
+        )
+    elif provider == "nvidia":
+        try:
+            from langchain_nvidia_ai_endpoints import ChatNVIDIA
+        except ImportError as e:
+            raise ImportError(
+                "Install the project's NVIDIA extra with: pip install 'jpl-rosa[nvidia]'"
+            ) from e
+        llm = ChatNVIDIA(
+            api_key=get_env_variable("NVIDIA_API_KEY"),
+            model=os.getenv("NVIDIA_MODEL", "nvidia/llama-3.3-nemotron-super-49b-v1.5"),
+            base_url=os.getenv("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1"),
             streaming=streaming,
         )
     elif provider == "ollama":
@@ -91,7 +105,7 @@ def get_env_variable(var_name: str) -> str:
     raise a ValueError, making it easier to debug configuration issues.
     """
     value = os.getenv(var_name)
-    if value is None:
+    if not value or not value.strip():
         msg = f"Environment variable {var_name} is not set."
         raise ValueError(msg)
-    return value
+    return value.strip()
