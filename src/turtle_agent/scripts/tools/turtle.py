@@ -317,16 +317,24 @@ def publish_twist_to_cmd_vel(
         for _ in range(steps):
             pub.publish(vel)
             rospy.sleep(1)
+    except KeyboardInterrupt:
+        # Ctrl+C mid-move: send zero velocity now, then let the interrupt reach
+        # the agent loop so no further tool calls run. (A return inside a
+        # finally block would discard the interrupt.)
+        stop_pub = cmd_vel_pubs.get(name)
+        if stop_pub is not None:
+            stop_pub.publish(Twist())
+        raise
     except Exception as e:
         return f"Failed to publish {vel} to /{name}/cmd_vel: {e}"
-    finally:
-        current_pose = get_turtle_pose.invoke({"names": [name]})
-        return (
-            f"New Pose ({name}): x={current_pose[name].x}, y={current_pose[name].y}, "
-            f"theta={current_pose[name].theta} rads, "
-            f"linear_velocity={current_pose[name].linear_velocity}, "
-            f"angular_velocity={current_pose[name].angular_velocity}."
-        )
+
+    current_pose = get_turtle_pose.invoke({"names": [name]})
+    return (
+        f"New Pose ({name}): x={current_pose[name].x}, y={current_pose[name].y}, "
+        f"theta={current_pose[name].theta} rads, "
+        f"linear_velocity={current_pose[name].linear_velocity}, "
+        f"angular_velocity={current_pose[name].angular_velocity}."
+    )
 
 
 @tool
