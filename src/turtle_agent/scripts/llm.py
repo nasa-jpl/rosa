@@ -52,7 +52,7 @@ def get_llm(streaming: bool = False):
             )
         llm = ChatAnthropic(
             api_key=get_env_variable("ANTHROPIC_API_KEY"),
-            model=os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-5"),
+            model=os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6"),
             streaming=streaming,
         )
     elif provider == "ollama":
